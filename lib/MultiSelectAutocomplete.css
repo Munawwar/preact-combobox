@@ -1,0 +1,128 @@
+.MultiSelectAutocomplete {
+  position: relative;
+  width: 100%;
+  font-family: 'Roboto', sans-serif;
+}
+
+.MultiSelectAutocomplete-selectedOptions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  min-height: 44px;
+}
+
+.MultiSelectAutocomplete-chip {
+  display: inline-flex;
+  align-items: center;
+  background-color: #e0e0e0;
+  border-radius: 16px;
+  padding: 6px 12px;
+  margin: 2px;
+  font-size: 14px;
+  color: #333;
+  transition: background-color 0.3s;
+}
+
+.MultiSelectAutocomplete-chip--active {
+  outline: 2px solid #007bff;
+  background-color: #007bff;
+  color: white;
+}
+
+.MultiSelectAutocomplete-chipRemove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  margin-left: 6px;
+  padding: 0 4px;
+  color: #666;
+  transition: color 0.3s;
+}
+
+.MultiSelectAutocomplete-chipRemove:hover {
+  color: #333;
+}
+
+.MultiSelectAutocomplete-input {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  padding: 8px;
+  font-size: 14px;
+}
+
+.MultiSelectAutocomplete-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.MultiSelectAutocomplete-option {
+  padding: 10px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.MultiSelectAutocomplete-option:hover {
+  background-color: #f0f0f0;
+}
+
+.MultiSelectAutocomplete-option--active {
+  background-color: #e0e0e0;
+}
+
+.MultiSelectAutocomplete-chip--invalid {
+  border: 1px solid #b8860b;
+  color: #b8860b;
+  position: relative;
+}
+
+.MultiSelectAutocomplete-chip--invalid::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #000;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.MultiSelectAutocomplete-chip--invalid:hover::after {
+  opacity: 1;
+}
+
+
+.MultiSelectAutocomplete-srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
