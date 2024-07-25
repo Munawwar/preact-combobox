@@ -1,6 +1,14 @@
 // @ts-check
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { createPopper } from "@popperjs/core";
 import "./MultiSelectAutocomplete.css";
+
+// TODO: Integrate with popper.js for invalid tooltip as well
+// TODO: Implement Undo/Redo stack
+// TODO: Think of mobile design
+// TODO: Uses match slices to highlight matching parts of the label text
+// TODO: How to customize the option labels? How will it work wit highlight matching parts of the label text?
 
 /**
  * @param {string[]} arr Array to remove duplicates from
@@ -8,6 +16,43 @@ import "./MultiSelectAutocomplete.css";
 function unique(arr) {
   return Array.from(new Set(arr));
 }
+
+/**
+ * @param {Object} props - Props for the PopperContent component
+ * @param {HTMLElement} [props.parent=document.body] The parent element to render the PopperContent component
+ * @param {React.ReactNode} props.children The children to render
+ */
+const Portal = ({ parent = document.body, children }) => {
+  return createPortal(children, parent);
+};
+
+// Popper.js helper
+const popperModifiers = [
+  {
+    name: "flip",
+    enabled: true,
+  },
+  {
+    name: "referenceElementWidth",
+    enabled: true,
+    phase: "beforeWrite",
+    requires: ["computeStyles"],
+    fn: ({ state }) => {
+      state.styles.popper.width = `${state.rects.reference.width}px`;
+    },
+    effect: ({ state }) => {
+      state.elements.popper.style.width = `${state.elements.reference.offsetWidth}px`;
+    },
+  },
+  {
+    name: "eventListeners",
+    enabled: true,
+    options: {
+      scroll: true,
+      resize: true,
+    },
+  },
+];
 
 /**
  * @typedef {Object} Option
@@ -225,6 +270,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
 
 /**
  * @typedef {Object} MultiSelectAutocompleteProps
+ * @property {string} id The id of the component
  * @property {Option[] | ((query: string, limit: number, abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
  * @property {boolean} [allowFreeText=false] Allow free text input
  * @property {boolean} [enableBackspaceDelete=false] Enable backspace delete
@@ -232,6 +278,13 @@ function getMatchScore(query, options, language = "en", sort = true) {
  * @property {string[]} values Currently selected options
  * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
  * recognized by Intl.Segmenter and Intl.Collator
+ * @property {boolean} [disabled=false] Disable the component
+ *
+ * @property {Record<string, any>} [rootElementProps] Root element props
+ * @property {Record<string, any>} [inputProps] Input element props
+ * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
+ *
+ * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
  */
 
 /**
@@ -239,12 +292,19 @@ function getMatchScore(query, options, language = "en", sort = true) {
  * @param {MultiSelectAutocompleteProps} props - Component props
  */
 const MultiSelectAutocomplete = ({
+  id,
   allowedOptions,
   allowFreeText = false,
   enableBackspaceDelete = false,
   onChange,
   values = [],
   language = "en",
+  disabled,
+  portal = document.body,
+
+  rootElementProps,
+  inputProps,
+  selectElementProps,
 }) => {
   const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -253,6 +313,24 @@ const MultiSelectAutocomplete = ({
   const [activeDescendant, setActiveDescendant] = useState("");
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
+  const rootElementRef = useRef(null);
+  const popperRef = useRef(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: values.length is used to readjust when values wrap around
+  useEffect(() => {
+    if (isFocused && rootElementRef.current && popperRef.current) {
+      const popperInstance = createPopper(rootElementRef.current, popperRef.current, {
+        placement: "bottom-start",
+        // @ts-ignore
+        modifiers: popperModifiers,
+      });
+
+      // Clean up function
+      return () => {
+        popperInstance.destroy();
+      };
+    }
+  }, [isFocused, values.length]);
 
   /**
    * Filter options based on input query
@@ -261,14 +339,14 @@ const MultiSelectAutocomplete = ({
    */
   const filterOptions = useCallback(
     async (query, abortControllerSignal) => {
-      const optionsLookup = new Set(values);
+      const valuesLookup = new Set(values);
       if (typeof allowedOptions === "function") {
         setIsLoading(true);
         const fetchedOptions = await allowedOptions(query, 100 + values.length, abortControllerSignal);
         setIsLoading(false);
         return getMatchScore(
           query,
-          fetchedOptions.filter((option) => !optionsLookup.has(option.value)).slice(0, 100),
+          fetchedOptions.filter((option) => !valuesLookup.has(option.value)).slice(0, 100),
           language,
           false,
         );
@@ -276,7 +354,7 @@ const MultiSelectAutocomplete = ({
       if (Array.isArray(allowedOptions)) {
         return getMatchScore(
           query,
-          allowedOptions.filter((option) => !optionsLookup.has(option.value)),
+          allowedOptions.filter((option) => !valuesLookup.has(option.value)),
           language,
         ).slice(0, 100);
       }
@@ -407,53 +485,81 @@ const MultiSelectAutocomplete = ({
    */
   const handlePaste = (e) => {
     e.preventDefault();
+    // Case 1 : Exact matches
+    const valuesLookup = {
+      ...Object.fromEntries(values.map((v) => [v, v])),
+      ...Object.fromEntries(allOptions.map((o) => [o.value, o.value])),
+    };
+    // Case 2 : Case insensitive matches
+    const valuesLowerCaseLookup = {
+      ...Object.fromEntries(values.map((v) => [v.toLowerCase(), v])),
+      ...Object.fromEntries(allOptions.map((o) => [o.value.toLowerCase(), o.value])),
+    };
+    // Case 3 : Case insensitive matches against label
+    const optionsLabelLookup = Object.fromEntries(allOptions.map((o) => [o.label.toLowerCase(), o.value]));
     const pastedText = e.clipboardData.getData("text");
     const pastedOptions = pastedText
       .split(",")
       .map((x) => x.trim())
-      .filter((x) => x !== "");
+      .filter((x) => x !== "")
+      .map(
+        (x) =>
+          valuesLookup[x] || valuesLowerCaseLookup[x.toLowerCase()] || optionsLabelLookup[x.toLocaleLowerCase()] || x,
+      );
+
     const newValues = unique([...values, ...pastedOptions]);
+    console.log(newValues);
     onChange(newValues);
   };
 
   const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
-  const allOptionsLookup = new Set(allOptions.map((o) => o.value));
+  const allOptionsLookup = Object.fromEntries(allOptions.map((o) => [o.value, o]));
 
   return (
-    <div className="MultiSelectAutocomplete">
+    <div
+      className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""}`}
+      aria-disabled={disabled}
+      onClick={() => inputRef.current?.focus()}
+      onKeyUp={() => inputRef.current?.focus()}
+      id={`${id}-root`}
+      ref={rootElementRef}
+      {...rootElementProps}
+    >
       <div className="MultiSelectAutocomplete-selectedOptions">
         {values.map((value, index) => {
           const label = allOptions.find((o) => o.value === value)?.label || value;
-          const isInvalidOption = !allowFreeText && !allOptionsLookup.has(value);
+          const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
           return (
             <span
               key={value}
               className={`MultiSelectAutocomplete-chip ${
-                !allowFreeText && !allOptionsLookup.has(value) ? "MultiSelectAutocomplete-chip--invalid" : ""
+                !allowFreeText && !allOptionsLookup[value] ? "MultiSelectAutocomplete-chip--invalid" : ""
               }`}
               aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
               {...(isInvalidOption ? { "data-tooltip": "Invalid value" } : {})}
             >
               {label}
-              <button
-                type="button"
-                className="MultiSelectAutocomplete-chipRemove"
-                aria-label="Delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleRemoveOption(value);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
+              {!disabled && (
+                <button
+                  type="button"
+                  className="MultiSelectAutocomplete-chipRemove"
+                  aria-label="Delete"
+                  onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    handleRemoveOption(value, true);
-                  }
-                }}
-              >
-                <span aria-hidden="true">&#x2715;</span>
-              </button>
+                    handleRemoveOption(value);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      handleRemoveOption(value, true);
+                    }
+                  }}
+                >
+                  <span aria-hidden="true">&#x2715;</span>
+                </button>
+              )}
             </span>
           );
         })}
@@ -474,10 +580,18 @@ const MultiSelectAutocomplete = ({
           aria-haspopup="listbox"
           aria-controls="options-listbox"
           aria-activedescendant={activeDescendant}
+          disabled={disabled}
+          {...inputProps}
         />
       </div>
-      {isFocused && (
-        <ul className="MultiSelectAutocomplete-options" role="listbox" id="options-listbox">
+      <Portal parent={portal}>
+        <ul
+          className="MultiSelectAutocomplete-options"
+          role="listbox"
+          id={`${id}-options-listbox`}
+          hidden={!isFocused}
+          ref={popperRef}
+        >
           {isLoading ? (
             <li className="MultiSelectAutocomplete-option">Loading...</li>
           ) : (
@@ -510,7 +624,7 @@ const MultiSelectAutocomplete = ({
                     }}
                   >
                     {isActiveOption && <span className="MultiSelectAutocomplete-srOnly">Current option:</span>}
-                    { /* TODO: Uses match slices to highlight matching parts of the option */ }
+                    {/* TODO: Uses match slices to highlight matching parts of the option */}
                     {option.label}
                   </li>
                 );
@@ -524,7 +638,22 @@ const MultiSelectAutocomplete = ({
             </>
           )}
         </ul>
-      )}
+      </Portal>
+      <select
+        multiple
+        hidden
+        tabIndex={-1}
+        // @ts-expect-error this is a valid react attribute
+        readOnly
+        value={values}
+        {...selectElementProps}
+      >
+        {values.map((value) => (
+          <option key={value} value={value}>
+            {allOptionsLookup[value]?.label || value}
+          </option>
+        ))}
+      </select>
     </div>
   );
 };

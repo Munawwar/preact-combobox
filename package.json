@@ -10,8 +10,8 @@
     "lint": "npx @biomejs/biome check --write",
     "pretest": "npm run build",
     "example": "browser-sync start --server --files 'example' --files 'dist' --open './example/example-react.html'",
-    "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --sourcemap --external:react --watch",
-    "build": "rm -fr dist && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --sourcemap --external:react && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --sourcemap --external:react"
+    "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --sourcemap --external:react --external:react-dom --external:@popperjs/core --watch",
+    "build": "rm -fr dist && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --sourcemap --external:react --external:react-dom --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --sourcemap --external:react"
   },
   "keywords": ["react", "preact", "tags", "tag input", "component", "multiselect", "autocomplete"],
   "author": "Munawwar",
@@ -19,9 +19,17 @@
   "repository": "https://github.com/Munawwar/preact-tag-autocomplete",
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
+    "@popperjs/core": "^2",
     "browser-sync": "^3.0.2",
     "esbuild": "^0.21.5",
+    "react": "^16 || ^17 || ^18",
+    "react-dom": "^16 || ^17 || ^18",
     "typescript": "^5.5.3"
+  },
+  "peerDependencies": {
+    "react": "^16 || ^17 || ^18",
+    "react-dom": "^16 || ^17 || ^18",
+    "@popperjs/core": "^2"
   },
   "engines": {
     "node": ">= 10.0.0"

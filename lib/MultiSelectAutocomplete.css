@@ -2,6 +2,11 @@
   position: relative;
   width: 100%;
   font-family: 'Roboto', sans-serif;
+  cursor: pointer;
+}
+.MultiSelectAutocomplete--disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
 }
 
 .MultiSelectAutocomplete-selectedOptions {
@@ -10,6 +15,7 @@
   align-items: center;
   padding: 8px;
   border: 1px solid #ccc;
+  box-sizing: border-box;
   border-radius: 4px;
   min-height: 44px;
 }
@@ -20,6 +26,7 @@
   background-color: #e0e0e0;
   border-radius: 16px;
   padding: 6px 12px;
+  box-sizing: border-box;
   margin: 2px;
   font-size: 14px;
   color: #333;
@@ -39,6 +46,7 @@
   font-size: 18px;
   margin-left: 6px;
   padding: 0 4px;
+  box-sizing: border-box;
   color: #666;
   transition: color 0.3s;
 }
@@ -48,19 +56,22 @@
 }
 
 .MultiSelectAutocomplete-input {
-  flex-grow: 1;
+  width: auto;
+  min-width: 70px;
+  flex: 1 1 70px;
   border: none;
   outline: none;
   padding: 8px;
+  box-sizing: border-box;
   font-size: 14px;
+}
+.MultiSelectAutocomplete-input[disabled] {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
 }
 
 .MultiSelectAutocomplete-options {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 1;
+  top: 2px;
   list-style-type: none;
   padding: 0;
   margin: 0;
@@ -68,13 +79,17 @@
   overflow-y: auto;
   background-color: white;
   border: 1px solid #ccc;
-  border-top: none;
-  border-radius: 0 0 4px 4px;
+  box-sizing: border-box;
+  border-radius:4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.MultiSelectAutocomplete-options[hidden] {
+  display: none;
 }
 
 .MultiSelectAutocomplete-option {
   padding: 10px;
+  box-sizing: border-box;
   cursor: pointer;
   transition: background-color 0.3s;
 }
@@ -89,6 +104,7 @@
 
 .MultiSelectAutocomplete-chip--invalid {
   border: 1px solid #b8860b;
+  box-sizing: border-box;
   color: #b8860b;
   position: relative;
 }
@@ -96,12 +112,13 @@
 .MultiSelectAutocomplete-chip--invalid::after {
   content: attr(data-tooltip);
   position: absolute;
-  top: 100%;
+  bottom: calc(100% + 0.3rem);
   left: 50%;
   transform: translateX(-50%);
   background-color: #000;
   color: #fff;
   padding: 4px 8px;
+  box-sizing: border-box;
   border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
