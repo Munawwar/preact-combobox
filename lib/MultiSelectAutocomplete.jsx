@@ -4,11 +4,11 @@ import { createPortal } from "react-dom";
 import { createPopper } from "@popperjs/core";
 import "./MultiSelectAutocomplete.css";
 
+const identity = (x) => x;
+
 // TODO: Integrate with popper.js for invalid tooltip as well
 // TODO: Implement Undo/Redo stack
 // TODO: Think of mobile design
-// TODO: Uses match slices to highlight matching parts of the label text
-// TODO: How to customize the option labels? How will it work wit highlight matching parts of the label text?
 
 /**
  * @param {string[]} arr Array to remove duplicates from
@@ -115,146 +115,152 @@ function getMatchScore(query, options, language = "en", sort = true) {
   let querySegments;
   let queryWords;
   let queryLastWordChars;
-  const matches = options.map(({ label, value }) => {
-    // Rule 1: Exact match (case insensitive)
-    if (value.toLowerCase() === lowercaseQuery) {
-      return {
-        label,
-        value,
-        score: 7,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
-    const labelLowerCase = label.toLowerCase();
-    if (labelLowerCase === lowercaseQuery) {
-      return {
-        label,
-        value,
-        score: 7,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
-    }
+  const matches = options
+    .map(({ label, value }) => {
+      // Rule 1: Exact match (case insensitive)
+      if (value.toLowerCase() === lowercaseQuery) {
+        return {
+          label,
+          value,
+          score: 7,
+          /** @type {'value'} */
+          matched: "value",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, value.length]],
+        };
+      }
+      const labelLowerCase = label.toLowerCase();
+      if (labelLowerCase === lowercaseQuery) {
+        return {
+          label,
+          value,
+          score: 7,
+          /** @type {'label'} */
+          matched: "label",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, label.length]],
+        };
+      }
 
-    // Rule 2: Exact match with accents normalized (case insensitive)
-    if (!languageCache[language]) {
-      languageCache[language] = {};
-    }
-    const langUtils = languageCache[language];
-    if (!langUtils.baseMatcher) {
-      langUtils.baseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "base" });
-      langUtils.caseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "accent" });
-    }
-    const { baseMatcher } = langUtils;
-    if (baseMatcher.compare(label, query) === 0) {
-      return {
-        label,
-        value,
-        score: 5,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
-    }
-    if (baseMatcher.compare(value, query) === 0) {
-      return {
-        label,
-        value,
-        score: 5,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
+      // Rule 2: Exact match with accents normalized (case insensitive)
+      if (!languageCache[language]) {
+        languageCache[language] = {};
+      }
+      const langUtils = languageCache[language];
+      if (!langUtils.baseMatcher) {
+        langUtils.baseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "base" });
+        langUtils.caseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "accent" });
+      }
+      const { baseMatcher } = langUtils;
+      if (baseMatcher.compare(label, query) === 0) {
+        return {
+          label,
+          value,
+          score: 5,
+          /** @type {'label'} */
+          matched: "label",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, label.length]],
+        };
+      }
+      if (baseMatcher.compare(value, query) === 0) {
+        return {
+          label,
+          value,
+          score: 5,
+          /** @type {'value'} */
+          matched: "value",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, value.length]],
+        };
+      }
 
-    // Rule 3: Phrase match (imagine a wildcard query like "word1 partialWord2*")
-    // This match needs to be case and accent insensitive
-    if (!langUtils.wordSegmenter) {
-      Object.assign(langUtils, {
-        // @ts-ignore
-        wordSegmenter: new Intl.Segmenter(language, { granularity: "word" }),
-        // @ts-ignore
-        charSegmenter: new Intl.Segmenter(language, { granularity: "grapheme" }),
-      });
-    }
-    const { wordSegmenter, charSegmenter } = langUtils;
-    if (!querySegments) {
-      querySegments = Array.from(wordSegmenter.segment(query));
-    }
-    const labelSegments = Array.from(wordSegmenter.segment(label.trim()));
-    let len = 0;
-    let firstIndex = -1;
-    for (let i = 0; i < labelSegments.length; i++) {
-      const labelSegment = labelSegments[i];
-      const querySegment = querySegments[len];
-      if (len === querySegments.length - 1) {
-        // check for partial word match
-        // I can't use labelSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
-        // I have to loop through each character and use Intl.Collator.compare to check if they match
-        // Note: A "char" is a grapheme cluster, not actually a character
-        // @ts-ignore
-        const labelWordChars = Array.from(charSegmenter.segment(labelSegment.segment));
-        if (!queryLastWordChars) {
+      // Rule 3: Phrase match (imagine a wildcard query like "word1 partialWord2*")
+      // This match needs to be case and accent insensitive
+      if (!langUtils.wordSegmenter) {
+        Object.assign(langUtils, {
           // @ts-ignore
-          queryLastWordChars = Array.from(charSegmenter.segment(querySegment.segment));
-        }
-        const isPartialMatch = queryLastWordChars.every(
-          ({ segment }, index) =>
-            labelWordChars[index] && baseMatcher.compare(segment, labelWordChars[index].segment) === 0,
-        );
-        if (isPartialMatch) {
-          return {
-            label,
-            value,
-            score: 3,
-            /** @type {'label'} */
-            matched: "label",
-            /** @type {Array<[number, number]>} */
+          wordSegmenter: new Intl.Segmenter(language, { granularity: "word" }),
+          // @ts-ignore
+          charSegmenter: new Intl.Segmenter(language, { granularity: "grapheme" }),
+        });
+      }
+      const { wordSegmenter, charSegmenter } = langUtils;
+      if (!querySegments) {
+        querySegments = Array.from(wordSegmenter.segment(query));
+      }
+      const labelSegments = Array.from(wordSegmenter.segment(label.trim()));
+      let len = 0;
+      let firstIndex = -1;
+      for (let i = 0; i < labelSegments.length; i++) {
+        const labelSegment = labelSegments[i];
+        const querySegment = querySegments[len];
+        if (len === querySegments.length - 1) {
+          // check for partial word match
+          // I can't use labelSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
+          // I have to loop through each character and use Intl.Collator.compare to check if they match
+          // Note: A "char" is a grapheme cluster, not actually a character
+          // @ts-ignore
+          const labelWordChars = Array.from(charSegmenter.segment(labelSegment.segment));
+          if (!queryLastWordChars) {
             // @ts-ignore
-            matchSlices: [[firstIndex, labelSegment.index + querySegment.segment.length]],
-          };
+            queryLastWordChars = Array.from(charSegmenter.segment(querySegment.segment));
+          }
+          const isPartialMatch = queryLastWordChars.every(
+            ({ segment }, index) =>
+              labelWordChars[index] && baseMatcher.compare(segment, labelWordChars[index].segment) === 0,
+          );
+          if (isPartialMatch) {
+            return {
+              label,
+              value,
+              score: 3,
+              /** @type {'label'} */
+              matched: "label",
+              /** @type {Array<[number, number]>} */
+              // @ts-ignore
+              matchSlices: [
+                [firstIndex > -1 ? firstIndex : labelSegment.index, labelSegment.index + querySegment.segment.length],
+              ],
+            };
+          }
+        } else if (baseMatcher.compare(labelSegment.segment, querySegment.segment) === 0) {
+          len++;
+          if (len === 1) {
+            firstIndex = labelSegment.index;
+          }
+          continue;
         }
-      } else if (baseMatcher.compare(labelSegment.segment, querySegment.segment) === 0) {
-        len++;
-        if (len === 1) {
-          firstIndex = labelSegment.index;
-        }
-        continue;
+        len = 0;
+        firstIndex = -1;
       }
-      len = 0;
-      firstIndex = -1;
-    }
 
-    // Rule 4: Word matches
-    if (!queryWords) {
-      queryWords = querySegments.filter((s) => s.isWordLike);
-    }
-    const labelWords = labelSegments.filter((s) => s.isWordLike);
-    /** @type {Array<[number, number]|undefined>} */
-    const slices = queryWords.map((word) => {
-      const match = labelWords.find((labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0);
-      if (match) {
-        return [match.index, match.index + match.segment.length];
+      // Rule 4: Word matches
+      if (!queryWords) {
+        queryWords = querySegments.filter((s) => s.isWordLike);
       }
-    });
-    const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
-    const wordScoring = matchSlices.length / queryWords.length;
-    return {
-      label,
-      value,
-      score: wordScoring,
-      /** @type {'label'|'none'} */
-      matched: wordScoring ? "label" : "none",
-      matchSlices,
-    };
-  });
+      const labelWords = labelSegments.filter((s) => s.isWordLike);
+      /** @type {Array<[number, number]|undefined>} */
+      const slices = queryWords.map((word) => {
+        const match = labelWords.find((labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0);
+        if (match) {
+          return [match.index, match.index + match.segment.length];
+        }
+      });
+      const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
+      const wordScoring = matchSlices.length / queryWords.length;
+      return {
+        label,
+        value,
+        score: wordScoring,
+        /** @type {'label'|'none'} */
+        matched: wordScoring ? "label" : "none",
+        matchSlices,
+      };
+    })
+    // FIXME: Comment this after testing
+    // .filter((match) => match);
+    .filter((match) => match.score > 0);
 
   if (sort) {
     matches.sort((a, b) => {
@@ -266,6 +272,34 @@ function getMatchScore(query, options, language = "en", sort = true) {
     });
   }
   return matches;
+}
+
+/**
+ * @param {OptionMatch} match
+ * @param {(label: JSX.Element[], match: OptionMatch) => JSX.Element} labelTransform
+ */
+function highlightMatches(match, labelTransform) {
+  const { label, matched, matchSlices } = match;
+  if (!matched || matched === "none") return label;
+
+  const labelTextPart = [];
+  let index = 0;
+  matchSlices.map((slice) => {
+    const [start, end] = slice;
+    // console.log(slice);
+    if (index < start) {
+      // console.log(label.slice(index, start));
+      labelTextPart.push(<span key={`${index}-${start}`}>{label.slice(index, start)}</span>);
+    }
+    // console.log(label.slice(start, end));
+    labelTextPart.push(<u key={`${start}-${end}`}>{label.slice(start, end)}</u>);
+    index = end;
+  });
+  if (index < label.length) {
+    // console.log(label.slice(index));
+    labelTextPart.push(<span key={`${index}-${label.length}`}>{label.slice(index)}</span>);
+  }
+  return labelTransform(labelTextPart, match);
 }
 
 /**
@@ -285,6 +319,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
  * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
+ * @property {(label: JSX.Element[], match: OptionMatch) => JSX.Element} [labelTransform=identity] Transform the label text
  */
 
 /**
@@ -305,6 +340,7 @@ const MultiSelectAutocomplete = ({
   rootElementProps,
   inputProps,
   selectElementProps,
+  labelTransform = identity,
 }) => {
   const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -398,6 +434,14 @@ const MultiSelectAutocomplete = ({
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
     setIsFocused(false);
+    if (inputValue) {
+      if (allowFreeText && inputValue.trim() !== "") {
+        handleOptionSelect(inputValue.trim());
+      } else {
+        setInputValue("");
+        setActiveDescendant("");
+      }
+    }
   };
 
   /**
@@ -449,8 +493,8 @@ const MultiSelectAutocomplete = ({
         : -1;
       if (currentIndex > -1) {
         handleOptionSelect(filteredOptions[currentIndex].value);
-      } else if (allowFreeText) {
-        handleOptionSelect(inputValue);
+      } else if (allowFreeText && inputValue.trim() !== "") {
+        handleOptionSelect(inputValue.trim());
       }
       // ArrowDown highlights next option
     } else if (e.key === "ArrowDown" && filteredOptions.length > 0) {
@@ -520,7 +564,6 @@ const MultiSelectAutocomplete = ({
       className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""}`}
       aria-disabled={disabled}
       onClick={() => inputRef.current?.focus()}
-      onKeyUp={() => inputRef.current?.focus()}
       id={`${id}-root`}
       ref={rootElementRef}
       {...rootElementProps}
@@ -624,8 +667,7 @@ const MultiSelectAutocomplete = ({
                     }}
                   >
                     {isActiveOption && <span className="MultiSelectAutocomplete-srOnly">Current option:</span>}
-                    {/* TODO: Uses match slices to highlight matching parts of the option */}
-                    {option.label}
+                    {highlightMatches(option, labelTransform)}
                   </li>
                 );
               })}
