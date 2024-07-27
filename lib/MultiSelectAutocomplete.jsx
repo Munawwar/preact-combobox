@@ -6,8 +6,7 @@ import "./MultiSelectAutocomplete.css";
 
 const identity = (x) => x;
 
-// TODO: Integrate with popper.js for invalid tooltip as well
-// TODO: Implement Undo/Redo stack
+// TODO: Think of having a single selection mode
 // TODO: Think of mobile design
 
 /**
@@ -27,7 +26,7 @@ const Portal = ({ parent = document.body, children }) => {
 };
 
 // Popper.js helper
-const popperModifiers = [
+const dropdownPopperModifiers = [
   {
     name: "flip",
     enabled: true,
@@ -42,6 +41,23 @@ const popperModifiers = [
     },
     effect: ({ state }) => {
       state.elements.popper.style.width = `${state.elements.reference.offsetWidth}px`;
+    },
+  },
+  {
+    name: "eventListeners",
+    enabled: true,
+    options: {
+      scroll: true,
+      resize: true,
+    },
+  },
+];
+
+const tooltipPopperModifiers = [
+  {
+    name: "offset",
+    options: {
+      offset: [0, 2],
     },
   },
   {
@@ -347,10 +363,15 @@ const MultiSelectAutocomplete = ({
   const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
   const [isLoading, setIsLoading] = useState(false);
   const [activeDescendant, setActiveDescendant] = useState("");
+  const [chipHovered, setChipHovered] = useState("");
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
   const rootElementRef = useRef(null);
   const popperRef = useRef(null);
+  const hoveredChipRef = useRef(null);
+  const tooltipPopperRef = useRef(null);
+  const undoStack = useRef(/** @type {string[][]} */ ([]));
+  const redoStack = useRef(/** @type {string[][]} */ ([]));
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: values.length is used to readjust when values wrap around
   useEffect(() => {
@@ -358,7 +379,7 @@ const MultiSelectAutocomplete = ({
       const popperInstance = createPopper(rootElementRef.current, popperRef.current, {
         placement: "bottom-start",
         // @ts-ignore
-        modifiers: popperModifiers,
+        modifiers: dropdownPopperModifiers,
       });
 
       // Clean up function
@@ -367,6 +388,20 @@ const MultiSelectAutocomplete = ({
       };
     }
   }, [isFocused, values.length]);
+  useEffect(() => {
+    if (chipHovered && hoveredChipRef.current && tooltipPopperRef.current) {
+      const popperInstance = createPopper(hoveredChipRef.current, tooltipPopperRef.current, {
+        placement: "bottom",
+        // @ts-ignore
+        modifiers: tooltipPopperModifiers,
+      });
+
+      // Clean up function
+      return () => {
+        popperInstance.destroy();
+      };
+    }
+  }, [chipHovered]);
 
   /**
    * Filter options based on input query
@@ -455,6 +490,8 @@ const MultiSelectAutocomplete = ({
     setInputValue("");
     if (!existingOption) {
       onChange(newValues);
+      undoStack.current.push(values);
+      redoStack.current = [];
     }
   };
 
@@ -474,6 +511,8 @@ const MultiSelectAutocomplete = ({
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
     onChange(newValues);
+    undoStack.current.push(values);
+    redoStack.current = [];
   };
 
   /**
@@ -519,7 +558,22 @@ const MultiSelectAutocomplete = ({
     } else if (e.key === "Escape") {
       setIsFocused(false);
       setActiveDescendant("");
-      // inputRef.current?.blur();
+      // Undo action
+    } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
+      e.preventDefault();
+      const prevValues = undoStack.current.pop();
+      if (prevValues) {
+        onChange(prevValues);
+        redoStack.current.push(values);
+      }
+      // Redo action
+    } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "y") {
+      e.preventDefault();
+      const nextValues = redoStack.current.pop();
+      if (nextValues) {
+        onChange(nextValues);
+        undoStack.current.push(values);
+      }
     }
   };
 
@@ -554,6 +608,8 @@ const MultiSelectAutocomplete = ({
     const newValues = unique([...values, ...pastedOptions]);
     console.log(newValues);
     onChange(newValues);
+    undoStack.current.push(values);
+    redoStack.current = [];
   };
 
   const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
@@ -573,13 +629,17 @@ const MultiSelectAutocomplete = ({
           const label = allOptions.find((o) => o.value === value)?.label || value;
           const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
           return (
+            // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
             <span
               key={value}
               className={`MultiSelectAutocomplete-chip ${
                 !allowFreeText && !allOptionsLookup[value] ? "MultiSelectAutocomplete-chip--invalid" : ""
               }`}
               aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
-              {...(isInvalidOption ? { "data-tooltip": "Invalid value" } : {})}
+              onMouseEnter={() => setChipHovered(value)}
+              onMouseLeave={() => setChipHovered("")}
+              onClick={() => setChipHovered(chipHovered === value ? "" : value)}
+              ref={chipHovered === value ? hoveredChipRef : null}
             >
               {label}
               {!disabled && (
@@ -602,6 +662,17 @@ const MultiSelectAutocomplete = ({
                 >
                   <span aria-hidden="true">&#x2715;</span>
                 </button>
+              )}
+              {isInvalidOption && chipHovered === value && (
+                <Portal parent={portal}>
+                  <div
+                    className="MultiSelectAutocomplete-chipTooltip"
+                    role="tooltip"
+                    ref={chipHovered === value ? tooltipPopperRef : null}
+                  >
+                    Invalid value
+                  </div>
+                </Portal>
               )}
             </span>
           );
@@ -681,6 +752,7 @@ const MultiSelectAutocomplete = ({
           )}
         </ul>
       </Portal>
+      {/* This is a hidden select element to allow for form submission */}
       <select
         multiple
         hidden

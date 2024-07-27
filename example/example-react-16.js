@@ -1,6 +1,6 @@
 import htm from "htm";
 import { createElement, useState, Fragment } from "react";
-import { createRoot } from "react-dom/client";
+import { render } from "react-dom";
 const html = htm.bind(createElement);
 
 import MultiSelectAutocomplete from "../dist/esm/MultiSelectAutocomplete.js";
@@ -54,4 +54,4 @@ function App() {
 }
 
 const root = document.getElementById("root");
-createRoot(root).render(html`<${App} />`);
+render(html`<${App} />`, root);

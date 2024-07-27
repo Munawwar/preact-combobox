@@ -109,12 +109,7 @@
   position: relative;
 }
 
-.MultiSelectAutocomplete-chip--invalid::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 0.3rem);
-  left: 50%;
-  transform: translateX(-50%);
+.MultiSelectAutocomplete-chipTooltip {
   background-color: #000;
   color: #fff;
   padding: 4px 8px;
@@ -122,15 +117,9 @@
   border-radius: 4px;
   font-size: 12px;
   white-space: nowrap;
-  opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease-in-out;
 }
-
-.MultiSelectAutocomplete-chip--invalid:hover::after {
-  opacity: 1;
-}
-
 
 .MultiSelectAutocomplete-srOnly {
   position: absolute;
