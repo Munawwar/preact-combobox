@@ -6,9 +6,6 @@ import "./MultiSelectAutocomplete.css";
 
 const identity = (x) => x;
 
-// TODO: Think of having a single selection mode
-// TODO: Think of mobile design
-
 /**
  * @param {string[]} arr Array to remove duplicates from
  */
@@ -32,6 +29,7 @@ const dropdownPopperModifiers = [
     enabled: true,
   },
   {
+    // make the popper width same as root element
     name: "referenceElementWidth",
     enabled: true,
     phase: "beforeWrite",
@@ -321,14 +319,17 @@ function highlightMatches(match, labelTransform) {
 /**
  * @typedef {Object} MultiSelectAutocompleteProps
  * @property {string} id The id of the component
+ * @property {boolean} [multiple=true] Multi-select or single-select mode
  * @property {Option[] | ((query: string, limit: number, abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
  * @property {boolean} [allowFreeText=false] Allow free text input
  * @property {boolean} [enableBackspaceDelete=false] Enable backspace delete
- * @property {(options: string[]) => void} onChange Callback when selection changes
- * @property {string[]} values Currently selected options
+ * @property {(options: string[] | string) => void} onChange Callback when selection changes
+ * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
  * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
  * recognized by Intl.Segmenter and Intl.Collator
  * @property {boolean} [disabled=false] Disable the component
+ * @property {boolean} [required=false] Is required for form submission
+ * @property {string} [name] name to be set on hidden select element
  *
  * @property {Record<string, any>} [rootElementProps] Root element props
  * @property {Record<string, any>} [inputProps] Input element props
@@ -338,19 +339,24 @@ function highlightMatches(match, labelTransform) {
  * @property {(label: JSX.Element[], match: OptionMatch) => JSX.Element} [labelTransform=identity] Transform the label text
  */
 
+const defaultArrayValue = [];
+
 /**
  * MultiSelectAutocomplete component
  * @param {MultiSelectAutocompleteProps} props - Component props
  */
 const MultiSelectAutocomplete = ({
   id,
+  multiple = true,
   allowedOptions,
   allowFreeText = false,
   enableBackspaceDelete = false,
   onChange,
-  values = [],
+  value = multiple ? defaultArrayValue : "",
   language = "en",
   disabled,
+  required,
+  name,
   portal = document.body,
 
   rootElementProps,
@@ -358,15 +364,26 @@ const MultiSelectAutocomplete = ({
   selectElementProps,
   labelTransform = identity,
 }) => {
-  const [inputValue, setInputValue] = useState("");
+  const values = multiple ? /** @type {string[]} */ (value) : null;
+  const singleSelectValue = multiple ? null : /** @type {string} */ (value);
+  const arrayValues = useMemo(() => {
+    if (multiple) {
+      return /** @type {string[]} */ (value);
+    }
+    return value ? [/** @type {string} */ (value)] : [];
+  }, [multiple, value]);
+
+  const [inputValue, setInputValue] = useState(singleSelectValue || "");
+  const [lastValue, setLastValue] = useState(singleSelectValue || "");
   const [isFocused, setIsFocused] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
   const [isLoading, setIsLoading] = useState(false);
   const [activeDescendant, setActiveDescendant] = useState("");
   const [chipHovered, setChipHovered] = useState("");
+  const [inputWrapperHovered, setInputWrapperHovered] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
-  const rootElementRef = useRef(null);
+  const rootElementRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const popperRef = useRef(null);
   const hoveredChipRef = useRef(null);
   const tooltipPopperRef = useRef(null);
@@ -387,7 +404,7 @@ const MultiSelectAutocomplete = ({
         popperInstance.destroy();
       };
     }
-  }, [isFocused, values.length]);
+  }, [isFocused, values?.length]);
   useEffect(() => {
     if (chipHovered && hoveredChipRef.current && tooltipPopperRef.current) {
       const popperInstance = createPopper(hoveredChipRef.current, tooltipPopperRef.current, {
@@ -401,7 +418,19 @@ const MultiSelectAutocomplete = ({
         popperInstance.destroy();
       };
     }
-  }, [chipHovered]);
+    if (inputWrapperHovered && inputRef.current && tooltipPopperRef.current) {
+      const popperInstance = createPopper(inputRef.current, tooltipPopperRef.current, {
+        placement: "bottom-start",
+        // @ts-ignore
+        modifiers: tooltipPopperModifiers,
+      });
+
+      // Clean up function
+      return () => {
+        popperInstance.destroy();
+      };
+    }
+  }, [chipHovered, inputWrapperHovered]);
 
   /**
    * Filter options based on input query
@@ -410,10 +439,14 @@ const MultiSelectAutocomplete = ({
    */
   const filterOptions = useCallback(
     async (query, abortControllerSignal) => {
-      const valuesLookup = new Set(values);
+      const valuesLookup = new Set(arrayValues);
       if (typeof allowedOptions === "function") {
         setIsLoading(true);
-        const fetchedOptions = await allowedOptions(query, 100 + values.length, abortControllerSignal);
+        const fetchedOptions = await allowedOptions(
+          query,
+          100 + (multiple ? arrayValues.length : 1),
+          abortControllerSignal,
+        );
         setIsLoading(false);
         return getMatchScore(
           query,
@@ -431,7 +464,7 @@ const MultiSelectAutocomplete = ({
       }
       return [];
     },
-    [allowedOptions, values, language],
+    [allowedOptions, multiple, arrayValues, language],
   );
 
   useEffect(() => {
@@ -455,12 +488,21 @@ const MultiSelectAutocomplete = ({
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
    */
   const handleInputChange = (e) => {
-    setInputValue(e.target.value);
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    if (!multiple) {
+      const trimmedValue = newValue.trim();
+      // whether field is required or not, empty value should be allowed to clear the field
+      if (allowFreeText || !trimmedValue || allOptionsLookup[trimmedValue]) {
+        handleOptionSelect(trimmedValue);
+      }
+    }
   };
 
   const handleInputFocus = () => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
+    if (isFocused) return;
     setIsFocused(true);
   };
 
@@ -468,8 +510,15 @@ const MultiSelectAutocomplete = ({
   const handleInputBlur = () => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
+    if (!isFocused) return;
     setIsFocused(false);
-    if (inputValue) {
+    if (!multiple) {
+      if (!allowFreeText && inputValue.trim() && !allOptionsLookup[inputValue.trim()]) {
+        setInputValue(allOptionsLookup[lastValue]?.label || lastValue);
+      } else {
+        handleOptionSelect(inputValue.trim());
+      }
+    } else if (inputValue) {
       if (allowFreeText && inputValue.trim() !== "") {
         handleOptionSelect(inputValue.trim());
       } else {
@@ -484,13 +533,22 @@ const MultiSelectAutocomplete = ({
    * @param {string} selectedValue The selected option value
    */
   const handleOptionSelect = (selectedValue) => {
-    const existingOption = values.includes(selectedValue);
-    const newValues = [...values, selectedValue];
-    setActiveDescendant("");
-    setInputValue("");
-    if (!existingOption) {
-      onChange(newValues);
-      undoStack.current.push(values);
+    if (values) {
+      setActiveDescendant("");
+      setInputValue("");
+      const existingOption = values.includes(selectedValue);
+      const newValues = [...values, selectedValue];
+      if (!existingOption) {
+        onChange(newValues);
+        undoStack.current.push(values);
+        redoStack.current = [];
+      }
+    } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
+      console.log(selectedValue);
+      setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
+      setLastValue(selectedValue);
+      onChange(selectedValue);
+      undoStack.current.push([selectedValue]);
       redoStack.current = [];
     }
   };
@@ -501,18 +559,28 @@ const MultiSelectAutocomplete = ({
    * @param {boolean} [focusNext=false] Whether to focus the next button in the tab order or to focus the autocomplete input field
    */
   const handleRemoveOption = (option, focusNext = false) => {
-    const newValues = values.filter((value) => value !== option);
-    const nextEl = document.activeElement?.closest("span")?.nextElementSibling;
-    if (focusNext && nextEl && nextEl.tagName === "SPAN" && nextEl.querySelector("button")) {
-      nextEl.querySelector("button")?.focus();
-    } else {
+    if (!values) {
+      // single-select mode
+      const newValue = "";
       inputRef.current?.focus();
+      onChange(newValue);
+      undoStack.current.push([newValue]);
+      redoStack.current = [];
+    } else {
+      // multi-select mode
+      const newValues = values.filter((value) => value !== option);
+      const nextEl = document.activeElement?.closest("span")?.nextElementSibling;
+      if (focusNext && nextEl && nextEl.tagName === "SPAN" && nextEl.querySelector("button")) {
+        nextEl.querySelector("button")?.focus();
+      } else {
+        inputRef.current?.focus();
+      }
+      onChange(newValues);
+      undoStack.current.push(values);
+      redoStack.current = [];
     }
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
-    onChange(newValues);
-    undoStack.current.push(values);
-    redoStack.current = [];
   };
 
   /**
@@ -520,8 +588,8 @@ const MultiSelectAutocomplete = ({
    * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event
    */
   const handleKeyDown = (e) => {
-    // Backspace removes last selected option
-    if (e.key === "Backspace" && enableBackspaceDelete && inputValue === "" && values.length > 0) {
+    // Backspace removes last selected option (multi-select mode only)
+    if (values && e.key === "Backspace" && enableBackspaceDelete && inputValue === "" && values.length > 0) {
       setActiveDescendant("");
       handleRemoveOption(values[values.length - 1]);
       // Enter selects current option
@@ -564,7 +632,7 @@ const MultiSelectAutocomplete = ({
       const prevValues = undoStack.current.pop();
       if (prevValues) {
         onChange(prevValues);
-        redoStack.current.push(values);
+        redoStack.current.push(Array.isArray(value) ? value : [value]);
       }
       // Redo action
     } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "y") {
@@ -572,7 +640,7 @@ const MultiSelectAutocomplete = ({
       const nextValues = redoStack.current.pop();
       if (nextValues) {
         onChange(nextValues);
-        undoStack.current.push(values);
+        undoStack.current.push(Array.isArray(value) ? value : [value]);
       }
     }
   };
@@ -582,6 +650,9 @@ const MultiSelectAutocomplete = ({
    * @param {React.ClipboardEvent<HTMLInputElement>} e - Clipboard event
    */
   const handlePaste = (e) => {
+    // only handle paste in multi-select mode
+    if (!values) return;
+
     e.preventDefault();
     // Case 1 : Exact matches
     const valuesLookup = {
@@ -606,14 +677,25 @@ const MultiSelectAutocomplete = ({
       );
 
     const newValues = unique([...values, ...pastedOptions]);
-    console.log(newValues);
     onChange(newValues);
     undoStack.current.push(values);
     redoStack.current = [];
   };
 
+  const handleClearValue = (e) => {
+    if (!singleSelectValue) return;
+    e.stopPropagation();
+    setInputValue("");
+    setLastValue("");
+    onChange("");
+    undoStack.current.push([singleSelectValue]);
+    redoStack.current = [];
+    inputRef.current?.focus();
+  };
+
   const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
   const allOptionsLookup = Object.fromEntries(allOptions.map((o) => [o.value, o]));
+  const isInvalidSingleSelectValue = singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
 
   return (
     <div
@@ -625,78 +707,137 @@ const MultiSelectAutocomplete = ({
       {...rootElementProps}
     >
       <div className="MultiSelectAutocomplete-selectedOptions">
-        {values.map((value, index) => {
-          const label = allOptions.find((o) => o.value === value)?.label || value;
-          const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
-          return (
-            // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
-            <span
-              key={value}
-              className={`MultiSelectAutocomplete-chip ${
-                !allowFreeText && !allOptionsLookup[value] ? "MultiSelectAutocomplete-chip--invalid" : ""
-              }`}
-              aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
-              onMouseEnter={() => setChipHovered(value)}
-              onMouseLeave={() => setChipHovered("")}
-              onClick={() => setChipHovered(chipHovered === value ? "" : value)}
-              ref={chipHovered === value ? hoveredChipRef : null}
-            >
-              {label}
-              {!disabled && (
-                <button
-                  type="button"
-                  className="MultiSelectAutocomplete-chipRemove"
-                  aria-label="Delete"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    handleRemoveOption(value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.stopPropagation();
-                      e.preventDefault();
-                      handleRemoveOption(value, true);
-                    }
-                  }}
-                >
-                  <span aria-hidden="true">&#x2715;</span>
-                </button>
-              )}
-              {isInvalidOption && chipHovered === value && (
-                <Portal parent={portal}>
-                  <div
-                    className="MultiSelectAutocomplete-chipTooltip"
-                    role="tooltip"
-                    ref={chipHovered === value ? tooltipPopperRef : null}
+        {
+          /* Chips UI is used for multi-select mode */
+          values
+            ? values.map((value, index) => {
+                const label = allOptions.find((o) => o.value === value)?.label || value;
+                const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
+                return (
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+                  <span
+                    key={value}
+                    className={`MultiSelectAutocomplete-chip ${
+                      !allowFreeText && !allOptionsLookup[value] ? "MultiSelectAutocomplete-chip--invalid" : ""
+                    }`}
+                    aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
+                    onMouseEnter={() => setChipHovered(value)}
+                    onMouseLeave={() => setChipHovered("")}
+                    onClick={() => setChipHovered(chipHovered === value ? "" : value)}
+                    ref={chipHovered === value ? hoveredChipRef : null}
                   >
-                    Invalid value
-                  </div>
-                </Portal>
-              )}
-            </span>
-          );
-        })}
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleInputFocus}
-          onBlur={() => {
-            // @ts-ignore
-            blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
+                    {label}
+                    {!disabled && (
+                      <button
+                        type="button"
+                        className="MultiSelectAutocomplete-chipRemove"
+                        aria-label="Delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleRemoveOption(value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleRemoveOption(value, true);
+                          }
+                        }}
+                      >
+                        <span aria-hidden="true">&#x2715;</span>
+                      </button>
+                    )}
+                    {chipHovered === value && (
+                      <Portal parent={portal}>
+                        <div
+                          className="MultiSelectAutocomplete-valueTooltip"
+                          role="tooltip"
+                          ref={chipHovered === value ? tooltipPopperRef : null}
+                        >
+                          {isInvalidOption ? "Invalid value" : "Value"}: {value}
+                        </div>
+                      </Portal>
+                    )}
+                  </span>
+                );
+              })
+            : null
+        }
+        <div
+          className="MultiSelectAutocomplete-inputWrapper"
+          onMouseEnter={() => {
+            if (!multiple) {
+              setInputWrapperHovered(true);
+            }
           }}
-          onPaste={handlePaste}
-          className="MultiSelectAutocomplete-input"
-          aria-expanded={isFocused}
-          aria-haspopup="listbox"
-          aria-controls="options-listbox"
-          aria-activedescendant={activeDescendant}
-          disabled={disabled}
-          {...inputProps}
-        />
+          onMouseLeave={() => {
+            if (!multiple) {
+              setInputWrapperHovered(false);
+            }
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={handleInputFocus}
+            onBlur={() => {
+              // @ts-ignore
+              blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
+            }}
+            onPaste={handlePaste}
+            className="MultiSelectAutocomplete-input"
+            aria-expanded={isFocused}
+            aria-haspopup="listbox"
+            aria-controls="options-listbox"
+            aria-activedescendant={activeDescendant}
+            disabled={disabled}
+            required={required && arrayValues.length === 0}
+            {...inputProps}
+          />
+          {!multiple && isInvalidSingleSelectValue && (
+            <svg
+              className="MultiSelectAutocomplete-warningIcon"
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              aria-hidden="true"
+            >
+              <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+            </svg>
+          )}
+          {!multiple && singleSelectValue && !disabled && (
+            <button
+              type="button"
+              className="MultiSelectAutocomplete-clearButton"
+              aria-label="Clear value"
+              onClick={handleClearValue}
+            >
+              <span aria-hidden="true">&#x2715;</span>
+            </button>
+          )}
+          {!multiple && (
+            <svg
+              className={`MultiSelectAutocomplete-chevron`}
+              viewBox="0 0 24 24"
+              width="24"
+              height="24"
+              aria-hidden="true"
+            >
+              <path d="M7 10l5 5 5-5z" />
+            </svg>
+          )}
+        </div>
+        {!multiple && singleSelectValue && inputWrapperHovered && (
+          <Portal parent={portal}>
+            <div className="MultiSelectAutocomplete-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
+              {isInvalidSingleSelectValue ? "Invalid value" : "Value"}: {singleSelectValue}
+            </div>
+          </Portal>
+        )}
       </div>
       <Portal parent={portal}>
         <ul
@@ -732,9 +873,11 @@ const MultiSelectAutocomplete = ({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      setIsFocused(!!multiple);
                       handleOptionSelect(option.value);
-                      setIsFocused(true);
-                      inputRef.current?.focus();
+                      if (multiple) {
+                        inputRef.current?.focus();
+                      }
                     }}
                   >
                     {isActiveOption && <span className="MultiSelectAutocomplete-srOnly">Current option:</span>}
@@ -754,15 +897,16 @@ const MultiSelectAutocomplete = ({
       </Portal>
       {/* This is a hidden select element to allow for form submission */}
       <select
-        multiple
+        {...selectElementProps}
+        multiple={multiple}
         hidden
         tabIndex={-1}
         // @ts-expect-error this is a valid react attribute
         readOnly
-        value={values}
-        {...selectElementProps}
+        value={value}
+        name={name}
       >
-        {values.map((value) => (
+        {arrayValues.map((value) => (
           <option key={value} value={value}>
             {allOptionsLookup[value]?.label || value}
           </option>

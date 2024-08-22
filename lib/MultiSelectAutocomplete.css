@@ -20,6 +20,11 @@
   min-height: 44px;
 }
 
+
+.MultiSelectAutocomplete-selectedOptions--singleSelect {
+  flex-wrap: nowrap;
+}
+
 .MultiSelectAutocomplete-chip {
   display: inline-flex;
   align-items: center;
@@ -53,6 +58,13 @@
 
 .MultiSelectAutocomplete-chipRemove:hover {
   color: #333;
+}
+
+.MultiSelectAutocomplete-inputWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-grow: 1;
 }
 
 .MultiSelectAutocomplete-input {
@@ -109,7 +121,7 @@
   position: relative;
 }
 
-.MultiSelectAutocomplete-chipTooltip {
+.MultiSelectAutocomplete-valueTooltip {
   background-color: #000;
   color: #fff;
   padding: 4px 8px;
@@ -131,4 +143,41 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
+}
+
+.MultiSelectAutocomplete-warningIcon {
+  width: 18px;
+  height: 18px;
+  fill: #f44336;
+  cursor: default;
+  margin-left: 3px;
+}
+
+.MultiSelectAutocomplete-clearButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  padding: 0 8px;
+  margin-left: 3px;
+}
+
+.MultiSelectAutocomplete-clearButton:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.MultiSelectAutocomplete-chevron {
+  width: 18px;
+  height: 18px;
+  fill: #666;
+  transition: transform 0.3s;
+  margin-left: 3px;
 }
