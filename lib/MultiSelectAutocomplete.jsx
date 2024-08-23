@@ -483,6 +483,35 @@ const MultiSelectAutocomplete = ({
     return () => abortController.abort();
   }, [inputValue, filterOptions]);
 
+  const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
+  const allOptionsLookup = Object.fromEntries(allOptions.map((o) => [o.value, o]));
+  const isInvalidSingleSelectValue = singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
+
+  /**
+   * Handle option selection
+   * @param {string} selectedValue The selected option value
+   */
+  const handleOptionSelect = (selectedValue) => {
+    if (values) {
+      setActiveDescendant("");
+      setInputValue("");
+      const existingOption = values.includes(selectedValue);
+      const newValues = [...values, selectedValue];
+      if (!existingOption) {
+        onChange(newValues);
+        undoStack.current.push(values);
+        redoStack.current = [];
+      }
+    } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
+      console.log(selectedValue);
+      setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
+      setLastValue(selectedValue);
+      onChange(selectedValue);
+      undoStack.current.push([selectedValue]);
+      redoStack.current = [];
+    }
+  };
+
   /**
    * Handle input change
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
@@ -525,31 +554,6 @@ const MultiSelectAutocomplete = ({
         setInputValue("");
         setActiveDescendant("");
       }
-    }
-  };
-
-  /**
-   * Handle option selection
-   * @param {string} selectedValue The selected option value
-   */
-  const handleOptionSelect = (selectedValue) => {
-    if (values) {
-      setActiveDescendant("");
-      setInputValue("");
-      const existingOption = values.includes(selectedValue);
-      const newValues = [...values, selectedValue];
-      if (!existingOption) {
-        onChange(newValues);
-        undoStack.current.push(values);
-        redoStack.current = [];
-      }
-    } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
-      console.log(selectedValue);
-      setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
-      setLastValue(selectedValue);
-      onChange(selectedValue);
-      undoStack.current.push([selectedValue]);
-      redoStack.current = [];
     }
   };
 
@@ -693,10 +697,6 @@ const MultiSelectAutocomplete = ({
     inputRef.current?.focus();
   };
 
-  const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
-  const allOptionsLookup = Object.fromEntries(allOptions.map((o) => [o.value, o]));
-  const isInvalidSingleSelectValue = singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
-
   return (
     <div
       className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""}`}
@@ -714,7 +714,7 @@ const MultiSelectAutocomplete = ({
                 const label = allOptions.find((o) => o.value === value)?.label || value;
                 const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
                 return (
-                  // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
+                  // biome-ignore lint/a11y/useKeyWithClickEvents: Click is optional. Also one can hover on the chip for tooltip.
                   <span
                     key={value}
                     className={`MultiSelectAutocomplete-chip ${
@@ -790,6 +790,7 @@ const MultiSelectAutocomplete = ({
             }}
             onPaste={handlePaste}
             className="MultiSelectAutocomplete-input"
+            role="combobox"
             aria-expanded={isFocused}
             aria-haspopup="listbox"
             aria-controls="options-listbox"
@@ -821,7 +822,7 @@ const MultiSelectAutocomplete = ({
           )}
           {!multiple && (
             <svg
-              className={`MultiSelectAutocomplete-chevron`}
+              className="MultiSelectAutocomplete-chevron"
               viewBox="0 0 24 24"
               width="24"
               height="24"
