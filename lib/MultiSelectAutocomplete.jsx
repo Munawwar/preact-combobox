@@ -193,10 +193,16 @@ function getMatchScore(query, options, language = "en", sort = true) {
       }
       const langUtils = languageCache[language];
       if (!langUtils.baseMatcher) {
-        langUtils.baseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "base" });
+        langUtils.baseMatcher = new Intl.Collator(language, {
+          usage: "search",
+          sensitivity: "base",
+        });
       }
       if (!langUtils.caseMatcher) {
-        langUtils.caseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "accent" });
+        langUtils.caseMatcher = new Intl.Collator(language, {
+          usage: "search",
+          sensitivity: "accent",
+        });
       }
       const { baseMatcher, caseMatcher } = langUtils;
       if (baseMatcher.compare(label, query) === 0) {
@@ -244,7 +250,12 @@ function getMatchScore(query, options, language = "en", sort = true) {
           // check for partial word match
           // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
           const lastQueryWord = querySegment.segment;
-          if (baseMatcher.compare(labelWordSegment.segment.slice(0, lastQueryWord.length), lastQueryWord) === 0) {
+          if (
+            baseMatcher.compare(
+              labelWordSegment.segment.slice(0, lastQueryWord.length),
+              lastQueryWord,
+            ) === 0
+          ) {
             return {
               label,
               value,
@@ -254,7 +265,10 @@ function getMatchScore(query, options, language = "en", sort = true) {
               /** @type {Array<[number, number]>} */
               // @ts-ignore
               matchSlices: [
-                [firstIndex > -1 ? firstIndex : labelWordSegment.index, labelWordSegment.index + lastQueryWord.length],
+                [
+                  firstIndex > -1 ? firstIndex : labelWordSegment.index,
+                  labelWordSegment.index + lastQueryWord.length,
+                ],
               ],
             };
           }
@@ -288,7 +302,9 @@ function getMatchScore(query, options, language = "en", sort = true) {
       const labelWords = labelWordSegments.filter((s) => s.isWordLike);
       /** @type {Array<[number, number]|undefined>} */
       const slices = queryWords.map((word) => {
-        const match = labelWords.find((labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0);
+        const match = labelWords.find(
+          (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
+        );
         if (match) {
           return [match.index, match.index + match.segment.length];
         }
@@ -328,7 +344,9 @@ function defaultLabelTransform(labelNodes, valueNodes, match, language) {
   return (
     <span className="MultiSelectAutocomplete-labelFlex">
       <span>{labelNodes}</span>
-      {isLabelSameAsValue ? null : <span className="MultiSelectAutocomplete-value">({valueNodes})</span>}
+      {isLabelSameAsValue ? null : (
+        <span className="MultiSelectAutocomplete-value">({valueNodes})</span>
+      )}
     </span>
   );
 }
@@ -378,6 +396,24 @@ function highlightMatches(match, labelTransform, language) {
   return labelTransform([label], [value], match, language);
 }
 
+/**
+ * @template T
+ * @param {T} initialValue
+ * @returns {[() => T, (value: T) => void]}
+ */
+function useLive(initialValue) {
+  const [refreshValue, forceRefresh] = useState(0);
+  const ref = useRef(initialValue);
+  // refreshValue is used to create a new getter so that any useEffect etc that depends on it will be re-run
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reason mentioned above
+  const getValue = useCallback(() => ref.current, [refreshValue]);
+  const setValue = useCallback((value) => {
+    ref.current = value;
+    forceRefresh((x) => x + 1);
+  }, []);
+  return [getValue, setValue];
+}
+
 const defaultArrayValue = [];
 
 /**
@@ -414,7 +450,7 @@ const MultiSelectAutocomplete = ({
 
   const [inputValue, setInputValue] = useState(singleSelectValue || "");
   const [lastValue, setLastValue] = useState(singleSelectValue || "");
-  const [isFocused, setIsFocused] = useState(false);
+  const [getIsFocused, setIsFocused] = useLive(false);
   const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
   const [isLoading, setIsLoading] = useState(false);
   const [activeDescendant, setActiveDescendant] = useState("");
@@ -431,7 +467,7 @@ const MultiSelectAutocomplete = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: values.length is used to readjust when values wrap around
   useEffect(() => {
-    if (isFocused && rootElementRef.current && popperRef.current) {
+    if (getIsFocused() && rootElementRef.current && popperRef.current) {
       const popperInstance = createPopper(rootElementRef.current, popperRef.current, {
         placement: "bottom-start",
         // @ts-ignore
@@ -443,7 +479,7 @@ const MultiSelectAutocomplete = ({
         popperInstance.destroy();
       };
     }
-  }, [isFocused, values?.length]);
+  }, [getIsFocused, values?.length]);
   useEffect(() => {
     if (chipHovered && hoveredChipRef.current && tooltipPopperRef.current) {
       const popperInstance = createPopper(hoveredChipRef.current, tooltipPopperRef.current, {
@@ -523,62 +559,62 @@ const MultiSelectAutocomplete = ({
   }, [inputValue, filterOptions]);
 
   const allOptions = Array.isArray(allowedOptions) ? allowedOptions : filteredOptions;
-  const allOptionsLookup = Object.fromEntries(allOptions.map((o) => [o.value, o]));
-  const isInvalidSingleSelectValue = singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
+  const allOptionsLookup = useMemo(
+    () => Object.fromEntries(allOptions.map((o) => [o.value, o])),
+    [allOptions],
+  );
+  const isInvalidSingleSelectValue =
+    singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
 
   /**
    * Handle option selection
    * @param {string} selectedValue The selected option value
    */
-  const handleOptionSelect = (selectedValue) => {
-    if (values) {
-      setActiveDescendant("");
-      setInputValue("");
-      const existingOption = values.includes(selectedValue);
-      const newValues = [...values, selectedValue];
-      if (!existingOption) {
-        onChange(newValues);
-        undoStack.current.push(values);
+  const handleOptionSelect = useCallback(
+    (selectedValue) => {
+      if (values) {
+        setActiveDescendant("");
+        setInputValue("");
+        const existingOption = values.includes(selectedValue);
+        const newValues = [...values, selectedValue];
+        if (!existingOption) {
+          onChange(newValues);
+          undoStack.current.push(values);
+          redoStack.current = [];
+        }
+      } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
+        console.trace();
+        setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
+        setLastValue(selectedValue);
+        onChange(selectedValue);
+        undoStack.current.push([selectedValue]);
         redoStack.current = [];
       }
-    } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
-      console.log(selectedValue);
-      setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
-      setLastValue(selectedValue);
-      onChange(selectedValue);
-      undoStack.current.push([selectedValue]);
-      redoStack.current = [];
-    }
-  };
+    },
+    [allOptionsLookup, onChange, singleSelectValue, values],
+  );
 
   /**
    * Handle input change
    * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
    */
-  const handleInputChange = (e) => {
+  const handleInputChange = useCallback((e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-    if (!multiple) {
-      const trimmedValue = newValue.trim();
-      // whether field is required or not, empty value should be allowed to clear the field
-      if (allowFreeText || !trimmedValue || allOptionsLookup[trimmedValue]) {
-        handleOptionSelect(trimmedValue);
-      }
-    }
-  };
+  }, []);
 
-  const handleInputFocus = () => {
+  const handleInputFocus = useCallback(() => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
-    if (isFocused) return;
+    if (getIsFocused()) return;
     setIsFocused(true);
-  };
+  }, [getIsFocused, setIsFocused]);
 
   // Delay blur to allow option selection
-  const handleInputBlur = () => {
+  const handleInputBlur = useCallback(() => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
-    if (!isFocused) return;
+    if (!getIsFocused()) return;
     setIsFocused(false);
     if (!multiple) {
       if (!allowFreeText && inputValue.trim() && !allOptionsLookup[inputValue.trim()]) {
@@ -594,7 +630,16 @@ const MultiSelectAutocomplete = ({
         setActiveDescendant("");
       }
     }
-  };
+  }, [
+    getIsFocused,
+    setIsFocused,
+    multiple,
+    allowFreeText,
+    inputValue,
+    allOptionsLookup,
+    lastValue,
+    handleOptionSelect,
+  ]);
 
   /**
    * Handle option removal
@@ -632,7 +677,13 @@ const MultiSelectAutocomplete = ({
    */
   const handleKeyDown = (e) => {
     // Backspace removes last selected option (multi-select mode only)
-    if (values && e.key === "Backspace" && enableBackspaceDelete && inputValue === "" && values.length > 0) {
+    if (
+      values &&
+      e.key === "Backspace" &&
+      enableBackspaceDelete &&
+      inputValue === "" &&
+      values.length > 0
+    ) {
       setActiveDescendant("");
       handleRemoveOption(values[values.length - 1]);
       // Enter selects current option
@@ -664,7 +715,10 @@ const MultiSelectAutocomplete = ({
         : 0;
       const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
       setActiveDescendant(`option-${filteredOptions[prevIndex].value}`);
-      inputRef.current?.setAttribute("aria-activedescendant", `option-${filteredOptions[prevIndex].value}`);
+      inputRef.current?.setAttribute(
+        "aria-activedescendant",
+        `option-${filteredOptions[prevIndex].value}`,
+      );
       // Escape blurs input
     } else if (e.key === "Escape") {
       setIsFocused(false);
@@ -692,49 +746,60 @@ const MultiSelectAutocomplete = ({
    * Handle paste event
    * @param {React.ClipboardEvent<HTMLInputElement>} e - Clipboard event
    */
-  const handlePaste = (e) => {
-    // only handle paste in multi-select mode
-    if (!values) return;
+  const handlePaste = useCallback(
+    (e) => {
+      // only handle paste in multi-select mode
+      if (!values) return;
 
-    e.preventDefault();
-    // Case 1 : Exact matches
-    const valuesLookup = {
-      ...Object.fromEntries(values.map((v) => [v, v])),
-      ...Object.fromEntries(allOptions.map((o) => [o.value, o.value])),
-    };
-    // Case 2 : Case insensitive matches
-    const valuesLowerCaseLookup = {
-      ...Object.fromEntries(values.map((v) => [v.toLowerCase(), v])),
-      ...Object.fromEntries(allOptions.map((o) => [o.value.toLowerCase(), o.value])),
-    };
-    // Case 3 : Case insensitive matches against label
-    const optionsLabelLookup = Object.fromEntries(allOptions.map((o) => [o.label.toLowerCase(), o.value]));
-    const pastedText = e.clipboardData.getData("text");
-    const pastedOptions = pastedText
-      .split(",")
-      .map((x) => x.trim())
-      .filter((x) => x !== "")
-      .map(
-        (x) =>
-          valuesLookup[x] || valuesLowerCaseLookup[x.toLowerCase()] || optionsLabelLookup[x.toLocaleLowerCase()] || x,
+      e.preventDefault();
+      // Case 1 : Exact matches
+      const valuesLookup = {
+        ...Object.fromEntries(values.map((v) => [v, v])),
+        ...Object.fromEntries(allOptions.map((o) => [o.value, o.value])),
+      };
+      // Case 2 : Case insensitive matches
+      const valuesLowerCaseLookup = {
+        ...Object.fromEntries(values.map((v) => [v.toLowerCase(), v])),
+        ...Object.fromEntries(allOptions.map((o) => [o.value.toLowerCase(), o.value])),
+      };
+      // Case 3 : Case insensitive matches against label
+      const optionsLabelLookup = Object.fromEntries(
+        allOptions.map((o) => [o.label.toLowerCase(), o.value]),
       );
+      const pastedText = e.clipboardData.getData("text");
+      const pastedOptions = pastedText
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => x !== "")
+        .map(
+          (x) =>
+            valuesLookup[x] ||
+            valuesLowerCaseLookup[x.toLowerCase()] ||
+            optionsLabelLookup[x.toLocaleLowerCase()] ||
+            x,
+        );
 
-    const newValues = unique([...values, ...pastedOptions]);
-    onChange(newValues);
-    undoStack.current.push(values);
-    redoStack.current = [];
-  };
+      const newValues = unique([...values, ...pastedOptions]);
+      onChange(newValues);
+      undoStack.current.push(values);
+      redoStack.current = [];
+    },
+    [onChange, values, allOptions],
+  );
 
-  const handleClearValue = (e) => {
-    if (!singleSelectValue) return;
-    e.stopPropagation();
-    setInputValue("");
-    setLastValue("");
-    onChange("");
-    undoStack.current.push([singleSelectValue]);
-    redoStack.current = [];
-    inputRef.current?.focus();
-  };
+  const handleClearValue = useCallback(
+    (e) => {
+      if (!singleSelectValue) return;
+      e.stopPropagation();
+      setInputValue("");
+      setLastValue("");
+      onChange("");
+      undoStack.current.push([singleSelectValue]);
+      redoStack.current = [];
+      inputRef.current?.focus();
+    },
+    [onChange, singleSelectValue],
+  );
 
   return (
     <div
@@ -757,7 +822,9 @@ const MultiSelectAutocomplete = ({
                   <span
                     key={value}
                     className={`MultiSelectAutocomplete-chip ${
-                      !allowFreeText && !allOptionsLookup[value] ? "MultiSelectAutocomplete-chip--invalid" : ""
+                      !allowFreeText && !allOptionsLookup[value]
+                        ? "MultiSelectAutocomplete-chip--invalid"
+                        : ""
                     }`}
                     aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
                     onMouseEnter={() => setChipHovered(value)}
@@ -830,7 +897,7 @@ const MultiSelectAutocomplete = ({
             onPaste={handlePaste}
             className="MultiSelectAutocomplete-input"
             role="combobox"
-            aria-expanded={isFocused}
+            aria-expanded={getIsFocused()}
             aria-haspopup="listbox"
             aria-controls="options-listbox"
             aria-activedescendant={activeDescendant}
@@ -873,7 +940,11 @@ const MultiSelectAutocomplete = ({
         </div>
         {!multiple && singleSelectValue && inputWrapperHovered && (
           <Portal parent={portal}>
-            <div className="MultiSelectAutocomplete-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
+            <div
+              className="MultiSelectAutocomplete-valueTooltip"
+              role="tooltip"
+              ref={tooltipPopperRef}
+            >
               {isInvalidSingleSelectValue ? "Invalid value" : "Value"}: {singleSelectValue}
             </div>
           </Portal>
@@ -884,7 +955,7 @@ const MultiSelectAutocomplete = ({
           className="MultiSelectAutocomplete-options"
           role="listbox"
           id={`${id}-options-listbox`}
-          hidden={!isFocused}
+          hidden={!getIsFocused()}
           ref={popperRef}
         >
           {isLoading ? (
@@ -913,14 +984,17 @@ const MultiSelectAutocomplete = ({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setIsFocused(!!multiple);
                       handleOptionSelect(option.value);
                       if (multiple) {
                         inputRef.current?.focus();
+                      } else {
+                        setIsFocused(false);
                       }
                     }}
                   >
-                    {isActiveOption && <span className="MultiSelectAutocomplete-srOnly">Current option:</span>}
+                    {isActiveOption && (
+                      <span className="MultiSelectAutocomplete-srOnly">Current option:</span>
+                    )}
                     {highlightMatches(option, labelTransform, language)}
                   </li>
                 );
