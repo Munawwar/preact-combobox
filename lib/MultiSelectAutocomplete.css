@@ -44,6 +44,13 @@
   color: white;
 }
 
+.MultiSelectAutocomplete-chip--invalid {
+  border: 1px solid #b8860b;
+  box-sizing: border-box;
+  color: #b8860b;
+  position: relative;
+}
+
 .MultiSelectAutocomplete-chipRemove {
   background: none;
   border: none;
@@ -114,11 +121,14 @@
   background-color: #e0e0e0;
 }
 
-.MultiSelectAutocomplete-chip--invalid {
-  border: 1px solid #b8860b;
-  box-sizing: border-box;
-  color: #b8860b;
-  position: relative;
+.MultiSelectAutocomplete-labelFlex {
+  display: flex;
+  justify-content: space-between;
+}
+
+.MultiSelectAutocomplete-value {
+  font-size: 12px;
+  color: #666;
 }
 
 .MultiSelectAutocomplete-valueTooltip {

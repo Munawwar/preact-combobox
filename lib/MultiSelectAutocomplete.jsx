@@ -4,7 +4,62 @@ import { createPortal } from "react-dom";
 import { createPopper } from "@popperjs/core";
 import "./MultiSelectAutocomplete.css";
 
-const identity = (x) => x;
+// --- types ---
+/**
+ * @typedef {Object} Option
+ * @property {string} label - The display text for the option
+ * @property {string} value - The value of the option
+ */
+
+/**
+ * @typedef {Object} OptionMatch
+ * @property {string} label - The display text for the option
+ * @property {string} value - The value of the option
+ * @property {number} score - The match score
+ * @property {'value' | 'label' | 'none'} matched - The match type
+ * @property {Array<[number, number]>} matchSlices - The match slices
+ */
+
+/**
+ * Cache for language-specific word segmenters
+ * @typedef {Object} LanguageCache
+ * @property {Intl.Collator} [baseMatcher] - The base matcher for the language
+ * @property {Intl.Collator} [caseMatcher] - The case matcher for the language
+ * @property {Intl.Segmenter} [wordSegmenter] - The word segmenter for the language
+ */
+
+/**
+ * @typedef {import("react").ReactNode} ReactNode
+ */
+
+/**
+ * @typedef {(label: ReactNode[], value: ReactNode[], match: OptionMatch, language: string) => ReactNode} LabelTransformFunction
+ */
+
+/**
+ * @typedef {Object} MultiSelectAutocompleteProps
+ * @property {string} id The id of the component
+ * @property {boolean} [multiple=true] Multi-select or single-select mode
+ * @property {Option[] | ((query: string, limit: number, abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
+ * @property {boolean} [allowFreeText=false] Allow free text input
+ * @property {boolean} [enableBackspaceDelete=false] Enable backspace delete
+ * @property {(options: string[] | string) => void} onChange Callback when selection changes
+ * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
+ * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
+ * recognized by Intl.Segmenter and Intl.Collator
+ * @property {boolean} [disabled=false] Disable the component
+ * @property {boolean} [required=false] Is required for form submission
+ * @property {string} [name] name to be set on hidden select element
+ *
+ * @property {Record<string, any>} [rootElementProps] Root element props
+ * @property {Record<string, any>} [inputProps] Input element props
+ * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
+ *
+ * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
+ * @property {LabelTransformFunction} [labelTransform=identity] Transform the label text
+ */
+
+// --- end of types ---
 
 /**
  * @param {string[]} arr Array to remove duplicates from
@@ -68,29 +123,6 @@ const tooltipPopperModifiers = [
   },
 ];
 
-/**
- * @typedef {Object} Option
- * @property {string} label - The display text for the option
- * @property {string} value - The value of the option
- */
-
-/**
- * @typedef {Object} OptionMatch
- * @property {string} label - The display text for the option
- * @property {string} value - The value of the option
- * @property {number} score - The match score
- * @property {'value' | 'label' | 'none'} matched - The match type
- * @property {Array<[number, number]>} matchSlices - The match slices
- */
-
-/**
- * Cache for language-specific word segmenters
- * @typedef {Object} LanguageCache
- * @property {Intl.Segmenter} [wordSegmenter] - The word segmenter for the language
- * @property {Intl.Collator} [charSegmenter] - The character segmenter for the language
- * @property {Intl.Collator} [baseMatcher] - The base matcher for the language
- * @property {Intl.Collator} [caseMatcher] - The case matcher for the language
- */
 /** @type {Record<string, LanguageCache>} */
 const languageCache = {};
 
@@ -128,7 +160,6 @@ function getMatchScore(query, options, language = "en", sort = true) {
 
   let querySegments;
   let queryWords;
-  let queryLastWordChars;
   const matches = options
     .map(({ label, value }) => {
       // Rule 1: Exact match (case insensitive)
@@ -163,9 +194,11 @@ function getMatchScore(query, options, language = "en", sort = true) {
       const langUtils = languageCache[language];
       if (!langUtils.baseMatcher) {
         langUtils.baseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "base" });
+      }
+      if (!langUtils.caseMatcher) {
         langUtils.caseMatcher = new Intl.Collator(language, { usage: "search", sensitivity: "accent" });
       }
-      const { baseMatcher } = langUtils;
+      const { baseMatcher, caseMatcher } = langUtils;
       if (baseMatcher.compare(label, query) === 0) {
         return {
           label,
@@ -195,36 +228,23 @@ function getMatchScore(query, options, language = "en", sort = true) {
         Object.assign(langUtils, {
           // @ts-ignore
           wordSegmenter: new Intl.Segmenter(language, { granularity: "word" }),
-          // @ts-ignore
-          charSegmenter: new Intl.Segmenter(language, { granularity: "grapheme" }),
         });
       }
-      const { wordSegmenter, charSegmenter } = langUtils;
+      const { wordSegmenter } = langUtils;
       if (!querySegments) {
         querySegments = Array.from(wordSegmenter.segment(query));
       }
-      const labelSegments = Array.from(wordSegmenter.segment(label.trim()));
+      const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
       let len = 0;
       let firstIndex = -1;
-      for (let i = 0; i < labelSegments.length; i++) {
-        const labelSegment = labelSegments[i];
+      for (let i = 0; i < labelWordSegments.length; i++) {
+        const labelWordSegment = labelWordSegments[i];
         const querySegment = querySegments[len];
         if (len === querySegments.length - 1) {
           // check for partial word match
-          // I can't use labelSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
-          // I have to loop through each character and use Intl.Collator.compare to check if they match
-          // Note: A "char" is a grapheme cluster, not actually a character
-          // @ts-ignore
-          const labelWordChars = Array.from(charSegmenter.segment(labelSegment.segment));
-          if (!queryLastWordChars) {
-            // @ts-ignore
-            queryLastWordChars = Array.from(charSegmenter.segment(querySegment.segment));
-          }
-          const isPartialMatch = queryLastWordChars.every(
-            ({ segment }, index) =>
-              labelWordChars[index] && baseMatcher.compare(segment, labelWordChars[index].segment) === 0,
-          );
-          if (isPartialMatch) {
+          // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
+          const lastQueryWord = querySegment.segment;
+          if (baseMatcher.compare(labelWordSegment.segment.slice(0, lastQueryWord.length), lastQueryWord) === 0) {
             return {
               label,
               value,
@@ -234,26 +254,38 @@ function getMatchScore(query, options, language = "en", sort = true) {
               /** @type {Array<[number, number]>} */
               // @ts-ignore
               matchSlices: [
-                [firstIndex > -1 ? firstIndex : labelSegment.index, labelSegment.index + querySegment.segment.length],
+                [firstIndex > -1 ? firstIndex : labelWordSegment.index, labelWordSegment.index + lastQueryWord.length],
               ],
             };
           }
-        } else if (baseMatcher.compare(labelSegment.segment, querySegment.segment) === 0) {
+        } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
           len++;
           if (len === 1) {
-            firstIndex = labelSegment.index;
+            firstIndex = labelWordSegment.index;
           }
           continue;
         }
         len = 0;
         firstIndex = -1;
       }
+      // Also check for partial value match (this doesn't need accent check)
+      if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
+        return {
+          label,
+          value,
+          score: 3,
+          /** @type {'value'} */
+          matched: "value",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, query.length]],
+        };
+      }
 
       // Rule 4: Word matches
       if (!queryWords) {
         queryWords = querySegments.filter((s) => s.isWordLike);
       }
-      const labelWords = labelSegments.filter((s) => s.isWordLike);
+      const labelWords = labelWordSegments.filter((s) => s.isWordLike);
       /** @type {Array<[number, number]|undefined>} */
       const slices = queryWords.map((word) => {
         const match = labelWords.find((labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0);
@@ -289,55 +321,62 @@ function getMatchScore(query, options, language = "en", sort = true) {
 }
 
 /**
- * @param {OptionMatch} match
- * @param {(label: JSX.Element[], match: OptionMatch) => JSX.Element} labelTransform
+ * @type {LabelTransformFunction}
  */
-function highlightMatches(match, labelTransform) {
-  const { label, matched, matchSlices } = match;
-  if (!matched || matched === "none") return label;
+function defaultLabelTransform(labelNodes, valueNodes, match, language) {
+  const isLabelSameAsValue = match.value === match.label;
+  return (
+    <span className="MultiSelectAutocomplete-labelFlex">
+      <span>{labelNodes}</span>
+      {isLabelSameAsValue ? null : <span className="MultiSelectAutocomplete-value">({valueNodes})</span>}
+    </span>
+  );
+}
 
-  const labelTextPart = [];
+/**
+ * @param {OptionMatch['matchSlices']} matchSlices
+ * @param {string} text
+ * @returns {ReactNode[]}
+ */
+function matchSlicesToNodes(matchSlices, text) {
+  const nodes = /** @type {ReactNode[]} */ ([]);
   let index = 0;
   matchSlices.map((slice) => {
     const [start, end] = slice;
     // console.log(slice);
     if (index < start) {
       // console.log(label.slice(index, start));
-      labelTextPart.push(<span key={`${index}-${start}`}>{label.slice(index, start)}</span>);
+      nodes.push(<span key={`${index}-${start}`}>{text.slice(index, start)}</span>);
     }
     // console.log(label.slice(start, end));
-    labelTextPart.push(<u key={`${start}-${end}`}>{label.slice(start, end)}</u>);
+    nodes.push(<u key={`${start}-${end}`}>{text.slice(start, end)}</u>);
     index = end;
   });
-  if (index < label.length) {
+  if (index < text.length) {
     // console.log(label.slice(index));
-    labelTextPart.push(<span key={`${index}-${label.length}`}>{label.slice(index)}</span>);
+    nodes.push(<span key={`${index}-${text.length}`}>{text.slice(index)}</span>);
   }
-  return labelTransform(labelTextPart, match);
+  return nodes;
 }
 
 /**
- * @typedef {Object} MultiSelectAutocompleteProps
- * @property {string} id The id of the component
- * @property {boolean} [multiple=true] Multi-select or single-select mode
- * @property {Option[] | ((query: string, limit: number, abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
- * @property {boolean} [allowFreeText=false] Allow free text input
- * @property {boolean} [enableBackspaceDelete=false] Enable backspace delete
- * @property {(options: string[] | string) => void} onChange Callback when selection changes
- * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
- * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
- * recognized by Intl.Segmenter and Intl.Collator
- * @property {boolean} [disabled=false] Disable the component
- * @property {boolean} [required=false] Is required for form submission
- * @property {string} [name] name to be set on hidden select element
- *
- * @property {Record<string, any>} [rootElementProps] Root element props
- * @property {Record<string, any>} [inputProps] Input element props
- * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
- *
- * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
- * @property {(label: JSX.Element[], match: OptionMatch) => JSX.Element} [labelTransform=identity] Transform the label text
+ * @param {OptionMatch} match
+ * @param {LabelTransformFunction} labelTransform
+ * @param {string} language
  */
+function highlightMatches(match, labelTransform, language) {
+  const { label, value, matched, matchSlices } = match;
+  if (matched === "label" || (matched === "value" && value === label)) {
+    const labelNodes = matchSlicesToNodes(matchSlices, label);
+    return labelTransform(labelNodes, [value], match, language);
+  }
+  if (matched === "value") {
+    const valueNodes = matchSlicesToNodes(matchSlices, value);
+    return labelTransform([label], valueNodes, match, language);
+  }
+  // if matched === "none"
+  return labelTransform([label], [value], match, language);
+}
 
 const defaultArrayValue = [];
 
@@ -362,7 +401,7 @@ const MultiSelectAutocomplete = ({
   rootElementProps,
   inputProps,
   selectElementProps,
-  labelTransform = identity,
+  labelTransform = defaultLabelTransform,
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -882,7 +921,7 @@ const MultiSelectAutocomplete = ({
                     }}
                   >
                     {isActiveOption && <span className="MultiSelectAutocomplete-srOnly">Current option:</span>}
-                    {highlightMatches(option, labelTransform)}
+                    {highlightMatches(option, labelTransform, language)}
                   </li>
                 );
               })}
