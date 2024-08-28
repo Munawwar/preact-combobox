@@ -145,9 +145,8 @@ const languageCache = {};
 function getMatchScore(query, options, language = "en", sort = true) {
   // biome-ignore lint/style/noParameterAssign: ignore
   query = query.trim();
-  const lowercaseQuery = query.toLowerCase();
 
-  if (!lowercaseQuery) {
+  if (!query) {
     const matchSlices = [];
     return options.map((option) => ({
       label: option.label,
@@ -158,12 +157,48 @@ function getMatchScore(query, options, language = "en", sort = true) {
     }));
   }
 
+  if (!languageCache[language]) {
+    languageCache[language] = {};
+  }
+  const langUtils = languageCache[language];
+
   let querySegments;
   let queryWords;
   const matches = options
     .map(({ label, value }) => {
-      // Rule 1: Exact match (case insensitive)
-      if (value.toLowerCase() === lowercaseQuery) {
+      // Rule 1: Exact match (case sensitive)
+      if (value === query) {
+        return {
+          label,
+          value,
+          score: 9,
+          /** @type {'value'} */
+          matched: "value",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, value.length]],
+        };
+      }
+      if (label === query) {
+        return {
+          label,
+          value,
+          score: 9,
+          /** @type {'label'} */
+          matched: "label",
+          /** @type {Array<[number, number]>} */
+          matchSlices: [[0, label.length]],
+        };
+      }
+
+      // Rule 2: Exact match (case insensitive)
+      if (!langUtils.caseMatcher) {
+        langUtils.caseMatcher = new Intl.Collator(language, {
+          usage: "search",
+          sensitivity: "accent",
+        });
+      }
+      const { caseMatcher } = langUtils;
+      if (caseMatcher.compare(value, query) === 0) {
         return {
           label,
           value,
@@ -174,8 +209,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
           matchSlices: [[0, value.length]],
         };
       }
-      const labelLowerCase = label.toLowerCase();
-      if (labelLowerCase === lowercaseQuery) {
+      if (caseMatcher.compare(label, query) === 0) {
         return {
           label,
           value,
@@ -187,24 +221,14 @@ function getMatchScore(query, options, language = "en", sort = true) {
         };
       }
 
-      // Rule 2: Exact match with accents normalized (case insensitive)
-      if (!languageCache[language]) {
-        languageCache[language] = {};
-      }
-      const langUtils = languageCache[language];
+      // Rule 3: Exact match with accents normalized (case insensitive)
       if (!langUtils.baseMatcher) {
         langUtils.baseMatcher = new Intl.Collator(language, {
           usage: "search",
           sensitivity: "base",
         });
       }
-      if (!langUtils.caseMatcher) {
-        langUtils.caseMatcher = new Intl.Collator(language, {
-          usage: "search",
-          sensitivity: "accent",
-        });
-      }
-      const { baseMatcher, caseMatcher } = langUtils;
+      const { baseMatcher } = langUtils;
       if (baseMatcher.compare(label, query) === 0) {
         return {
           label,
@@ -228,7 +252,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
         };
       }
 
-      // Rule 3: Phrase match (imagine a wildcard query like "word1 partialWord2*")
+      // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
       // This match needs to be case and accent insensitive
       if (!langUtils.wordSegmenter) {
         Object.assign(langUtils, {
@@ -295,7 +319,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
         };
       }
 
-      // Rule 4: Word matches
+      // Rule 5: Word matches
       if (!queryWords) {
         queryWords = querySegments.filter((s) => s.isWordLike);
       }
@@ -572,8 +596,8 @@ const MultiSelectAutocomplete = ({
    */
   const handleOptionSelect = useCallback(
     (selectedValue) => {
+      setActiveDescendant("");
       if (values) {
-        setActiveDescendant("");
         setInputValue("");
         const existingOption = values.includes(selectedValue);
         const newValues = [...values, selectedValue];
@@ -583,7 +607,6 @@ const MultiSelectAutocomplete = ({
           redoStack.current = [];
         }
       } else if (singleSelectValue !== null && singleSelectValue !== selectedValue) {
-        console.trace();
         setInputValue(allOptionsLookup[selectedValue]?.label || selectedValue);
         setLastValue(selectedValue);
         onChange(selectedValue);
@@ -619,6 +642,7 @@ const MultiSelectAutocomplete = ({
     if (!multiple) {
       if (!allowFreeText && inputValue.trim() && !allOptionsLookup[inputValue.trim()]) {
         setInputValue(allOptionsLookup[lastValue]?.label || lastValue);
+        setActiveDescendant("");
       } else {
         handleOptionSelect(inputValue.trim());
       }
@@ -705,6 +729,9 @@ const MultiSelectAutocomplete = ({
         : -1;
       const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
       const nextOptionId = `option-${filteredOptions[nextIndex].value}`;
+      if (!activeDescendant) {
+        setIsFocused(true);
+      }
       setActiveDescendant(nextOptionId);
       inputRef.current?.setAttribute("aria-activedescendant", nextOptionId);
       // ArrowUp highlights previous option
