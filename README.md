@@ -31,3 +31,11 @@ function App() {
   );
 }
 ```
+
+## Run Demo
+
+```bash
+npm run watch
+# on another terminal
+npm run example
+```

@@ -73,6 +73,9 @@
   align-items: center;
   flex-grow: 1;
 }
+.MultiSelectAutocomplete-inputWrapper--singleSelect {
+  width: 100%;
+}
 
 .MultiSelectAutocomplete-input {
   width: auto;
@@ -101,6 +104,7 @@
   box-sizing: border-box;
   border-radius:4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 100;
 }
 .MultiSelectAutocomplete-options[hidden] {
   display: none;
