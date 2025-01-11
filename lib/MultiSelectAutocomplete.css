@@ -4,91 +4,49 @@
   font-family: 'Roboto', sans-serif;
   cursor: pointer;
 }
-.MultiSelectAutocomplete--disabled {
+
+.MultiSelectAutocomplete-field {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-height: 38px;
+  padding: 2px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+}
+.MultiSelectAutocomplete--disabled .MultiSelectAutocomplete-field {
   background-color: #f0f0f0;
   cursor: not-allowed;
 }
 
-.MultiSelectAutocomplete-selectedOptions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid #ccc;
-  box-sizing: border-box;
-  border-radius: 4px;
-  min-height: 44px;
-}
-
-
-.MultiSelectAutocomplete-selectedOptions--singleSelect {
-  flex-wrap: nowrap;
-}
-
-.MultiSelectAutocomplete-chip {
-  display: inline-flex;
-  align-items: center;
-  background-color: #e0e0e0;
-  border-radius: 16px;
-  padding: 6px 12px;
-  box-sizing: border-box;
-  margin: 2px;
-  font-size: 14px;
-  color: #333;
-  transition: background-color 0.3s;
-}
-
-.MultiSelectAutocomplete-chip--active {
-  outline: 2px solid #007bff;
-  background-color: #007bff;
-  color: white;
-}
-
-.MultiSelectAutocomplete-chip--invalid {
-  border: 1px solid #b8860b;
-  box-sizing: border-box;
-  color: #b8860b;
-  position: relative;
-}
-
-.MultiSelectAutocomplete-chipRemove {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 18px;
-  margin-left: 6px;
-  padding: 0 4px;
-  box-sizing: border-box;
+.MultiSelectAutocomplete-badge {
+  background: #e0e0e0;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
   color: #666;
-  transition: color 0.3s;
-}
-
-.MultiSelectAutocomplete-chipRemove:hover {
-  color: #333;
+  white-space: nowrap;
+  margin: 0 3px;
 }
 
 .MultiSelectAutocomplete-inputWrapper {
+  flex: 1;
   position: relative;
-  display: inline-flex;
+  min-width: 0;
+  display: flex;
   align-items: center;
-  flex-grow: 1;
-}
-.MultiSelectAutocomplete-inputWrapper--singleSelect {
-  width: 100%;
 }
 
 .MultiSelectAutocomplete-input {
-  width: auto;
-  min-width: 70px;
-  flex: 1 1 70px;
+  width: 100%;
   border: none;
   outline: none;
-  padding: 8px;
-  box-sizing: border-box;
-  font-size: 14px;
+  padding: 4px;
+  background: transparent;
+  text-overflow: ellipsis;
 }
-.MultiSelectAutocomplete-input[disabled] {
-  background-color: #f0f0f0;
+.MultiSelectAutocomplete--disabled .MultiSelectAutocomplete-input {
   cursor: not-allowed;
 }
 
@@ -111,10 +69,10 @@
 }
 
 .MultiSelectAutocomplete-option {
-  padding: 10px;
-  box-sizing: border-box;
+  padding: 8px 12px;
   cursor: pointer;
-  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
 }
 
 .MultiSelectAutocomplete-option:hover {
@@ -128,11 +86,14 @@
 .MultiSelectAutocomplete-labelFlex {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 
 .MultiSelectAutocomplete-value {
   font-size: 12px;
   color: #666;
+  margin-left: 8px;
 }
 
 .MultiSelectAutocomplete-valueTooltip {
@@ -164,7 +125,7 @@
   height: 18px;
   fill: #f44336;
   cursor: default;
-  margin-left: 3px;
+  margin: 0 3px;
 }
 
 .MultiSelectAutocomplete-clearButton {
@@ -193,5 +154,30 @@
   height: 18px;
   fill: #666;
   transition: transform 0.3s;
-  margin-left: 3px;
+  margin-left: 2px;
+}
+
+.MultiSelectAutocomplete-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.MultiSelectAutocomplete-option--selected .MultiSelectAutocomplete-checkbox {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.MultiSelectAutocomplete-tooltipValue {
+  padding: 2px 0;
+}
+
+.MultiSelectAutocomplete-tooltipValue:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

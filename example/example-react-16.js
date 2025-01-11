@@ -11,20 +11,23 @@ const allowedOptions = [
   { label: "Japan", value: "japan" },
   { label: "Brazil", value: "brazil" },
   { label: "Australia", value: "australia" },
+  { label: "China", value: "china" },
+  { label: "Russia", value: "russia" },
+  { label: "South Korea", value: "korea" },
+  { label: "Indonesia", value: "indonesia" },
 ];
 
 function App() {
-  const [values1, setValues1] = useState(["India"]);
+  const [values1, setValues1] = useState(["United Arab Emirates"]);
   const [values2, setValues2] = useState(["India"]);
   const [value1, setValue1] = useState("India");
   return html`
     <form>
-        <h3>Multi-select, Free text allowed, Backspace delete enabled</h3>
+        <h3>Multi-select, Free text allowed</h3>
         <${MultiSelectAutocomplete}
           id="example-1"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
-          enableBackspaceDelete=${true}
           value=${values1}
           onChange=${setValues1}
           name="example-1"
@@ -32,12 +35,11 @@ function App() {
         />
         <br/>
 
-        <h3>Free text not allowed, Invalid styling</h3>
+        <h3>Free text not allowed (with invalid values)</h3>
         <${MultiSelectAutocomplete}
           id="example-2"
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
-          enableBackspaceDelete=${true}
           value=${values2}
           onChange=${setValues2}
         />
@@ -48,7 +50,6 @@ function App() {
           id="example-3"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
-          enableBackspaceDelete=${false}
           value=${["france"]}
           disabled
         />
@@ -60,7 +61,6 @@ function App() {
           multiple=${false}
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
-          enableBackspaceDelete=${true}
           value=${value1}
           onChange=${setValue1}
           name="example-4"

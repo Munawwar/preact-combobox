@@ -1,5 +1,5 @@
 // @ts-check
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createPopper } from "@popperjs/core";
 import "./MultiSelectAutocomplete.css";
@@ -42,15 +42,18 @@ import "./MultiSelectAutocomplete.css";
  * @property {string} id The id of the component
  * @property {boolean} [multiple=true] Multi-select or single-select mode
  * @property {Option[]
- * | ((query: string, limit: number, abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
+ * | ((
+ *   query: string,
+ *   limit: number,
+ *   currentSelections: string[],
+ *   abortControllerSignal: AbortSignal
+ * ) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
  * @property {boolean} [allowFreeText=false] Allow free text input
- * @property {boolean} [enableBackspaceDelete=false] Enable backspace delete
  * @property {(options: string[] | string) => void} onChange Callback when selection changes
  * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
  * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
  * recognized by Intl.Segmenter and Intl.Collator
  * @property {boolean} [showValue=false]
- * @property {boolean} [showTooltip=false]
  * @property {boolean} [disabled=false] Disable the component
  * @property {boolean} [required=false] Is required for form submission
  * @property {string} [name] name to be set on hidden select element
@@ -73,6 +76,22 @@ import "./MultiSelectAutocomplete.css";
  */
 function unique(arr) {
   return Array.from(new Set(arr));
+}
+
+/**
+ * @template {OptionMatch|Option} T
+ * @param {T[]} options
+ * @param {string[]} values
+ * @returns {T[]}
+ */
+function sortValuesToTop(options, values) {
+  const selectedSet = new Set(values);
+  return options.sort((a, b) => {
+    const aSelected = selectedSet.has(a.value);
+    const bSelected = selectedSet.has(b.value);
+    if (aSelected === bSelected) return 0;
+    return aSelected ? -1 : 1;
+  });
 }
 
 /**
@@ -267,10 +286,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
       // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
       // This match needs to be case and accent insensitive
       if (!langUtils.wordSegmenter) {
-        Object.assign(langUtils, {
-          // @ts-ignore
-          wordSegmenter: new Intl.Segmenter(language, { granularity: "word" }),
-        });
+        langUtils.wordSegmenter = new Intl.Segmenter(language, { granularity: "word" });
       }
       const { wordSegmenter } = langUtils;
       if (!querySegments) {
@@ -347,7 +363,7 @@ function getMatchScore(query, options, language = "en", sort = true) {
           return [match.index, match.index + match.segment.length];
         }
       });
-      // TODO: Do we need a deel equal de-duplication here?
+      // TODO: Do we need a deep equal de-duplication here?
       const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
       const wordScoring = matchSlices.length / queryWords.length;
       return {
@@ -450,16 +466,30 @@ function highlightMatches(match, labelTransform, language, showValue) {
  * @returns {[() => T, (value: T) => void]}
  */
 function useLive(initialValue) {
-  const [refreshValue, forceRefresh] = useState(0);
+  const [refresh, forceRefresh] = useState(0);
   const ref = useRef(initialValue);
-  // refreshValue is used to create a new getter so that any useEffect etc that depends on it will be re-run
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reason mentioned above
-  const getValue = useCallback(() => ref.current, [refreshValue]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `refresh` is a dependency to force a new getter for that it can be used directly a dependency in useEffects
+  const getValue = useCallback(() => ref.current, [refresh]);
+  // setter doesn't need to be created on every render
   const setValue = useCallback((value) => {
-    ref.current = value;
-    forceRefresh((x) => x + 1);
+    if (value !== ref.current) {
+      ref.current = value;
+      forceRefresh((x) => x + 1);
+    }
   }, []);
   return [getValue, setValue];
+}
+
+// return same state if state hasn't changed.
+// sometime we need to be efficient in change detection so as to reduce UI re-renders
+function useDeepMemo(newState) {
+  const [state, setState] = useState(newState);
+  if (!isEqual(newState, state)) {
+    setState(newState);
+    return newState;
+  }
+  return state;
 }
 
 const defaultArrayValue = [];
@@ -473,7 +503,6 @@ const MultiSelectAutocomplete = ({
   multiple = true,
   allowedOptions,
   allowFreeText = false,
-  enableBackspaceDelete = false,
   onChange,
   value = multiple ? defaultArrayValue : "",
   language = "en",
@@ -482,131 +511,187 @@ const MultiSelectAutocomplete = ({
   required,
   name,
   portal = document.body,
-  className,
+  className = "",
   rootElementProps,
   inputProps: { tooltipContent = null, ...inputProps } = {},
   selectElementProps,
   showValue = true,
-  showTooltip = false,
   labelTransform = defaultLabelTransform,
   valueTransform = defaultValueTransform,
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
   const arrayValues = useMemo(() => {
-    if (multiple) {
+    if (Array.isArray(value)) {
       return /** @type {string[]} */ (value);
     }
     return value ? [/** @type {string} */ (value)] : [];
-  }, [multiple, value]);
+    // FIXME: We don't know if value has changed because of us firing onChange()
+    // or because code decided to use a new set of values.
+    // This is important because we don't want to fire a search request unnecessarily
+  }, [value]);
 
   const [inputValue, setInputValue] = useState("");
-  const [lastValue, setLastValue] = useState(singleSelectValue || "");
-  const [getIsFocused, setIsFocused] = useLive(false);
-  const [lazyLoadOptions, setLazyLoadOptions] = useState(/** @type {OptionMatch[]} */ ([]));
+  const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
+  const cachedOptions = useRef(/** @type {{ [value: string]: Option }} */ ({}));
   const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
   const [isLoading, setIsLoading] = useState(false);
+  // FIXME: We should use preact signals for this purpose, as re-rendering during
+  // hover is not the most performant thing to do
   const [activeDescendant, setActiveDescendant] = useState("");
-  const [chipHovered, setChipHovered] = useState("");
-  const [firstRender, setFirstRender] = useState(true);
-  const [inputWrapperHovered, setInputWrapperHovered] = useState(false);
+  const scrollToActiveDescendantRef = useRef(false);
+  const [warningIconHovered, setWarningIconHovered] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
   const rootElementRef = useRef(/** @type {HTMLDivElement | null} */ (null));
-  const popperRef = useRef(null);
-  const hoveredChipRef = useRef(null);
+  const popperRef = useRef(/** @type {HTMLUListElement | null} */ (null));
+  const warningIconRef = useRef(null);
   const tooltipPopperRef = useRef(null);
   const undoStack = useRef(/** @type {string[][]} */ ([]));
   const redoStack = useRef(/** @type {string[][]} */ ([]));
 
-  const updateLazyLoadOptions = (update) =>
-    setLazyLoadOptions((prev) => [
-      ...new Map([...prev, ...update].map((item) => [item.value, item])).values(),
-    ]);
+  const updateCachedOptions = useCallback(
+    /** @param {Option[]} update */
+    (update) => {
+      for (const item of update) {
+        cachedOptions.current[item.value] = item;
+      }
+    },
+    [],
+  );
 
-  const allOptions = Array.isArray(allowedOptions) ? allowedOptions : lazyLoadOptions;
+  const allOptions = Array.isArray(allowedOptions)
+    ? allowedOptions
+    : Object.values(cachedOptions.current);
   const allOptionsLookup = useMemo(
-    () => Object.fromEntries(allOptions.map((o) => [o.value, o])),
+    () =>
+      allOptions.reduce((acc, o) => {
+        acc[o.value] = o;
+        return acc;
+      }, {}),
     [allOptions],
   );
-  const isInvalidSingleSelectValue =
-    singleSelectValue && !allowFreeText && !allOptionsLookup[singleSelectValue];
+  const invalidValues = useMemo(() => {
+    if (allowFreeText) return [];
+    return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
+  }, [allowFreeText, arrayValues, allOptionsLookup]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: values.length is used to readjust when values wrap around
+  const activateDescendant = useCallback((descendant) => {
+    setActiveDescendant(descendant);
+    inputRef.current?.setAttribute("aria-activedescendant", descendant);
+    scrollToActiveDescendantRef.current = true;
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  useLayoutEffect(() => {
+    if (scrollToActiveDescendantRef.current && popperRef.current) {
+      scrollToActiveDescendantRef.current = false;
+      const activeDescendantElement = popperRef.current.querySelector(
+        ".MultiSelectAutocomplete-option--active",
+      );
+      if (activeDescendantElement) {
+        const dropdownRect = popperRef.current.getBoundingClientRect();
+        const itemRect = activeDescendantElement.getBoundingClientRect();
+
+        if (itemRect.top < dropdownRect.top) {
+          popperRef.current.scrollTop += itemRect.top - dropdownRect.top;
+        } else if (itemRect.bottom > dropdownRect.bottom) {
+          popperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
+        }
+      }
+    }
+  }, [scrollToActiveDescendantRef.current === true, activeDescendant, getIsDropdownOpen]);
+
+  // Setup popper when dropdown is opened
+  // Reset activeDescendant and filteredOptions when dropdown closes
   useEffect(() => {
-    if (getIsFocused() && rootElementRef.current && popperRef.current) {
+    if (getIsDropdownOpen() && rootElementRef.current && popperRef.current) {
       const popperInstance = createPopper(rootElementRef.current, popperRef.current, {
         placement: "bottom-start",
         // @ts-ignore
         modifiers: dropdownPopperModifiers,
       });
-
-      // @ts-ignore
       popperRef.current.style.display = "block";
-      const valuesLookup = new Set(arrayValues);
-      let abortController;
-      if (typeof allowedOptions === "function") {
-        abortController = new AbortController();
-        allowedOptions("", 100 + (multiple ? arrayValues.length : 1), abortController.signal)
-          .then((fetchedOptions) => {
-            if (abortController.signal.aborted) return;
-            updateLazyLoadOptions(getMatchScore("", fetchedOptions));
-            setFilteredOptions(
-              getMatchScore(
-                "",
-                (multiple
-                  ? fetchedOptions.filter((option) => !valuesLookup.has(option.value))
-                  : fetchedOptions
-                ).slice(0, 100),
-              ),
-            );
-          })
-          .catch((error) => {
-            if (!abortController.signal.aborted) {
-              throw error;
-            }
-          });
-      } else {
-        setFilteredOptions(
-          getMatchScore(
-            "",
-            multiple
-              ? allowedOptions.filter((option) => !valuesLookup.has(option.value))
-              : allowedOptions,
-          ),
-        );
+      // Clean up function
+      return () => {
+        popperInstance.destroy();
+      };
+    }
+    if (!getIsDropdownOpen()) {
+      activateDescendant("");
+      if (popperRef.current) {
+        popperRef.current.style.display = "none";
       }
-      // Clean up function
-      return () => {
-        if (abortController) {
-          abortController.abort();
-        }
-        popperInstance.destroy();
-      };
     }
-  }, [getIsFocused, values?.length]);
+  }, [getIsDropdownOpen, activateDescendant]);
+  // Fill the dropdown with options on open and also on input change
+  // Not on useEffect deps:
+  //   1. arrayValues is not fully stable dependency yet. Check the comment in arrayValues creation useMemo
+  //   2. The allowedOptions and allOptionsLookup dependency is too complex here.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above comment
   useEffect(() => {
-    if (chipHovered && hoveredChipRef.current && tooltipPopperRef.current) {
-      const popperInstance = createPopper(hoveredChipRef.current, tooltipPopperRef.current, {
-        placement: "bottom",
-        // @ts-ignore
-        modifiers: tooltipPopperModifiers,
-      });
-      // @ts-ignore
-      tooltipPopperRef.current.style.display = "block";
-
-      // Clean up function
-      return () => {
-        popperInstance.destroy();
-      };
+    if (!getIsDropdownOpen()) return;
+    let abortController;
+    if (typeof allowedOptions === "function") {
+      abortController = new AbortController();
+      setIsLoading(true);
+      // FIXME: re-think how we get the labels of already selected options
+      // new approach: Send query + max 100 selected options that don't have a label to the backend (if not cached)
+      // Once we get label for a value, then we can cache it so as to not request it again
+      // Question: If freetext is allowed, some values may never have a label! hmm how to figure that out?
+      // We will pass query, and first 100 options that do not have a label to the backend
+      allowedOptions(inputValue.trim(), 100, arrayValues, abortController.signal)
+        .then((fetchedOptions) => {
+          setIsLoading(false);
+          // update cache even if the line we could find out that the request was aborted
+          updateCachedOptions(fetchedOptions);
+          if (abortController.signal.aborted) return;
+          // we don't need to re-sort what the backend returns, so pass empty query string to getMatchScore()
+          // If backend doesn't return labels for existing values, we can still handle that case
+          const mergedOptions = arrayValues
+            .filter((v) => !cachedOptions.current[v])
+            .map((v) => ({ label: v, value: v }))
+            .concat(fetchedOptions);
+          // when search is applied don't sort the selected values to the top
+          const options = inputValue.trim()
+            ? mergedOptions
+            : sortValuesToTop(mergedOptions, arrayValues);
+          setFilteredOptions(getMatchScore("", options, language, false));
+        })
+        .catch((error) => {
+          setIsLoading(false);
+          if (!abortController.signal.aborted) {
+            throw error;
+          }
+        });
+    } else {
+      const mergedOptions = arrayValues
+        .filter((v) => !allOptionsLookup[v])
+        .map((v) => ({ label: v, value: v }))
+        .concat(allowedOptions);
+      // when search is applied don't sort the selected values to the top
+      const options = inputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
+      setFilteredOptions(getMatchScore(inputValue, options, language, true));
     }
+    // Clean up function
+    return () => {
+      abortController?.abort();
+    };
+  }, [
+    getIsDropdownOpen,
+    activateDescendant,
+    inputValue,
+    language,
+    typeof allowedOptions === "function" ? null : allowedOptions,
+  ]);
+  useEffect(() => {
     if (
-      (showTooltip || isInvalidSingleSelectValue) &&
-      inputWrapperHovered &&
-      inputRef.current &&
+      invalidValues.length > 0 &&
+      warningIconHovered &&
+      warningIconRef.current &&
       tooltipPopperRef.current
     ) {
-      const popperInstance = createPopper(inputRef.current, tooltipPopperRef.current, {
+      const popperInstance = createPopper(warningIconRef.current, tooltipPopperRef.current, {
         placement: "bottom-start",
         // @ts-ignore
         modifiers: tooltipPopperModifiers,
@@ -619,124 +704,44 @@ const MultiSelectAutocomplete = ({
         popperInstance.destroy();
       };
     }
-  }, [chipHovered, inputWrapperHovered]);
-
-  const setInitialData = (optionsLookup) => {
-    const selectedValue = singleSelectValue || "";
-    // @ts-ignore
-    setInputValue(valueTransform(optionsLookup[selectedValue]?.label) || selectedValue);
-    setLastValue(selectedValue);
-    setFirstRender(false);
-  };
-
-  /**
-   * Filter options based on input query
-   * @param {string} query - The search query
-   * @returns {Promise<OptionMatch[]>} Filtered options
-   */
-  const filterOptions = useCallback(
-    async (query, abortControllerSignal) => {
-      const valuesLookup = new Set(arrayValues);
-      if (typeof allowedOptions === "function") {
-        setIsLoading(true);
-        const fetchedOptions = await allowedOptions(
-          query,
-          100 + (multiple ? arrayValues.length : 1),
-          abortControllerSignal,
-        );
-        setIsLoading(false);
-        if (firstRender && typeof allowedOptions === "function" && singleSelectValue) {
-          setInitialData(Object.fromEntries(fetchedOptions.map((o) => [o.value, o])));
-        }
-        updateLazyLoadOptions(getMatchScore(query, fetchedOptions, language, false));
-        return getMatchScore(
-          query,
-          multiple
-            ? fetchedOptions.filter((option) => !valuesLookup.has(option.value)).slice(0, 100)
-            : fetchedOptions.slice(0, 100),
-          language,
-          false,
-        );
-      }
-      if (Array.isArray(allowedOptions)) {
-        return getMatchScore(
-          query,
-          multiple
-            ? allowedOptions.filter((option) => !valuesLookup.has(option.value))
-            : allowedOptions,
-          language,
-        ).slice(0, 100);
-      }
-      return [];
-    },
-    [allowedOptions, multiple, arrayValues, language],
-  );
-
-  useEffect(() => {
-    const abortController = new AbortController();
-    filterOptions(inputValue, abortController.signal)
-      .then((newOptions) => {
-        if (abortController.signal.aborted) return;
-        setFilteredOptions(newOptions);
-        // If a selection was already there, then move it to the first one
-        if (activeDescendant && newOptions.length > 0 && newOptions[0]?.value) {
-          setActiveDescendant(`option-${newOptions[0].value}`);
-        }
-      })
-      .catch((error) => {
-        if (!abortController.signal.aborted) {
-          throw error;
-        }
-      });
-    return () => abortController.abort();
-  }, [inputValue, singleSelectValue]);
-
-  useEffect(() => {
-    // For to manage resetting of selected value coming from the parent component
-    if (!singleSelectValue && lastValue) {
-      setInputValue("");
-      setLastValue("");
-    } else if (
-      singleSelectValue &&
-      singleSelectValue !== lastValue &&
-      typeof allowedOptions !== "function"
-    ) {
-      setInputValue(singleSelectValue);
-      setLastValue(singleSelectValue);
-    }
-    // For to manage if the value has been updated from parent component
-    if (singleSelectValue && typeof allowedOptions !== "function") {
-      setInitialData(allOptionsLookup);
-    }
-  }, [singleSelectValue, allOptionsLookup]);
+  }, [warningIconHovered, invalidValues.length]);
 
   /**
    * Handle option selection
    * @param {string} selectedValue The selected option value
    */
   const handleOptionSelect = useCallback(
-    (selectedValue) => {
-      setActiveDescendant("");
+    (selectedValue, { toggleSelected = false } = {}) => {
       if (values) {
-        setInputValue("");
         const existingOption = values.includes(selectedValue);
-        const newValues = [...values, selectedValue];
-        if (!existingOption) {
+        let newValues;
+        if (!existingOption || (toggleSelected && existingOption)) {
+          if (toggleSelected && existingOption) {
+            newValues = values.filter((v) => v !== selectedValue);
+          } else {
+            newValues = [...values, selectedValue];
+          }
           onChange(newValues);
           undoStack.current.push(values);
           redoStack.current = [];
         }
-      } else {
-        setInputValue(valueTransform(allOptionsLookup[selectedValue]?.label) || selectedValue);
-        if (singleSelectValue !== selectedValue) {
-          setLastValue(selectedValue);
-          onChange(selectedValue);
-          undoStack.current.push([selectedValue]);
-          redoStack.current = [];
+      } else if (
+        singleSelectValue !== selectedValue ||
+        (toggleSelected && singleSelectValue === selectedValue)
+      ) {
+        let newValue;
+        if (toggleSelected && singleSelectValue === selectedValue) {
+          newValue = "";
+        } else {
+          newValue = selectedValue;
         }
+        onChange(newValue);
+        undoStack.current.push([newValue]);
+        redoStack.current = [];
+        setIsDropdownOpen(false);
       }
     },
-    [allOptionsLookup, onChange, singleSelectValue, values],
+    [onChange, singleSelectValue, values, setIsDropdownOpen],
   );
 
   /**
@@ -745,12 +750,13 @@ const MultiSelectAutocomplete = ({
    */
   const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleInputFocus = useCallback(() => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
-    if (getIsFocused()) return;
-    setIsFocused(true);
-  }, [getIsFocused, setIsFocused]);
+    if (getIsDropdownOpen()) return;
+    setIsDropdownOpen(true);
+  }, [getIsDropdownOpen, setIsDropdownOpen]);
 
   // Delay blur to allow option selection
   const handleInputBlur = useCallback(() => {
@@ -760,36 +766,27 @@ const MultiSelectAutocomplete = ({
       // @ts-ignore
       popperRef.current.style.display = "none";
     }
-    if (!getIsFocused()) return;
-    setIsFocused(false);
+    if (!getIsDropdownOpen()) return;
+    setIsDropdownOpen(false);
     if (!multiple) {
-      if (!allowFreeText && inputValue.trim() && !allOptionsLookup[inputValue.trim()]) {
-        // @ts-ignore
-        setInputValue(valueTransform(allOptionsLookup[lastValue]?.label || lastValue));
-        setActiveDescendant("");
-      } else {
-        handleOptionSelect(inputValue.trim());
-      }
-    } else if (inputValue) {
-      if (allowFreeText && inputValue.trim() !== "") {
-        handleOptionSelect(inputValue.trim());
-      } else {
-        setInputValue("");
-        setActiveDescendant("");
+      const trimmedInput = inputValue.trim();
+      if (trimmedInput && (allowFreeText || allOptionsLookup[trimmedInput])) {
+        handleOptionSelect(trimmedInput);
       }
     }
+    setInputValue("");
   }, [
     allOptionsLookup,
     allowFreeText,
-    getIsFocused,
+    getIsDropdownOpen,
     handleOptionSelect,
-    inputValue,
-    lastValue,
     multiple,
-    setIsFocused,
+    inputValue,
+    setIsDropdownOpen,
   ]);
 
   /**
+   * FIXME: Add a clear/remove button
    * Handle option removal
    * @param {string} option The option to remove
    * @param {boolean} [focusNext=false] Whether to focus the next button in the tab order or to focus the autocomplete input field
@@ -822,62 +819,94 @@ const MultiSelectAutocomplete = ({
     [onChange, values],
   );
 
+  const handleAddNewOption = useCallback(
+    (newValue) => {
+      handleOptionSelect(newValue);
+      setFilteredOptions((options) => {
+        // biome-ignore lint/style/noParameterAssign:
+        options = [
+          /** @type {OptionMatch} */ ({
+            label: newValue,
+            value: newValue,
+          }),
+        ].concat(options);
+        const isRemoteSearch = typeof allowedOptions === "function";
+        return getMatchScore(isRemoteSearch ? "" : newValue, options, language, !isRemoteSearch);
+      });
+      activateDescendant(`option-${newValue}`);
+    },
+    [allowedOptions, language, handleOptionSelect, activateDescendant],
+  );
+
   /**
    * Handle keydown events on the input
    * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event
    */
   const handleKeyDown = useCallback(
     (e) => {
-      // Backspace removes last selected option (multi-select mode only)
-      if (
-        values &&
-        e.key === "Backspace" &&
-        enableBackspaceDelete &&
-        inputValue === "" &&
-        values.length > 0
-      ) {
-        setActiveDescendant("");
-        handleRemoveOption(values[values.length - 1]);
-        // Enter selects current option
-      } else if (e.key === "Enter") {
+      if (e.key === "Enter") {
         e.preventDefault();
         const currentIndex = activeDescendant
           ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
           : -1;
         if (currentIndex > -1) {
-          handleOptionSelect(filteredOptions[currentIndex].value);
+          handleOptionSelect(filteredOptions[currentIndex].value, { toggleSelected: true });
         } else if (allowFreeText && inputValue.trim() !== "") {
-          handleOptionSelect(inputValue.trim());
+          handleAddNewOption(inputValue.trim());
         }
         // ArrowDown highlights next option
-      } else if (e.key === "ArrowDown" && filteredOptions.length > 0) {
+      } else if (e.key === "ArrowDown") {
+        const hasAddOption =
+          !isLoading &&
+          allowFreeText &&
+          inputValue.trim() &&
+          !arrayValues.includes(inputValue.trim());
+        if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
-        const currentIndex = activeDescendant
-          ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
-          : -1;
-        const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-        const nextOptionId = `option-${filteredOptions[nextIndex].value}`;
-        if (!activeDescendant) {
-          setIsFocused(true);
+        const currentIndex =
+          activeDescendant && activeDescendant !== "add-option"
+            ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
+            : -1;
+        if (
+          hasAddOption &&
+          activeDescendant !== "add-option" &&
+          (currentIndex < 0 || currentIndex === filteredOptions.length - 1)
+        ) {
+          setIsDropdownOpen(true);
+          activateDescendant("add-option");
+        } else if (filteredOptions.length) {
+          setIsDropdownOpen(true);
+          const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
+          activateDescendant(`option-${filteredOptions[nextIndex].value}`);
         }
-        setActiveDescendant(nextOptionId);
-        inputRef.current?.setAttribute("aria-activedescendant", nextOptionId);
         // ArrowUp highlights previous option
-      } else if (e.key === "ArrowUp" && filteredOptions.length > 0) {
+      } else if (e.key === "ArrowUp") {
+        const hasAddOption =
+          !isLoading &&
+          allowFreeText &&
+          inputValue.trim() &&
+          !arrayValues.includes(inputValue.trim());
+        if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
-        const currentIndex = activeDescendant
-          ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
-          : 0;
-        const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-        setActiveDescendant(`option-${filteredOptions[prevIndex].value}`);
-        inputRef.current?.setAttribute(
-          "aria-activedescendant",
-          `option-${filteredOptions[prevIndex].value}`,
-        );
+        const currentIndex =
+          activeDescendant && activeDescendant !== "add-option"
+            ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
+            : 0;
+        if (
+          hasAddOption &&
+          activeDescendant !== "add-option" &&
+          ((currentIndex === 0 && activeDescendant) || !filteredOptions.length)
+        ) {
+          setIsDropdownOpen(true);
+          activateDescendant("add-option");
+        } else if (filteredOptions.length) {
+          setIsDropdownOpen(true);
+          const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
+          activateDescendant(`option-${filteredOptions[prevIndex].value}`);
+        }
         // Escape blurs input
       } else if (e.key === "Escape") {
-        setIsFocused(false);
-        setActiveDescendant("");
+        setIsDropdownOpen(false);
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
@@ -898,16 +927,17 @@ const MultiSelectAutocomplete = ({
     },
     [
       activeDescendant,
+      activateDescendant,
       allowFreeText,
-      enableBackspaceDelete,
       filteredOptions,
       handleOptionSelect,
-      handleRemoveOption,
+      handleAddNewOption,
       inputValue,
       onChange,
-      setIsFocused,
+      setIsDropdownOpen,
       value,
-      values,
+      isLoading,
+      arrayValues,
     ],
   );
   /**
@@ -958,7 +988,6 @@ const MultiSelectAutocomplete = ({
   const handleClearValue = useCallback(() => {
     if (!singleSelectValue) return;
     setInputValue("");
-    setLastValue("");
     onChange("");
     undoStack.current.push([singleSelectValue]);
     redoStack.current = [];
@@ -966,95 +995,26 @@ const MultiSelectAutocomplete = ({
 
   return (
     <div
-      className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""}`}
+      className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""} ${className}`}
       aria-disabled={disabled}
       onClick={() => inputRef.current?.focus()}
       id={`${id}-root`}
       ref={rootElementRef}
       {...rootElementProps}
     >
-      <div
-        className={`MultiSelectAutocomplete-selectedOptions ${multiple ? "MultiSelectAutocomplete-selectedOptions--multiple" : ""}`}
-      >
-        {
-          /* Chips UI is used for multi-select mode */
-          values
-            ? values.map((value) => {
-                const label = allOptions.find((o) => o.value === value)?.label || value;
-                const isInvalidOption = !allowFreeText && !allOptionsLookup[value];
-                return (
-                  // biome-ignore lint/a11y/useKeyWithClickEvents: Click is optional. Also one can hover on the chip for tooltip.
-                  <span
-                    key={value}
-                    className={`MultiSelectAutocomplete-chip ${
-                      !allowFreeText && !allOptionsLookup[value]
-                        ? "MultiSelectAutocomplete-chip--invalid"
-                        : ""
-                    }`}
-                    aria-label={`${label}${isInvalidOption ? " (Invalid value)" : ""}`}
-                    onMouseEnter={() => setChipHovered(value)}
-                    onMouseLeave={() => setChipHovered("")}
-                    // onClick={() => setChipHovered(chipHovered === value ? "" : value)}
-                    ref={chipHovered === value ? hoveredChipRef : null}
-                  >
-                    {label}
-                    {!disabled && (
-                      <button
-                        type="button"
-                        className="MultiSelectAutocomplete-chipRemove"
-                        aria-label="Delete"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          handleRemoveOption(value);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            handleRemoveOption(value, true);
-                          }
-                        }}
-                      >
-                        <span aria-hidden="true">&#x2715;</span>
-                      </button>
-                    )}
-                    {(showTooltip || isInvalidOption) &&
-                      chipHovered === value &&
-                      !getIsFocused() && (
-                        <Portal parent={portal}>
-                          <div
-                            className="MultiSelectAutocomplete-valueTooltip"
-                            role="tooltip"
-                            ref={chipHovered === value ? tooltipPopperRef : null}
-                          >
-                            {isInvalidOption ? "Invalid value" : "Value"} : {value}
-                          </div>
-                        </Portal>
-                      )}
-                  </span>
-                );
-              })
-            : null
-        }
-        <div
-          className={`MultiSelectAutocomplete-inputWrapper "MultiSelectAutocomplete-inputWrapper--${multiple ? "multiple" : "singleSelect"}`}
-          onMouseEnter={() => {
-            if (!multiple) {
-              setInputWrapperHovered(true);
-            }
-          }}
-          onMouseLeave={() => {
-            if (!multiple) {
-              setInputWrapperHovered(false);
-            }
-          }}
-        >
+      <div className="MultiSelectAutocomplete-field">
+        <div className="MultiSelectAutocomplete-inputWrapper">
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
-            placeholder={multiple && values && values.length > 0 ? undefined : placeholder}
+            placeholder={
+              getIsDropdownOpen()
+                ? "Search..."
+                : arrayValues.length > 0
+                  ? arrayValues.map((value) => allOptionsLookup[value]?.label || value).join(", ")
+                  : placeholder
+            }
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             onFocus={handleInputFocus}
@@ -1065,7 +1025,7 @@ const MultiSelectAutocomplete = ({
             onPaste={handlePaste}
             className={`MultiSelectAutocomplete-input ${multiple ? "MultiSelectAutocomplete-input--multiple" : ""}`}
             role="combobox"
-            aria-expanded={getIsFocused()}
+            aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
             aria-controls="options-listbox"
             aria-activedescendant={activeDescendant}
@@ -1084,16 +1044,22 @@ const MultiSelectAutocomplete = ({
             </button>
           ) : null}
           {/* TODO:  ability to customize the warning icon? */}
-          {!multiple && isInvalidSingleSelectValue && (
+          {invalidValues.length > 0 && (
             <svg
+              ref={warningIconRef}
               className="MultiSelectAutocomplete-warningIcon"
               viewBox="0 0 24 24"
               width="24"
               height="24"
               aria-hidden="true"
+              onMouseEnter={() => setWarningIconHovered(true)}
+              onMouseLeave={() => setWarningIconHovered(false)}
             >
               <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
             </svg>
+          )}
+          {multiple && values && values.length > 1 && (
+            <span className="MultiSelectAutocomplete-badge">{values.length}</span>
           )}
           {/* TODO: ability to customize the chevron icon? */}
           <svg
@@ -1106,29 +1072,14 @@ const MultiSelectAutocomplete = ({
             <path d="M7 10l5 5 5-5z" />
           </svg>
         </div>
-        {!multiple &&
-        singleSelectValue &&
-        (showTooltip || isInvalidSingleSelectValue) &&
-        inputWrapperHovered &&
-        !getIsFocused() ? (
-          <Portal parent={portal}>
-            <div
-              className="MultiSelectAutocomplete-valueTooltip"
-              role="tooltip"
-              ref={tooltipPopperRef}
-            >
-              {tooltipContent ||
-                `${isInvalidSingleSelectValue ? "Invalid value" : "Value"} : ${singleSelectValue}`}
-            </div>
-          </Portal>
-        ) : null}
       </div>
+
       <Portal parent={portal}>
         <ul
           className="MultiSelectAutocomplete-options"
           role="listbox"
           id={`${id}-options-listbox`}
-          hidden={!getIsFocused()}
+          hidden={!getIsDropdownOpen()}
           ref={popperRef}
           data-test-id={`${id}-autocomplete-options`}
         >
@@ -1136,17 +1087,47 @@ const MultiSelectAutocomplete = ({
             <li className="MultiSelectAutocomplete-option">Loading...</li>
           ) : (
             <>
+              {!isLoading &&
+                allowFreeText &&
+                inputValue.trim() &&
+                !arrayValues.includes(inputValue.trim()) &&
+                !filteredOptions.find((o) => o.value === inputValue.trim()) && (
+                  <li
+                    key={inputValue.trim()}
+                    id="add-option"
+                    className={[
+                      "MultiSelectAutocomplete-option",
+                      activeDescendant === "add-option"
+                        ? "MultiSelectAutocomplete-option--active"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    role="option"
+                    tabIndex={-1}
+                    data-test-value={inputValue.trim()}
+                    aria-selected={activeDescendant === "add-option"}
+                    onMouseEnter={() => activateDescendant(`option-${inputValue.trim()}`)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleAddNewOption(inputValue.trim());
+                    }}
+                  >
+                    {`Add "${inputValue.trim()}"`}
+                  </li>
+                )}
               {filteredOptions.map((option) => {
                 const isActiveOption = activeDescendant === `option-${option.value}`;
+                const isSelected = arrayValues.includes(option.value);
                 const optionClasses = [
                   "MultiSelectAutocomplete-option",
                   isActiveOption ? "MultiSelectAutocomplete-option--active" : "",
+                  isSelected ? "MultiSelectAutocomplete-option--selected" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
                 return (
-                  // Cursor still needs to be on the input for user to be able to type
-                  // biome-ignore lint/a11y/useKeyWithClickEvents: option and input both can have focus together.
                   <li
                     key={option.value}
                     id={`option-${option.value}`}
@@ -1155,66 +1136,41 @@ const MultiSelectAutocomplete = ({
                     tabIndex={-1}
                     data-value={option.value}
                     aria-selected={isActiveOption}
-                    onMouseEnter={() => setActiveDescendant(`option-${option.value}`)}
+                    onMouseEnter={() => activateDescendant(`option-${option.value}`)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      setIsFocused(!!multiple);
-                      handleOptionSelect(option.value);
-                      if (multiple) {
-                        inputRef.current?.focus();
-                      } else {
+                      if (!multiple) {
+                        setIsDropdownOpen(false);
+                        handleOptionSelect(option.value);
                         if (popperRef.current) {
                           // @ts-ignore
                           popperRef.current.style.display = "none";
                         }
                         inputRef.current?.blur();
+                      } else {
+                        // Toggle selection for multiple select
+                        const newValues = isSelected
+                          ? arrayValues.filter((v) => v !== option.value)
+                          : [...arrayValues, option.value];
+                        onChange(newValues);
+                        inputRef.current?.focus();
                       }
                     }}
                   >
                     {isActiveOption && (
                       <span className="MultiSelectAutocomplete-srOnly">Current option:</span>
                     )}
-                    <span>{highlightMatches(option, labelTransform, language, showValue)}</span>
+                    <span className="MultiSelectAutocomplete-checkbox">
+                      {isSelected && <span aria-hidden="true">✓</span>}
+                    </span>
+                    {highlightMatches(option, labelTransform, language, showValue)}
                   </li>
                 );
               })}
               {filteredOptions.length === 0 &&
                 !isLoading &&
-                allowFreeText &&
-                inputValue &&
-                inputValue !== lastValue && (
-                  <li
-                    key={inputValue}
-                    id={`option-${inputValue}`}
-                    className="MultiSelectAutocomplete-option"
-                    role="option"
-                    tabIndex={-1}
-                    data-test-value={inputValue}
-                    aria-selected={activeDescendant === inputValue}
-                    onMouseEnter={() => setActiveDescendant(`option-${inputValue}`)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsFocused(!!multiple);
-                      handleOptionSelect(inputValue);
-                      if (multiple) {
-                        inputRef.current?.focus();
-                      } else {
-                        if (popperRef.current) {
-                          // @ts-ignore
-                          popperRef.current.style.display = "none";
-                        }
-                        inputRef.current?.blur();
-                      }
-                    }}
-                  >
-                    {`Add "${inputValue}"`}
-                  </li>
-                )}
-              {filteredOptions.length === 0 &&
-                !isLoading &&
-                (!allowFreeText || !inputValue || inputValue === lastValue) && (
+                (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
                   <li className="MultiSelectAutocomplete-option">No options available</li>
                 )}
               {filteredOptions.length === 100 && (
@@ -1241,6 +1197,22 @@ const MultiSelectAutocomplete = ({
           </option>
         ))}
       </select>
+      {invalidValues.length > 0 && warningIconHovered && (
+        <Portal parent={portal}>
+          <div
+            className="MultiSelectAutocomplete-valueTooltip"
+            role="tooltip"
+            ref={tooltipPopperRef}
+          >
+            Invalid values:
+            {invalidValues.map((value) => (
+              <div key={value} className="MultiSelectAutocomplete-tooltipValue">
+                {value}
+              </div>
+            ))}
+          </div>
+        </Portal>
+      )}
     </div>
   );
 };

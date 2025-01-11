@@ -5,6 +5,7 @@
   "main": "dist/cjs/MultiSelectAutocomplete.js",
   "module": "dist/esm/MultiSelectAutocomplete.js",
   "scripts": {
+    "dev": "concurrently -i -c \"auto\" \"npm:watch\" \"npm:example\"",
     "prepare": "npm run build",
     "prepublish": "npm run build",
     "lint": "npx @biomejs/biome check --write",
@@ -21,15 +22,16 @@
     "@biomejs/biome": "1.8.3",
     "@popperjs/core": "^2",
     "browser-sync": "^3.0.2",
+    "concurrently": "^9.1.2",
     "esbuild": "^0.21.5",
     "react": "^16 || ^17 || ^18",
     "react-dom": "^16 || ^17 || ^18",
     "typescript": "^5.5.3"
   },
   "peerDependencies": {
+    "@popperjs/core": "^2",
     "react": "^16 || ^17 || ^18",
-    "react-dom": "^16 || ^17 || ^18",
-    "@popperjs/core": "^2"
+    "react-dom": "^16 || ^17 || ^18"
   },
   "engines": {
     "node": ">= 10.0.0"
