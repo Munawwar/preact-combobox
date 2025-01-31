@@ -73,6 +73,10 @@
   cursor: pointer;
   display: flex;
   align-items: center;
+
+  /* Performance improvement: Only supported on Safari 18+ */
+  content-visibility: auto;
+  contain-intrinsic-height: auto 35px;
 }
 
 .MultiSelectAutocomplete-option:hover {

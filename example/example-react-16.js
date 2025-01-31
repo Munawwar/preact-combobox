@@ -5,7 +5,7 @@ const html = htm.bind(createElement);
 
 import MultiSelectAutocomplete from "../dist/esm/MultiSelectAutocomplete.js";
 
-const allowedOptions = [
+let allowedOptions = [
   { label: "United States of America", value: "usa" },
   { label: "France", value: "france" },
   { label: "Japan", value: "japan" },
@@ -16,6 +16,11 @@ const allowedOptions = [
   { label: "South Korea", value: "korea" },
   { label: "Indonesia", value: "indonesia" },
 ];
+
+// Performance test
+// for (let i = 0; i < 10000; i++) {
+//   allowedOptions.push({ label: "Option " + i, value: "option" + i });
+// }
 
 function App() {
   const [values1, setValues1] = useState(["United Arab Emirates"]);

@@ -163,10 +163,10 @@ const languageCache = {};
  * @param {string} query - The query text to match against options.
  * @param {Option[]} options
  * @param {string} [language='en'] Language to use for word splitting and matching
- * @param {boolean} [sort=true] Whether to sort the results
+ * @param {boolean} [filterAndSort=true] Whether to filter and sort the results. If false, returns all options but with attempted matches.
  * @returns {Array<OptionMatch>}
  */
-function getMatchScore(query, options, language = "en", sort = true) {
+function getMatchScore(query, options, language = "en", filterAndSort = true) {
   // biome-ignore lint/style/noParameterAssign: ignore
   query = query.trim();
 
@@ -189,198 +189,195 @@ function getMatchScore(query, options, language = "en", sort = true) {
 
   let querySegments;
   let queryWords;
-  const matches = options
-    .map(({ label, value, ...rest }) => {
-      // Rule 1: Exact match (case sensitive)
-      if (value === query) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 9,
-          /** @type {'value'} */
-          matched: "value",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, value.length]],
-        };
-      }
-      if (label === query) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 9,
-          /** @type {'label'} */
-          matched: "label",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, label.length]],
-        };
-      }
-
-      // Rule 2: Exact match (case insensitive)
-      if (!langUtils.caseMatcher) {
-        langUtils.caseMatcher = new Intl.Collator(language, {
-          usage: "search",
-          sensitivity: "accent",
-        });
-      }
-      const { caseMatcher } = langUtils;
-      if (caseMatcher.compare(value, query) === 0) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 7,
-          /** @type {'value'} */
-          matched: "value",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, value.length]],
-        };
-      }
-      if (caseMatcher.compare(label, query) === 0) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 7,
-          /** @type {'label'} */
-          matched: "label",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, label.length]],
-        };
-      }
-
-      // Rule 3: Exact match with accents normalized (case insensitive)
-      if (!langUtils.baseMatcher) {
-        langUtils.baseMatcher = new Intl.Collator(language, {
-          usage: "search",
-          sensitivity: "base",
-        });
-      }
-      const { baseMatcher } = langUtils;
-      if (baseMatcher.compare(label, query) === 0) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 5,
-          /** @type {'label'} */
-          matched: "label",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, label.length]],
-        };
-      }
-      if (baseMatcher.compare(value, query) === 0) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 5,
-          /** @type {'value'} */
-          matched: "value",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, value.length]],
-        };
-      }
-
-      // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
-      // This match needs to be case and accent insensitive
-      if (!langUtils.wordSegmenter) {
-        langUtils.wordSegmenter = new Intl.Segmenter(language, { granularity: "word" });
-      }
-      const { wordSegmenter } = langUtils;
-      if (!querySegments) {
-        querySegments = Array.from(wordSegmenter.segment(query));
-      }
-      const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
-      let len = 0;
-      let firstIndex = -1;
-      for (let i = 0; i < labelWordSegments.length; i++) {
-        const labelWordSegment = labelWordSegments[i];
-        const querySegment = querySegments[len];
-        if (len === querySegments.length - 1) {
-          // check for partial word match
-          // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
-          const lastQueryWord = querySegment.segment;
-          if (
-            baseMatcher.compare(
-              labelWordSegment.segment.slice(0, lastQueryWord.length),
-              lastQueryWord,
-            ) === 0
-          ) {
-            return {
-              ...rest,
-              label,
-              value,
-              score: 3,
-              /** @type {'label'} */
-              matched: "label",
-              /** @type {Array<[number, number]>} */
-              // @ts-ignore
-              matchSlices: [
-                [
-                  firstIndex > -1 ? firstIndex : labelWordSegment.index,
-                  labelWordSegment.index + lastQueryWord.length,
-                ],
-              ],
-            };
-          }
-        } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
-          len++;
-          if (len === 1) {
-            firstIndex = labelWordSegment.index;
-          }
-          continue;
-        }
-        len = 0;
-        firstIndex = -1;
-      }
-      // Also check for partial value match (this doesn't need accent check)
-      if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
-        return {
-          ...rest,
-          label,
-          value,
-          score: 3,
-          /** @type {'value'} */
-          matched: "value",
-          /** @type {Array<[number, number]>} */
-          matchSlices: [[0, query.length]],
-        };
-      }
-
-      // Rule 5: Word matches
-      if (!queryWords) {
-        queryWords = querySegments.filter((s) => s.isWordLike);
-      }
-      const labelWords = labelWordSegments.filter((s) => s.isWordLike);
-      /** @type {Array<[number, number]|undefined>} */
-      const slices = queryWords.map((word) => {
-        const match = labelWords.find(
-          (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
-        );
-        if (match) {
-          return [match.index, match.index + match.segment.length];
-        }
-      });
-      // TODO: Do we need a deep equal de-duplication here?
-      const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
-      const wordScoring = matchSlices.length / queryWords.length;
+  let matches = options.map(({ label, value, ...rest }) => {
+    // Rule 1: Exact match (case sensitive)
+    if (value === query) {
       return {
         ...rest,
         label,
         value,
-        score: wordScoring,
-        /** @type {'label'|'none'} */
-        matched: wordScoring ? "label" : "none",
-        matchSlices,
+        score: 9,
+        /** @type {'value'} */
+        matched: "value",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, value.length]],
       };
-    })
-    // FIXME: Comment this after testing
-    // .filter((match) => match);
-    .filter((match) => match.score > 0);
+    }
+    if (label === query) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 9,
+        /** @type {'label'} */
+        matched: "label",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, label.length]],
+      };
+    }
 
-  if (sort) {
+    // Rule 2: Exact match (case insensitive)
+    if (!langUtils.caseMatcher) {
+      langUtils.caseMatcher = new Intl.Collator(language, {
+        usage: "search",
+        sensitivity: "accent",
+      });
+    }
+    const { caseMatcher } = langUtils;
+    if (caseMatcher.compare(value, query) === 0) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 7,
+        /** @type {'value'} */
+        matched: "value",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, value.length]],
+      };
+    }
+    if (caseMatcher.compare(label, query) === 0) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 7,
+        /** @type {'label'} */
+        matched: "label",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, label.length]],
+      };
+    }
+
+    // Rule 3: Exact match with accents normalized (case insensitive)
+    if (!langUtils.baseMatcher) {
+      langUtils.baseMatcher = new Intl.Collator(language, {
+        usage: "search",
+        sensitivity: "base",
+      });
+    }
+    const { baseMatcher } = langUtils;
+    if (baseMatcher.compare(label, query) === 0) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 5,
+        /** @type {'label'} */
+        matched: "label",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, label.length]],
+      };
+    }
+    if (baseMatcher.compare(value, query) === 0) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 5,
+        /** @type {'value'} */
+        matched: "value",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, value.length]],
+      };
+    }
+
+    // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
+    // This match needs to be case and accent insensitive
+    if (!langUtils.wordSegmenter) {
+      langUtils.wordSegmenter = new Intl.Segmenter(language, { granularity: "word" });
+    }
+    const { wordSegmenter } = langUtils;
+    if (!querySegments) {
+      querySegments = Array.from(wordSegmenter.segment(query));
+    }
+    const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
+    let len = 0;
+    let firstIndex = -1;
+    for (let i = 0; i < labelWordSegments.length; i++) {
+      const labelWordSegment = labelWordSegments[i];
+      const querySegment = querySegments[len];
+      if (len === querySegments.length - 1) {
+        // check for partial word match
+        // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
+        const lastQueryWord = querySegment.segment;
+        if (
+          baseMatcher.compare(
+            labelWordSegment.segment.slice(0, lastQueryWord.length),
+            lastQueryWord,
+          ) === 0
+        ) {
+          return {
+            ...rest,
+            label,
+            value,
+            score: 3,
+            /** @type {'label'} */
+            matched: "label",
+            /** @type {Array<[number, number]>} */
+            // @ts-ignore
+            matchSlices: [
+              [
+                firstIndex > -1 ? firstIndex : labelWordSegment.index,
+                labelWordSegment.index + lastQueryWord.length,
+              ],
+            ],
+          };
+        }
+      } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
+        len++;
+        if (len === 1) {
+          firstIndex = labelWordSegment.index;
+        }
+        continue;
+      }
+      len = 0;
+      firstIndex = -1;
+    }
+    // Also check for partial value match (this doesn't need accent check)
+    if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
+      return {
+        ...rest,
+        label,
+        value,
+        score: 3,
+        /** @type {'value'} */
+        matched: "value",
+        /** @type {Array<[number, number]>} */
+        matchSlices: [[0, query.length]],
+      };
+    }
+
+    // Rule 5: Word matches
+    if (!queryWords) {
+      queryWords = querySegments.filter((s) => s.isWordLike);
+    }
+    const labelWords = labelWordSegments.filter((s) => s.isWordLike);
+    /** @type {Array<[number, number]|undefined>} */
+    const slices = queryWords.map((word) => {
+      const match = labelWords.find(
+        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
+      );
+      if (match) {
+        return [match.index, match.index + match.segment.length];
+      }
+    });
+    // TODO: Do we need a deep equal de-duplication here?
+    const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
+    const wordScoring = matchSlices.length / queryWords.length;
+    return {
+      ...rest,
+      label,
+      value,
+      score: wordScoring,
+      /** @type {'label'|'none'} */
+      matched: wordScoring ? "label" : "none",
+      matchSlices,
+    };
+  });
+
+  if (filterAndSort) {
+    matches = matches.filter((match) => match.score > 0);
     matches.sort((a, b) => {
       if (a.score === b.score) {
         const val = a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
@@ -481,15 +478,31 @@ function useLive(initialValue) {
   return [getValue, setValue];
 }
 
+function isEqualArray(array1, array2) {
+  if (!Array.isArray(array1) || !Array.isArray(array2) || array1.length !== array2.length) {
+    return false;
+  }
+  return array2.every((item, index) => item === array1[index]);
+}
+
 // return same state if state hasn't changed.
 // sometime we need to be efficient in change detection so as to reduce UI re-renders
-function useDeepMemo(newState) {
-  const [state, setState] = useState(newState);
-  if (!isEqual(newState, state)) {
-    setState(newState);
+/**
+ * @template T
+ * @param {T[]} newState
+ * @returns {T[]}
+ */
+function useMemoArray(newState) {
+  const state = useRef(newState);
+  if (!Array.isArray(newState) && !Array.isArray(state.current) && newState !== state.current) {
+    state.current = newState;
     return newState;
   }
-  return state;
+  if (!isEqualArray(newState, state.current)) {
+    state.current = newState;
+    return newState;
+  }
+  return state.current;
 }
 
 const defaultArrayValue = [];
@@ -521,15 +534,15 @@ const MultiSelectAutocomplete = ({
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
-  const arrayValues = useMemo(() => {
-    if (Array.isArray(value)) {
-      return /** @type {string[]} */ (value);
-    }
-    return value ? [/** @type {string} */ (value)] : [];
-    // FIXME: We don't know if value has changed because of us firing onChange()
-    // or because code decided to use a new set of values.
-    // This is important because we don't want to fire a search request unnecessarily
-  }, [value]);
+
+  /** @type {string[]} */
+  let tempArrayValue;
+  if (Array.isArray(value)) {
+    tempArrayValue = /** @type {string[]} */ (value);
+  } else {
+    tempArrayValue = value ? [/** @type {string} */ (value)] : [];
+  }
+  const arrayValues = useMemoArray(tempArrayValue);
 
   const [inputValue, setInputValue] = useState("");
   const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
@@ -549,6 +562,8 @@ const MultiSelectAutocomplete = ({
   const tooltipPopperRef = useRef(null);
   const undoStack = useRef(/** @type {string[][]} */ ([]));
   const redoStack = useRef(/** @type {string[][]} */ ([]));
+
+  const inputTrimmed = inputValue.trim();
 
   const updateCachedOptions = useCallback(
     /** @param {Option[]} update */
@@ -586,9 +601,7 @@ const MultiSelectAutocomplete = ({
   useLayoutEffect(() => {
     if (scrollToActiveDescendantRef.current && popperRef.current) {
       scrollToActiveDescendantRef.current = false;
-      const activeDescendantElement = popperRef.current.querySelector(
-        ".MultiSelectAutocomplete-option--active",
-      );
+      const activeDescendantElement = popperRef.current.querySelector(`[aria-selected="true"]`);
       if (activeDescendantElement) {
         const dropdownRect = popperRef.current.getBoundingClientRect();
         const itemRect = activeDescendantElement.getBoundingClientRect();
@@ -635,28 +648,29 @@ const MultiSelectAutocomplete = ({
     if (typeof allowedOptions === "function") {
       abortController = new AbortController();
       setIsLoading(true);
+      const newUnknownValues = arrayValues.filter((v) => !cachedOptions.current[v]);
       // FIXME: re-think how we get the labels of already selected options
       // new approach: Send query + max 100 selected options that don't have a label to the backend (if not cached)
       // Once we get label for a value, then we can cache it so as to not request it again
       // Question: If freetext is allowed, some values may never have a label! hmm how to figure that out?
       // We will pass query, and first 100 options that do not have a label to the backend
-      allowedOptions(inputValue.trim(), 100, arrayValues, abortController.signal)
+      allowedOptions(inputTrimmed, 100, newUnknownValues, abortController.signal)
         .then((fetchedOptions) => {
           setIsLoading(false);
           // update cache even if the line we could find out that the request was aborted
           updateCachedOptions(fetchedOptions);
           if (abortController.signal.aborted) return;
-          // we don't need to re-sort what the backend returns, so pass empty query string to getMatchScore()
           // If backend doesn't return labels for existing values, we can still handle that case
           const mergedOptions = arrayValues
             .filter((v) => !cachedOptions.current[v])
             .map((v) => ({ label: v, value: v }))
             .concat(fetchedOptions);
           // when search is applied don't sort the selected values to the top
-          const options = inputValue.trim()
+          const options = inputTrimmed
             ? mergedOptions
             : sortValuesToTop(mergedOptions, arrayValues);
-          setFilteredOptions(getMatchScore("", options, language, false));
+          // we don't need to re-sort what the backend returns, so pass filterAndSort=false to getMatchScore()
+          setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
         })
         .catch((error) => {
           setIsLoading(false);
@@ -680,7 +694,7 @@ const MultiSelectAutocomplete = ({
   }, [
     getIsDropdownOpen,
     activateDescendant,
-    inputValue,
+    inputTrimmed,
     language,
     typeof allowedOptions === "function" ? null : allowedOptions,
   ]);
@@ -750,7 +764,6 @@ const MultiSelectAutocomplete = ({
    */
   const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleInputFocus = useCallback(() => {
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
@@ -766,22 +779,19 @@ const MultiSelectAutocomplete = ({
       // @ts-ignore
       popperRef.current.style.display = "none";
     }
-    if (!getIsDropdownOpen()) return;
     setIsDropdownOpen(false);
     if (!multiple) {
-      const trimmedInput = inputValue.trim();
-      if (trimmedInput && (allowFreeText || allOptionsLookup[trimmedInput])) {
-        handleOptionSelect(trimmedInput);
+      if (inputTrimmed && (allowFreeText || allOptionsLookup[inputTrimmed])) {
+        handleOptionSelect(inputTrimmed);
       }
     }
     setInputValue("");
   }, [
     allOptionsLookup,
     allowFreeText,
-    getIsDropdownOpen,
     handleOptionSelect,
     multiple,
-    inputValue,
+    inputTrimmed,
     setIsDropdownOpen,
   ]);
 
@@ -831,11 +841,11 @@ const MultiSelectAutocomplete = ({
           }),
         ].concat(options);
         const isRemoteSearch = typeof allowedOptions === "function";
-        return getMatchScore(isRemoteSearch ? "" : newValue, options, language, !isRemoteSearch);
+        return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
       });
       activateDescendant(`option-${newValue}`);
     },
-    [allowedOptions, language, handleOptionSelect, activateDescendant],
+    [allowedOptions, language, handleOptionSelect, activateDescendant, inputTrimmed],
   );
 
   /**
@@ -851,16 +861,13 @@ const MultiSelectAutocomplete = ({
           : -1;
         if (currentIndex > -1) {
           handleOptionSelect(filteredOptions[currentIndex].value, { toggleSelected: true });
-        } else if (allowFreeText && inputValue.trim() !== "") {
-          handleAddNewOption(inputValue.trim());
+        } else if (allowFreeText && inputTrimmed !== "") {
+          handleAddNewOption(inputTrimmed);
         }
         // ArrowDown highlights next option
       } else if (e.key === "ArrowDown") {
         const hasAddOption =
-          !isLoading &&
-          allowFreeText &&
-          inputValue.trim() &&
-          !arrayValues.includes(inputValue.trim());
+          !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed);
         if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
         const currentIndex =
@@ -882,10 +889,7 @@ const MultiSelectAutocomplete = ({
         // ArrowUp highlights previous option
       } else if (e.key === "ArrowUp") {
         const hasAddOption =
-          !isLoading &&
-          allowFreeText &&
-          inputValue.trim() &&
-          !arrayValues.includes(inputValue.trim());
+          !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed);
         if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
         const currentIndex =
@@ -933,6 +937,7 @@ const MultiSelectAutocomplete = ({
       handleOptionSelect,
       handleAddNewOption,
       inputValue,
+      inputTrimmed,
       onChange,
       setIsDropdownOpen,
       value,
@@ -1089,11 +1094,11 @@ const MultiSelectAutocomplete = ({
             <>
               {!isLoading &&
                 allowFreeText &&
-                inputValue.trim() &&
-                !arrayValues.includes(inputValue.trim()) &&
-                !filteredOptions.find((o) => o.value === inputValue.trim()) && (
+                inputTrimmed &&
+                !arrayValues.includes(inputTrimmed) &&
+                !filteredOptions.find((o) => o.value === inputTrimmed) && (
                   <li
-                    key={inputValue.trim()}
+                    key={inputTrimmed}
                     id="add-option"
                     className={[
                       "MultiSelectAutocomplete-option",
@@ -1105,16 +1110,16 @@ const MultiSelectAutocomplete = ({
                       .join(" ")}
                     role="option"
                     tabIndex={-1}
-                    data-test-value={inputValue.trim()}
+                    data-test-value={inputTrimmed}
                     aria-selected={activeDescendant === "add-option"}
-                    onMouseEnter={() => activateDescendant(`option-${inputValue.trim()}`)}
+                    onMouseEnter={() => activateDescendant(`option-${inputTrimmed}`)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleAddNewOption(inputValue.trim());
+                      handleAddNewOption(inputTrimmed);
                     }}
                   >
-                    {`Add "${inputValue.trim()}"`}
+                    {`Add "${inputTrimmed}"`}
                   </li>
                 )}
               {filteredOptions.map((option) => {
