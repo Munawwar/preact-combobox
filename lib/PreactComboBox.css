@@ -1,11 +1,11 @@
-.MultiSelectAutocomplete {
+.PreactComboBox {
   position: relative;
   width: 100%;
   font-family: 'Roboto', sans-serif;
   cursor: pointer;
 }
 
-.MultiSelectAutocomplete-field {
+.PreactComboBox-field {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -15,12 +15,13 @@
   border-radius: 4px;
   background: #fff;
 }
-.MultiSelectAutocomplete--disabled .MultiSelectAutocomplete-field {
+/* FIXME: remove nesting */
+.PreactComboBox--disabled .PreactComboBox-field {
   background-color: #f0f0f0;
   cursor: not-allowed;
 }
 
-.MultiSelectAutocomplete-badge {
+.PreactComboBox-badge {
   background: #e0e0e0;
   border-radius: 12px;
   padding: 2px 8px;
@@ -30,7 +31,7 @@
   margin: 0 3px;
 }
 
-.MultiSelectAutocomplete-inputWrapper {
+.PreactComboBox-inputWrapper {
   flex: 1;
   position: relative;
   min-width: 0;
@@ -38,7 +39,7 @@
   align-items: center;
 }
 
-.MultiSelectAutocomplete-input {
+.PreactComboBox-input {
   width: 100%;
   border: none;
   outline: none;
@@ -46,11 +47,12 @@
   background: transparent;
   text-overflow: ellipsis;
 }
-.MultiSelectAutocomplete--disabled .MultiSelectAutocomplete-input {
+/* FIXME: remove nesting */
+.PreactComboBox--disabled .PreactComboBox-input {
   cursor: not-allowed;
 }
 
-.MultiSelectAutocomplete-options {
+.PreactComboBox-options {
   top: 2px;
   list-style-type: none;
   padding: 0;
@@ -64,11 +66,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 100;
 }
-.MultiSelectAutocomplete-options[hidden] {
+.PreactComboBox-options[hidden] {
   display: none;
 }
 
-.MultiSelectAutocomplete-option {
+.PreactComboBox-option {
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
@@ -79,28 +81,28 @@
   contain-intrinsic-height: auto 35px;
 }
 
-.MultiSelectAutocomplete-option:hover {
+.PreactComboBox-option:hover {
   background-color: #f0f0f0;
 }
 
-.MultiSelectAutocomplete-option--active {
+.PreactComboBox-option--active {
   background-color: #e0e0e0;
 }
 
-.MultiSelectAutocomplete-labelFlex {
+.PreactComboBox-labelFlex {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-.MultiSelectAutocomplete-value {
+.PreactComboBox-value {
   font-size: 12px;
   color: #666;
   margin-left: 8px;
 }
 
-.MultiSelectAutocomplete-valueTooltip {
+.PreactComboBox-valueTooltip {
   background-color: #000;
   color: #fff;
   padding: 4px 8px;
@@ -112,7 +114,7 @@
   transition: opacity 0.2s ease-in-out;
 }
 
-.MultiSelectAutocomplete-srOnly {
+.PreactComboBox-srOnly {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -124,7 +126,7 @@
   border-width: 0;
 }
 
-.MultiSelectAutocomplete-warningIcon {
+.PreactComboBox-warningIcon {
   width: 18px;
   height: 18px;
   fill: #f44336;
@@ -132,7 +134,7 @@
   margin: 0 3px;
 }
 
-.MultiSelectAutocomplete-clearButton {
+.PreactComboBox-clearButton {
   background: none;
   border: none;
   cursor: pointer;
@@ -149,11 +151,11 @@
   margin-left: 3px;
 }
 
-.MultiSelectAutocomplete-clearButton:hover {
+.PreactComboBox-clearButton:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.MultiSelectAutocomplete-chevron {
+.PreactComboBox-chevron {
   width: 18px;
   height: 18px;
   fill: #666;
@@ -161,7 +163,7 @@
   margin-left: 2px;
 }
 
-.MultiSelectAutocomplete-checkbox {
+.PreactComboBox-checkbox {
   width: 16px;
   height: 16px;
   border: 1px solid #ccc;
@@ -172,16 +174,17 @@
   justify-content: center;
 }
 
-.MultiSelectAutocomplete-option--selected .MultiSelectAutocomplete-checkbox {
+/* FIXME: remove nesting */
+.PreactComboBox-option--selected .PreactComboBox-checkbox {
   background: #007bff;
   border-color: #007bff;
   color: white;
 }
 
-.MultiSelectAutocomplete-tooltipValue {
+.PreactComboBox-tooltipValue {
   padding: 2px 0;
 }
 
-.MultiSelectAutocomplete-tooltipValue:not(:last-child) {
+.PreactComboBox-tooltipValue:not(:last-child) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

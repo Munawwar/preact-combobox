@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>React MultiSelectAutocomplete Example</title>
+  <title>Preact Combobox Example</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../dist/esm/MultiSelectAutocomplete.css">
+  <link rel="stylesheet" href="../dist/esm/PreactComboBox.css">
   <style>
     body {
       font-family: 'Roboto', sans-serif;
@@ -19,8 +19,10 @@
   <script type="importmap">
     {
       "imports": {
-        "react": "https://esm.sh/react@16?dev",
-        "react-dom": "https://esm.sh/react-dom@16?dev",
+        "preact": "https://esm.sh/preact@10?dev",
+        "preact/hooks": "https://esm.sh/preact@10/hooks?dev",
+        "preact/jsx-runtime": "https://esm.sh/preact@10/jsx-runtime?dev",
+        "preact/compat": "https://esm.sh/preact@10/compat?dev",
         "htm": "https://esm.sh/htm?dev",
         "@popperjs/core": "https://esm.sh/@popperjs/core@2?dev"
       }
@@ -29,9 +31,9 @@
 </head>
 
 <body>
-  <h2>React 16 Example</h2>
+  <h2>Preact Example</h2>
   <div id="root"></div>
-  <script type="module" src="./example-react-16.js"></script>
+  <script type="module" src="./example.js"></script>
 </body>
 
 </html>

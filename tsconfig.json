@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    // Base Options recommended for all projects
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    // Enable strict type checking so you can catch bugs early
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    // We are not transpiling, so preserve our source code and do not emit files
+    "module": "preserve",
+    "noEmit": true,
+    // Include the DOM types
+    "lib": ["ESNext", "dom", "dom.iterable"],
+    // preact specific options
+    "jsxFactory": "h",
+    "jsxFragmentFactory": "Fragment",
+    "jsxImportSource": "preact"
+  },
+  // Include the necessary files for your project
+  "include": ["**/*.jsx"],
+  "exclude": ["node_modules"]
+}

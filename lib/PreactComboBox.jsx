@@ -1,8 +1,7 @@
-// @ts-check
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { createPortal } from "preact/compat";
 import { createPopper } from "@popperjs/core";
-import "./MultiSelectAutocomplete.css";
+import "./PreactComboBox.css";
 
 // --- types ---
 /**
@@ -29,16 +28,16 @@ import "./MultiSelectAutocomplete.css";
  */
 
 /**
- * @typedef {import("react").ReactNode} ReactNode
+ * @typedef {import("preact").VNode} VNode
  */
 
 /**
- * @typedef {(label: ReactNode[], value: ReactNode[], match: OptionMatch, language: string, showValue: boolean) => ReactNode} LabelTransformFunction
- * @typedef {(label: string) => ReactNode} ValueTransformFunction
+ * @typedef {(label: VNode[], value: VNode[], match: OptionMatch, language: string, showValue: boolean) => VNode} LabelTransformFunction
+ * @typedef {(label: string) => VNode} ValueTransformFunction
  */
 
 /**
- * @typedef {Object} MultiSelectAutocompleteProps
+ * @typedef {Object} PreactComboboxProps
  * @property {string} id The id of the component
  * @property {boolean} [multiple=true] Multi-select or single-select mode
  * @property {Option[]
@@ -97,7 +96,7 @@ function sortValuesToTop(options, values) {
 /**
  * @param {Object} props - Props for the PopperContent component
  * @param {HTMLElement} [props.parent=document.body] The parent element to render the PopperContent component
- * @param {React.ReactNode} props.children The children to render
+ * @param {VNode[]} props.children The children to render
  */
 const Portal = ({ parent = document.body, children }) => createPortal(children, parent);
 
@@ -395,10 +394,10 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 function defaultLabelTransform(labelNodes, valueNodes, match, language, showValue) {
   const isLabelSameAsValue = match.value === match.label;
   return (
-    <span className="MultiSelectAutocomplete-labelFlex">
+    <span className="PreactComboBox-labelFlex">
       <span>{labelNodes}</span>
       {isLabelSameAsValue || !showValue ? null : (
-        <span className="MultiSelectAutocomplete-value">({valueNodes})</span>
+        <span className="PreactComboBox-value">({valueNodes})</span>
       )}
     </span>
   );
@@ -414,10 +413,10 @@ function defaultValueTransform(label) {
 /**
  * @param {OptionMatch['matchSlices']} matchSlices
  * @param {string} text
- * @returns {ReactNode[]}
+ * @returns {VNode[]}
  */
 function matchSlicesToNodes(matchSlices, text) {
-  const nodes = /** @type {ReactNode[]} */ ([]);
+  const nodes = /** @type {VNode[]} */ ([]);
   let index = 0;
   matchSlices.map((slice) => {
     const [start, end] = slice;
@@ -508,10 +507,10 @@ function useMemoArray(newState) {
 const defaultArrayValue = [];
 
 /**
- * MultiSelectAutocomplete component
- * @param {MultiSelectAutocompleteProps} props - Component props
+ * PreactComboBox component
+ * @param {PreactComboboxProps} props - Component props
  */
-const MultiSelectAutocomplete = ({
+const PreactComboBox = ({
   id,
   multiple = true,
   allowedOptions,
@@ -758,11 +757,14 @@ const MultiSelectAutocomplete = ({
     [onChange, singleSelectValue, values, setIsDropdownOpen],
   );
 
-  /**
-   * Handle input change
-   * @param {React.ChangeEvent<HTMLInputElement>} e - Input change event
-   */
-  const handleInputChange = useCallback((e) => setInputValue(e.target.value), []);
+  const handleInputChange = useCallback(
+    /**
+     * Handle input change
+     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     */
+    (e) => setInputValue(e.currentTarget.value),
+    [],
+  );
 
   const handleInputFocus = useCallback(() => {
     clearTimeout(blurTimeoutRef.current);
@@ -1000,15 +1002,15 @@ const MultiSelectAutocomplete = ({
 
   return (
     <div
-      className={`MultiSelectAutocomplete ${disabled ? "MultiSelectAutocomplete--disabled" : ""} ${className}`}
+      className={`PreactComboBox ${disabled ? "PreactComboBox--disabled" : ""} ${className}`}
       aria-disabled={disabled}
       onClick={() => inputRef.current?.focus()}
       id={`${id}-root`}
       ref={rootElementRef}
       {...rootElementProps}
     >
-      <div className="MultiSelectAutocomplete-field">
-        <div className="MultiSelectAutocomplete-inputWrapper">
+      <div className="PreactComboBox-field">
+        <div className="PreactComboBox-inputWrapper">
           <input
             ref={inputRef}
             type="text"
@@ -1028,7 +1030,7 @@ const MultiSelectAutocomplete = ({
               blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
             }}
             onPaste={handlePaste}
-            className={`MultiSelectAutocomplete-input ${multiple ? "MultiSelectAutocomplete-input--multiple" : ""}`}
+            className={`PreactComboBox-input ${multiple ? "PreactComboBox-input--multiple" : ""}`}
             role="combobox"
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
@@ -1041,7 +1043,7 @@ const MultiSelectAutocomplete = ({
           {!multiple && singleSelectValue && !disabled && !required ? (
             <button
               type="button"
-              className="MultiSelectAutocomplete-clearButton"
+              className="PreactComboBox-clearButton"
               aria-label="Clear value"
               onClick={handleClearValue}
             >
@@ -1052,7 +1054,7 @@ const MultiSelectAutocomplete = ({
           {invalidValues.length > 0 && (
             <svg
               ref={warningIconRef}
-              className="MultiSelectAutocomplete-warningIcon"
+              className="PreactComboBox-warningIcon"
               viewBox="0 0 24 24"
               width="24"
               height="24"
@@ -1064,11 +1066,11 @@ const MultiSelectAutocomplete = ({
             </svg>
           )}
           {multiple && values && values.length > 1 && (
-            <span className="MultiSelectAutocomplete-badge">{values.length}</span>
+            <span className="PreactComboBox-badge">{values.length}</span>
           )}
           {/* TODO: ability to customize the chevron icon? */}
           <svg
-            className="MultiSelectAutocomplete-chevron"
+            className="PreactComboBox-chevron"
             viewBox="0 0 24 24"
             width="24"
             height="24"
@@ -1081,7 +1083,7 @@ const MultiSelectAutocomplete = ({
 
       <Portal parent={portal}>
         <ul
-          className="MultiSelectAutocomplete-options"
+          className="PreactComboBox-options"
           role="listbox"
           id={`${id}-options-listbox`}
           hidden={!getIsDropdownOpen()}
@@ -1089,7 +1091,7 @@ const MultiSelectAutocomplete = ({
           data-test-id={`${id}-autocomplete-options`}
         >
           {isLoading ? (
-            <li className="MultiSelectAutocomplete-option">Loading...</li>
+            <li className="PreactComboBox-option">Loading...</li>
           ) : (
             <>
               {!isLoading &&
@@ -1101,10 +1103,8 @@ const MultiSelectAutocomplete = ({
                     key={inputTrimmed}
                     id="add-option"
                     className={[
-                      "MultiSelectAutocomplete-option",
-                      activeDescendant === "add-option"
-                        ? "MultiSelectAutocomplete-option--active"
-                        : "",
+                      "PreactComboBox-option",
+                      activeDescendant === "add-option" ? "PreactComboBox-option--active" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -1126,9 +1126,9 @@ const MultiSelectAutocomplete = ({
                 const isActiveOption = activeDescendant === `option-${option.value}`;
                 const isSelected = arrayValues.includes(option.value);
                 const optionClasses = [
-                  "MultiSelectAutocomplete-option",
-                  isActiveOption ? "MultiSelectAutocomplete-option--active" : "",
-                  isSelected ? "MultiSelectAutocomplete-option--selected" : "",
+                  "PreactComboBox-option",
+                  isActiveOption ? "PreactComboBox-option--active" : "",
+                  isSelected ? "PreactComboBox-option--selected" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -1164,9 +1164,9 @@ const MultiSelectAutocomplete = ({
                     }}
                   >
                     {isActiveOption && (
-                      <span className="MultiSelectAutocomplete-srOnly">Current option:</span>
+                      <span className="PreactComboBox-srOnly">Current option:</span>
                     )}
-                    <span className="MultiSelectAutocomplete-checkbox">
+                    <span className="PreactComboBox-checkbox">
                       {isSelected && <span aria-hidden="true">✓</span>}
                     </span>
                     {highlightMatches(option, labelTransform, language, showValue)}
@@ -1176,10 +1176,10 @@ const MultiSelectAutocomplete = ({
               {filteredOptions.length === 0 &&
                 !isLoading &&
                 (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
-                  <li className="MultiSelectAutocomplete-option">No options available</li>
+                  <li className="PreactComboBox-option">No options available</li>
                 )}
               {filteredOptions.length === 100 && (
-                <li className="MultiSelectAutocomplete-option">...type to load more options</li>
+                <li className="PreactComboBox-option">...type to load more options</li>
               )}
             </>
           )}
@@ -1204,14 +1204,10 @@ const MultiSelectAutocomplete = ({
       </select>
       {invalidValues.length > 0 && warningIconHovered && (
         <Portal parent={portal}>
-          <div
-            className="MultiSelectAutocomplete-valueTooltip"
-            role="tooltip"
-            ref={tooltipPopperRef}
-          >
+          <div className="PreactComboBox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
             Invalid values:
             {invalidValues.map((value) => (
-              <div key={value} className="MultiSelectAutocomplete-tooltipValue">
+              <div key={value} className="PreactComboBox-tooltipValue">
                 {value}
               </div>
             ))}
@@ -1222,4 +1218,4 @@ const MultiSelectAutocomplete = ({
   );
 };
 
-export default MultiSelectAutocomplete;
+export default PreactComboBox;

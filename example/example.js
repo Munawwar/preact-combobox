@@ -1,9 +1,9 @@
 import htm from "htm";
-import { createElement, useState } from "react";
-import { render } from "react-dom";
+import { render, createElement } from "preact";
+import { useState } from "preact/hooks";
 const html = htm.bind(createElement);
 
-import MultiSelectAutocomplete from "../dist/esm/MultiSelectAutocomplete.js";
+import PreactComboBox from "../dist/esm/PreactComboBox.js";
 
 let allowedOptions = [
   { label: "United States of America", value: "usa" },
@@ -29,7 +29,7 @@ function App() {
   return html`
     <form>
         <h3>Multi-select, Free text allowed</h3>
-        <${MultiSelectAutocomplete}
+        <${PreactComboBox}
           id="example-1"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
@@ -41,7 +41,7 @@ function App() {
         <br/>
 
         <h3>Free text not allowed (with invalid values)</h3>
-        <${MultiSelectAutocomplete}
+        <${PreactComboBox}
           id="example-2"
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
@@ -51,7 +51,7 @@ function App() {
         <br/>
 
         <h3>Disabled</h3>
-        <${MultiSelectAutocomplete}
+        <${PreactComboBox}
           id="example-3"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
@@ -61,7 +61,7 @@ function App() {
         <br/>
 
         <h3>Single-select, No free text allowed</h3>
-        <${MultiSelectAutocomplete}
+        <${PreactComboBox}
           id="example-4"
           multiple=${false}
           allowedOptions=${allowedOptions}
