@@ -1,6 +1,6 @@
 {
   "name": "preact-combo-box",
-  "version": "0.0.1-beta.1",
+  "version": "0.0.1-beta.2",
   "description": "Preact Multi-select Combo Box component",
   "main": "dist/cjs/PreactComboBox.js",
   "module": "dist/esm/PreactComboBox.js",
@@ -32,7 +32,7 @@
   ],
   "author": "Munawwar",
   "license": "MIT",
-  "repository": "https://github.com/Munawwar/preact-multiselect",
+  "repository": "https://github.com/Munawwar/preact-combo-box",
   "devDependencies": {
     "@biomejs/biome": "1.8.3",
     "@popperjs/core": "^2",
