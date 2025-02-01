@@ -15,7 +15,9 @@
     "noImplicitOverride": true,
     // We are not transpiling, so preserve our source code and do not emit files
     "module": "preserve",
-    "noEmit": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "lib/",
     // Include the DOM types
     "lib": ["ESNext", "dom", "dom.iterable"],
     // preact specific options
@@ -24,6 +26,6 @@
     "jsxImportSource": "preact"
   },
   // Include the necessary files for your project
-  "include": ["**/*.jsx"],
+  "include": ["lib/*.jsx"],
   "exclude": ["node_modules"]
 }
