@@ -4,6 +4,8 @@ Work-in-progress: DO NOT USE ON PRODUCTION!
 
 A Preact multi-select combo box component
 
+![screenshot](./screenshot.webp)
+
 ## Installation
 
 ```bash
