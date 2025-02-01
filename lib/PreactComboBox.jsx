@@ -52,7 +52,7 @@ import "./PreactComboBox.css";
  * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
  * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
  * recognized by Intl.Segmenter and Intl.Collator
- * @property {boolean} [showValue=false]
+ * @property {boolean} [showValue=false] experimental feature.
  * @property {boolean} [disabled=false] Disable the component
  * @property {boolean} [required=false] Is required for form submission
  * @property {string} [name] name to be set on hidden select element
@@ -391,7 +391,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 /**
  * @type {LabelTransformFunction}
  */
-function defaultLabelTransform(labelNodes, valueNodes, match, language, showValue) {
+export function defaultLabelTransform(labelNodes, valueNodes, match, language, showValue) {
   const isLabelSameAsValue = match.value === match.label;
   return (
     <span className="PreactComboBox-labelFlex">
@@ -503,6 +503,18 @@ function useMemoArray(newState) {
   }
   return state.current;
 }
+
+const warningIcon = (
+  <svg
+    className="PreactComboBox-warningIcon"
+    viewBox="0 0 24 24"
+    width="24"
+    height="24"
+    aria-hidden="true"
+  >
+    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+  </svg>
+);
 
 const defaultArrayValue = [];
 
@@ -1009,7 +1021,7 @@ const PreactComboBox = ({
       ref={rootElementRef}
       {...rootElementProps}
     >
-      <div className="PreactComboBox-field">
+      <div className={`PreactComboBox-field ${disabled ? "PreactComboBox-field--disabled" : ""}`}>
         <div className="PreactComboBox-inputWrapper">
           <input
             ref={inputRef}
@@ -1030,7 +1042,7 @@ const PreactComboBox = ({
               blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
             }}
             onPaste={handlePaste}
-            className={`PreactComboBox-input ${multiple ? "PreactComboBox-input--multiple" : ""}`}
+            className={`PreactComboBox-input ${multiple ? "PreactComboBox-input--multiple" : ""} ${disabled ? "PreactComboBox-input--disabled" : ""}`}
             role="combobox"
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
@@ -1125,10 +1137,12 @@ const PreactComboBox = ({
               {filteredOptions.map((option) => {
                 const isActiveOption = activeDescendant === `option-${option.value}`;
                 const isSelected = arrayValues.includes(option.value);
+                const isInvalid = invalidValues.includes(option.value);
                 const optionClasses = [
                   "PreactComboBox-option",
                   isActiveOption ? "PreactComboBox-option--active" : "",
                   isSelected ? "PreactComboBox-option--selected" : "",
+                  isInvalid ? "PreactComboBox-option--invalid" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -1166,10 +1180,13 @@ const PreactComboBox = ({
                     {isActiveOption && (
                       <span className="PreactComboBox-srOnly">Current option:</span>
                     )}
-                    <span className="PreactComboBox-checkbox">
+                    <span
+                      className={`PreactComboBox-checkbox ${isSelected ? "PreactComboBox-checkbox--selected" : ""}`}
+                    >
                       {isSelected && <span aria-hidden="true">✓</span>}
                     </span>
                     {highlightMatches(option, labelTransform, language, showValue)}
+                    {isInvalid && warningIcon}
                   </li>
                 );
               })}

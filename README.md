@@ -1,17 +1,17 @@
-# MultiSelectAutocomplete
+# PreactComboBox
 
-A React/Preact autocomplete component
+A Preact autocomplete component
 
 ## Installation
 
 ```bash
-npm add react-multiselect-autocomplete @popperjs/core
+npm add preact-combo-box @popperjs/core
 ```
 
 ## Usage
 
 ```jsx
-import MultiSelectAutocomplete from "react-multiselect-autocomplete";
+import PreactComboBox from "preact-combo-box";
 
 const options = [
   { label: "Option 1", value: "option-1" },
@@ -23,10 +23,28 @@ function App() {
   const [values, setValues] = useState([]);
 
   return (
-    <MultiSelectAutocomplete
+    <PreactComboBox
       allowedOptions={options}
       values={values}
       onChange={setValues}
+
+      // Optional props (defaults shown)
+      className=""
+      placeholder=""
+      allowFreeText={false}
+      disabled={false}
+      required={false}
+      // any language that Intl.Collator and Intl.Segmenter specifications support for word splitting and matching
+      language="en"
+      // name attribute. Useful for form submission
+      name="my-autocomplete"
+      // in case you want to place the dropdown in a different element for z-index management
+      portal={document.body}
+
+      // more props for important elements
+      rootElementProps={{}}
+      inputProps={{}}
+      selectElementProps={{}}
     />
   );
 }

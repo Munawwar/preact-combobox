@@ -15,8 +15,7 @@
   border-radius: 4px;
   background: #fff;
 }
-/* FIXME: remove nesting */
-.PreactComboBox--disabled .PreactComboBox-field {
+.PreactComboBox-field--disabled {
   background-color: #f0f0f0;
   cursor: not-allowed;
 }
@@ -47,8 +46,7 @@
   background: transparent;
   text-overflow: ellipsis;
 }
-/* FIXME: remove nesting */
-.PreactComboBox--disabled .PreactComboBox-input {
+.PreactComboBox-input--disabled {
   cursor: not-allowed;
 }
 
@@ -173,9 +171,7 @@
   align-items: center;
   justify-content: center;
 }
-
-/* FIXME: remove nesting */
-.PreactComboBox-option--selected .PreactComboBox-checkbox {
+.PreactComboBox-checkbox--selected {
   background: #007bff;
   border-color: #007bff;
   color: white;
