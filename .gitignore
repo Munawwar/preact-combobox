@@ -5,3 +5,4 @@ __ignore__
 # Misc
 .DS_Store
 npm-debug.log*
+.vscode
