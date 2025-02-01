@@ -69,7 +69,6 @@ function App() {
 ## Run Demo
 
 ```bash
-npm run watch
-# on another terminal
-npm run example
+npm run dev
+# open http://localhost:3050/example/example.html on a browser
 ```
