@@ -9,6 +9,10 @@
       "recommended": true,
       "a11y": {
         "noNoninteractiveElementToInteractiveRole": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
       }
     },
     "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"]

@@ -129,4 +129,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, selectElementProps, showValue, labelTransform, valueTransform, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, selectElementProps, showValue, labelTransform, }: PreactComboboxProps): import("preact").JSX.Element;

@@ -392,7 +392,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 /**
  * @type {LabelTransformFunction}
  */
-export function defaultLabelTransform(labelNodes, valueNodes, match, language, showValue) {
+export function defaultLabelTransform(labelNodes, valueNodes, match, _language, showValue) {
   const isLabelSameAsValue = match.value === match.label;
   return (
     <span className="PreactCombobox-labelFlex">
@@ -404,12 +404,12 @@ export function defaultLabelTransform(labelNodes, valueNodes, match, language, s
   );
 }
 
-/**
- * @type {ValueTransformFunction}
- */
-function defaultValueTransform(label) {
-  return label;
-}
+// /**
+//  * @type {ValueTransformFunction}
+//  */
+// function defaultValueTransform(label) {
+//   return label;
+// }
 
 /**
  * @param {OptionMatch['matchSlices']} matchSlices
@@ -457,33 +457,6 @@ function highlightMatches(match, labelTransform, language, showValue) {
   return labelTransform([label], [value], match, language, showValue);
 }
 
-function isEqualArray(array1, array2) {
-  if (!Array.isArray(array1) || !Array.isArray(array2) || array1.length !== array2.length) {
-    return false;
-  }
-  return array2.every((item, index) => item === array1[index]);
-}
-
-// return same state if state hasn't changed.
-// sometime we need to be efficient in change detection so as to reduce UI re-renders
-/**
- * @template T
- * @param {T[]} newState
- * @returns {T[]}
- */
-function useMemoArray(newState) {
-  const state = useRef(newState);
-  if (!Array.isArray(newState) && !Array.isArray(state.current) && newState !== state.current) {
-    state.current = newState;
-    return newState;
-  }
-  if (!isEqualArray(newState, state.current)) {
-    state.current = newState;
-    return newState;
-  }
-  return state.current;
-}
-
 const warningIcon = (
   <svg
     className="PreactCombobox-warningIcon"
@@ -521,7 +494,8 @@ const PreactCombobox = ({
   selectElementProps,
   showValue = true,
   labelTransform = defaultLabelTransform,
-  valueTransform = defaultValueTransform,
+  // TODO: implement this
+  // valueTransform = defaultValueTransform,
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -795,33 +769,33 @@ const PreactCombobox = ({
    * @param {string} option The option to remove
    * @param {boolean} [focusNext=false] Whether to focus the next button in the tab order or to focus the autocomplete input field
    */
-  const handleRemoveOption = useCallback(
-    (option, focusNext = false) => {
-      if (!values) {
-        // single-select mode
-        const newValue = "";
-        inputRef.current?.focus();
-        onChange(newValue);
-        undoStack.current.push([newValue]);
-        redoStack.current = [];
-      } else {
-        // multi-select mode
-        const newValues = values.filter((val) => val !== option);
-        const nextEl = document.activeElement?.closest("span")?.nextElementSibling;
-        if (focusNext && nextEl && nextEl.tagName === "SPAN" && nextEl.querySelector("button")) {
-          nextEl.querySelector("button")?.focus();
-        } else {
-          inputRef.current?.focus();
-        }
-        onChange(newValues);
-        undoStack.current.push(values);
-        redoStack.current = [];
-      }
-      clearTimeout(blurTimeoutRef.current);
-      blurTimeoutRef.current = undefined;
-    },
-    [onChange, values],
-  );
+  // const handleRemoveOption = useCallback(
+  //   (option, focusNext = false) => {
+  //     if (!values) {
+  //       // single-select mode
+  //       const newValue = "";
+  //       inputRef.current?.focus();
+  //       onChange(newValue);
+  //       undoStack.current.push([newValue]);
+  //       redoStack.current = [];
+  //     } else {
+  //       // multi-select mode
+  //       const newValues = values.filter((val) => val !== option);
+  //       const nextEl = document.activeElement?.closest("span")?.nextElementSibling;
+  //       if (focusNext && nextEl && nextEl.tagName === "SPAN" && nextEl.querySelector("button")) {
+  //         nextEl.querySelector("button")?.focus();
+  //       } else {
+  //         inputRef.current?.focus();
+  //       }
+  //       onChange(newValues);
+  //       undoStack.current.push(values);
+  //       redoStack.current = [];
+  //     }
+  //     clearTimeout(blurTimeoutRef.current);
+  //     blurTimeoutRef.current = undefined;
+  //   },
+  //   [onChange, values],
+  // );
 
   const handleAddNewOption = useCallback(
     (newValue) => {

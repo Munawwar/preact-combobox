@@ -13,7 +13,6 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
-    "noUnusedLocals": true,
     // We are not transpiling, so preserve our source code and do not emit files
     "module": "preserve",
     "declaration": true,
