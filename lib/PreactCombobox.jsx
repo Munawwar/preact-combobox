@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { createPortal } from "preact/compat";
 import { createPopper } from "@popperjs/core";
-import "./PreactComboBox.css";
+import "./PreactCombobox.css";
 
 // --- types ---
 /**
@@ -394,10 +394,10 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 export function defaultLabelTransform(labelNodes, valueNodes, match, language, showValue) {
   const isLabelSameAsValue = match.value === match.label;
   return (
-    <span className="PreactComboBox-labelFlex">
+    <span className="PreactCombobox-labelFlex">
       <span>{labelNodes}</span>
       {isLabelSameAsValue || !showValue ? null : (
-        <span className="PreactComboBox-value">({valueNodes})</span>
+        <span className="PreactCombobox-value">({valueNodes})</span>
       )}
     </span>
   );
@@ -506,7 +506,7 @@ function useMemoArray(newState) {
 
 const warningIcon = (
   <svg
-    className="PreactComboBox-warningIcon"
+    className="PreactCombobox-warningIcon"
     viewBox="0 0 24 24"
     width="24"
     height="24"
@@ -519,10 +519,10 @@ const warningIcon = (
 const defaultArrayValue = [];
 
 /**
- * PreactComboBox component
+ * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-const PreactComboBox = ({
+const PreactCombobox = ({
   id,
   multiple = true,
   allowedOptions,
@@ -1014,15 +1014,15 @@ const PreactComboBox = ({
 
   return (
     <div
-      className={`PreactComboBox ${disabled ? "PreactComboBox--disabled" : ""} ${className}`}
+      className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className}`}
       aria-disabled={disabled}
       onClick={() => inputRef.current?.focus()}
       id={`${id}-root`}
       ref={rootElementRef}
       {...rootElementProps}
     >
-      <div className={`PreactComboBox-field ${disabled ? "PreactComboBox-field--disabled" : ""}`}>
-        <div className="PreactComboBox-inputWrapper">
+      <div className={`PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`}>
+        <div className="PreactCombobox-inputWrapper">
           <input
             ref={inputRef}
             type="text"
@@ -1042,7 +1042,7 @@ const PreactComboBox = ({
               blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
             }}
             onPaste={handlePaste}
-            className={`PreactComboBox-input ${multiple ? "PreactComboBox-input--multiple" : ""} ${disabled ? "PreactComboBox-input--disabled" : ""}`}
+            className={`PreactCombobox-input ${multiple ? "PreactCombobox-input--multiple" : ""} ${disabled ? "PreactCombobox-input--disabled" : ""}`}
             role="combobox"
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
@@ -1055,7 +1055,7 @@ const PreactComboBox = ({
           {!multiple && singleSelectValue && !disabled && !required ? (
             <button
               type="button"
-              className="PreactComboBox-clearButton"
+              className="PreactCombobox-clearButton"
               aria-label="Clear value"
               onClick={handleClearValue}
             >
@@ -1066,7 +1066,7 @@ const PreactComboBox = ({
           {invalidValues.length > 0 && (
             <svg
               ref={warningIconRef}
-              className="PreactComboBox-warningIcon"
+              className="PreactCombobox-warningIcon"
               viewBox="0 0 24 24"
               width="24"
               height="24"
@@ -1078,11 +1078,11 @@ const PreactComboBox = ({
             </svg>
           )}
           {multiple && values && values.length > 1 && (
-            <span className="PreactComboBox-badge">{values.length}</span>
+            <span className="PreactCombobox-badge">{values.length}</span>
           )}
           {/* TODO: ability to customize the chevron icon? */}
           <svg
-            className="PreactComboBox-chevron"
+            className="PreactCombobox-chevron"
             viewBox="0 0 24 24"
             width="24"
             height="24"
@@ -1095,7 +1095,7 @@ const PreactComboBox = ({
 
       <Portal parent={portal}>
         <ul
-          className="PreactComboBox-options"
+          className="PreactCombobox-options"
           role="listbox"
           id={`${id}-options-listbox`}
           hidden={!getIsDropdownOpen()}
@@ -1103,7 +1103,7 @@ const PreactComboBox = ({
           data-test-id={`${id}-autocomplete-options`}
         >
           {isLoading ? (
-            <li className="PreactComboBox-option">Loading...</li>
+            <li className="PreactCombobox-option">Loading...</li>
           ) : (
             <>
               {!isLoading &&
@@ -1115,8 +1115,8 @@ const PreactComboBox = ({
                     key={inputTrimmed}
                     id="add-option"
                     className={[
-                      "PreactComboBox-option",
-                      activeDescendant === "add-option" ? "PreactComboBox-option--active" : "",
+                      "PreactCombobox-option",
+                      activeDescendant === "add-option" ? "PreactCombobox-option--active" : "",
                     ]
                       .filter(Boolean)
                       .join(" ")}
@@ -1139,10 +1139,10 @@ const PreactComboBox = ({
                 const isSelected = arrayValues.includes(option.value);
                 const isInvalid = invalidValues.includes(option.value);
                 const optionClasses = [
-                  "PreactComboBox-option",
-                  isActiveOption ? "PreactComboBox-option--active" : "",
-                  isSelected ? "PreactComboBox-option--selected" : "",
-                  isInvalid ? "PreactComboBox-option--invalid" : "",
+                  "PreactCombobox-option",
+                  isActiveOption ? "PreactCombobox-option--active" : "",
+                  isSelected ? "PreactCombobox-option--selected" : "",
+                  isInvalid ? "PreactCombobox-option--invalid" : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -1178,10 +1178,10 @@ const PreactComboBox = ({
                     }}
                   >
                     {isActiveOption && (
-                      <span className="PreactComboBox-srOnly">Current option:</span>
+                      <span className="PreactCombobox-srOnly">Current option:</span>
                     )}
                     <span
-                      className={`PreactComboBox-checkbox ${isSelected ? "PreactComboBox-checkbox--selected" : ""}`}
+                      className={`PreactCombobox-checkbox ${isSelected ? "PreactCombobox-checkbox--selected" : ""}`}
                     >
                       {isSelected && <span aria-hidden="true">✓</span>}
                     </span>
@@ -1193,10 +1193,10 @@ const PreactComboBox = ({
               {filteredOptions.length === 0 &&
                 !isLoading &&
                 (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
-                  <li className="PreactComboBox-option">No options available</li>
+                  <li className="PreactCombobox-option">No options available</li>
                 )}
               {filteredOptions.length === 100 && (
-                <li className="PreactComboBox-option">...type to load more options</li>
+                <li className="PreactCombobox-option">...type to load more options</li>
               )}
             </>
           )}
@@ -1221,10 +1221,10 @@ const PreactComboBox = ({
       </select>
       {invalidValues.length > 0 && warningIconHovered && (
         <Portal parent={portal}>
-          <div className="PreactComboBox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
+          <div className="PreactCombobox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
             Invalid values:
             {invalidValues.map((value) => (
-              <div key={value} className="PreactComboBox-tooltipValue">
+              <div key={value} className="PreactCombobox-tooltipValue">
                 {value}
               </div>
             ))}
@@ -1235,4 +1235,4 @@ const PreactComboBox = ({
   );
 };
 
-export default PreactComboBox;
+export default PreactCombobox;

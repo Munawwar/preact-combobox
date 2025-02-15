@@ -1,11 +1,11 @@
-.PreactComboBox {
+.PreactCombobox {
   position: relative;
   width: 100%;
   font-family: 'Roboto', sans-serif;
   cursor: pointer;
 }
 
-.PreactComboBox-field {
+.PreactCombobox-field {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -15,12 +15,12 @@
   border-radius: 4px;
   background: #fff;
 }
-.PreactComboBox-field--disabled {
+.PreactCombobox-field--disabled {
   background-color: #f0f0f0;
   cursor: not-allowed;
 }
 
-.PreactComboBox-badge {
+.PreactCombobox-badge {
   background: #e0e0e0;
   border-radius: 12px;
   padding: 2px 8px;
@@ -30,7 +30,7 @@
   margin: 0 3px;
 }
 
-.PreactComboBox-inputWrapper {
+.PreactCombobox-inputWrapper {
   flex: 1;
   position: relative;
   min-width: 0;
@@ -38,7 +38,7 @@
   align-items: center;
 }
 
-.PreactComboBox-input {
+.PreactCombobox-input {
   width: 100%;
   border: none;
   outline: none;
@@ -46,11 +46,11 @@
   background: transparent;
   text-overflow: ellipsis;
 }
-.PreactComboBox-input--disabled {
+.PreactCombobox-input--disabled {
   cursor: not-allowed;
 }
 
-.PreactComboBox-options {
+.PreactCombobox-options {
   top: 2px;
   list-style-type: none;
   padding: 0;
@@ -64,11 +64,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   z-index: 100;
 }
-.PreactComboBox-options[hidden] {
+.PreactCombobox-options[hidden] {
   display: none;
 }
 
-.PreactComboBox-option {
+.PreactCombobox-option {
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
@@ -79,28 +79,28 @@
   contain-intrinsic-height: auto 35px;
 }
 
-.PreactComboBox-option:hover {
+.PreactCombobox-option:hover {
   background-color: #f0f0f0;
 }
 
-.PreactComboBox-option--active {
+.PreactCombobox-option--active {
   background-color: #e0e0e0;
 }
 
-.PreactComboBox-labelFlex {
+.PreactCombobox-labelFlex {
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
 }
 
-.PreactComboBox-value {
+.PreactCombobox-value {
   font-size: 12px;
   color: #666;
   margin-left: 8px;
 }
 
-.PreactComboBox-valueTooltip {
+.PreactCombobox-valueTooltip {
   background-color: #000;
   color: #fff;
   padding: 4px 8px;
@@ -112,7 +112,7 @@
   transition: opacity 0.2s ease-in-out;
 }
 
-.PreactComboBox-srOnly {
+.PreactCombobox-srOnly {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -124,7 +124,7 @@
   border-width: 0;
 }
 
-.PreactComboBox-warningIcon {
+.PreactCombobox-warningIcon {
   width: 18px;
   height: 18px;
   fill: #f44336;
@@ -132,7 +132,7 @@
   margin: 0 3px;
 }
 
-.PreactComboBox-clearButton {
+.PreactCombobox-clearButton {
   background: none;
   border: none;
   cursor: pointer;
@@ -149,11 +149,11 @@
   margin-left: 3px;
 }
 
-.PreactComboBox-clearButton:hover {
+.PreactCombobox-clearButton:hover {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.PreactComboBox-chevron {
+.PreactCombobox-chevron {
   width: 18px;
   height: 18px;
   fill: #666;
@@ -161,7 +161,7 @@
   margin-left: 2px;
 }
 
-.PreactComboBox-checkbox {
+.PreactCombobox-checkbox {
   width: 16px;
   height: 16px;
   border: 1px solid #ccc;
@@ -171,16 +171,16 @@
   align-items: center;
   justify-content: center;
 }
-.PreactComboBox-checkbox--selected {
+.PreactCombobox-checkbox--selected {
   background: #007bff;
   border-color: #007bff;
   color: white;
 }
 
-.PreactComboBox-tooltipValue {
+.PreactCombobox-tooltipValue {
   padding: 2px 0;
 }
 
-.PreactComboBox-tooltipValue:not(:last-child) {
+.PreactCombobox-tooltipValue:not(:last-child) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

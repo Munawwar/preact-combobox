@@ -1,21 +1,21 @@
-# PreactComboBox
+# PreactCombobox
 
 Work-in-progress: DO NOT USE ON PRODUCTION!
 
-A Preact multi-select combo box component
+A Preact multi-select combobox component
 
 ![screenshot](./screenshot.webp)
 
 ## Installation
 
 ```bash
-npm add preact-combo-box @popperjs/core
+npm add preact-combobox @popperjs/core
 ```
 
 ## Usage
 
 ```jsx
-import PreactComboBox, { defaultLabelTransform } from "preact-combo-box";
+import PreactCombobox, { defaultLabelTransform } from "preact-combobox";
 
 const options = [
   { label: "Option 1", value: "option-1" },
@@ -29,14 +29,14 @@ function App() {
   return (
     <>
       <h2>Basic example</h2>
-      <PreactComboBox
+      <PreactCombobox
         allowedOptions={options}
         values={values}
         onChange={setValues}
       />
 
       <h2>Optional stuff</h2>
-      <PreactComboBox
+      <PreactCombobox
         allowedOptions={options}
         values={values}
         onChange={setValues}

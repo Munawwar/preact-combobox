@@ -1,5 +1,5 @@
 export function defaultLabelTransform(label: VNode[], value: VNode[], match: OptionMatch, language: string, showValue: boolean): VNode;
-export default PreactComboBox;
+export default PreactCombobox;
 export type Option = {
     /**
      * - The display text for the option
@@ -126,7 +126,7 @@ export type PreactComboboxProps = {
     valueTransform?: ValueTransformFunction | undefined;
 };
 /**
- * PreactComboBox component
+ * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactComboBox({ id, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, selectElementProps, showValue, labelTransform, valueTransform, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, selectElementProps, showValue, labelTransform, valueTransform, }: PreactComboboxProps): import("preact").JSX.Element;
