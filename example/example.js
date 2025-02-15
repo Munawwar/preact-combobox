@@ -1,5 +1,5 @@
 import htm from "htm";
-import { render, createElement } from "preact";
+import { createElement, render } from "preact";
 import { useState } from "preact/hooks";
 const html = htm.bind(createElement);
 

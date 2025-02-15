@@ -16,6 +16,7 @@
     "prepare": "npm run build",
     "prepublish": "npm run build",
     "lint": "npx @biomejs/biome check --write",
+    "tsc": "tsc",
     "pretest": "npm run build",
     "example": "browser-sync start --port 3050 --server --files 'example' --files 'dist' --startPath '/example/example.html'",
     "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core --watch",

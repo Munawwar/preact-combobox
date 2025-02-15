@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import { createPortal } from "preact/compat";
 import { createPopper } from "@popperjs/core";
+import { createPortal } from "preact/compat";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
 
 // --- types ---
@@ -456,27 +457,6 @@ function highlightMatches(match, labelTransform, language, showValue) {
   return labelTransform([label], [value], match, language, showValue);
 }
 
-/**
- * @template T
- * @param {T} initialValue
- * @returns {[() => T, (value: T) => void]}
- */
-function useLive(initialValue) {
-  const [refresh, forceRefresh] = useState(0);
-  const ref = useRef(initialValue);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `refresh` is a dependency to force a new getter for that it can be used directly a dependency in useEffects
-  const getValue = useCallback(() => ref.current, [refresh]);
-  // setter doesn't need to be created on every render
-  const setValue = useCallback((value) => {
-    if (value !== ref.current) {
-      ref.current = value;
-      forceRefresh((x) => x + 1);
-    }
-  }, []);
-  return [getValue, setValue];
-}
-
 function isEqualArray(array1, array2) {
   if (!Array.isArray(array1) || !Array.isArray(array2) || array1.length !== array2.length) {
     return false;
@@ -553,7 +533,7 @@ const PreactCombobox = ({
   } else {
     tempArrayValue = value ? [/** @type {string} */ (value)] : [];
   }
-  const arrayValues = useMemoArray(tempArrayValue);
+  const arrayValues = useDeepMemo(() => tempArrayValue, [tempArrayValue]);
 
   const [inputValue, setInputValue] = useState("");
   const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
