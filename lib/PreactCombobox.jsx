@@ -618,23 +618,29 @@ const PreactCombobox = ({
     if (typeof allowedOptions === "function") {
       abortController = new AbortController();
       setIsLoading(true);
-      const newUnknownValues = arrayValues.filter((v) => !cachedOptions.current[v]);
-      // FIXME: re-think how we get the labels of already selected options
-      // new approach: Send query + max 100 selected options that don't have a label to the backend (if not cached)
-      // Once we get label for a value, then we can cache it so as to not request it again
-      // Question: If freetext is allowed, some values may never have a label! hmm how to figure that out?
-      // We will pass query, and first 100 options that do not have a label to the backend
+      const newUnknownValues = arrayValues.filter((v) => !cachedOptions.current[v]).slice(100);
+      // Send query + max 100 selected options that don't have a label to the backend (if not cached)
+      // Once we get label for a value, then we can cache it so as to not request it again.
       allowedOptions(inputTrimmed, 100, newUnknownValues, abortController.signal)
-        .then((fetchedOptions) => {
+        .then((receivedOptions) => {
           setIsLoading(false);
+          let updatedOptions = receivedOptions;
+          updateCachedOptions(receivedOptions);
+          // Handle case where backend doesn't return labels for all the sent selections
+          const unreturnedValues = newUnknownValues
+            .filter((v) => !cachedOptions.current[v])
+            .map((v) => ({ label: v, value: v }));
+          if (unreturnedValues.length > 0) {
+            updateCachedOptions(unreturnedValues);
+            updatedOptions = unreturnedValues.concat(receivedOptions);
+          }
           // update cache even if the line we could find out that the request was aborted
-          updateCachedOptions(fetchedOptions);
           if (abortController.signal.aborted) return;
-          // If backend doesn't return labels for existing values, we can still handle that case
+          // we didn't send all existing selections to the backend, so we need to merge the results
           const mergedOptions = arrayValues
             .filter((v) => !cachedOptions.current[v])
             .map((v) => ({ label: v, value: v }))
-            .concat(fetchedOptions);
+            .concat(updatedOptions);
           // when search is applied don't sort the selected values to the top
           const options = inputTrimmed
             ? mergedOptions
