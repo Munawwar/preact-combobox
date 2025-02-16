@@ -1,6 +1,6 @@
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
 
@@ -507,17 +507,15 @@ const PreactCombobox = ({
   } else {
     tempArrayValue = value ? [/** @type {string} */ (value)] : [];
   }
-  const arrayValues = useDeepMemo(() => tempArrayValue, [tempArrayValue]);
+  const arrayValues = useDeepMemo(tempArrayValue);
 
   const [inputValue, setInputValue] = useState("");
   const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const cachedOptions = useRef(/** @type {{ [value: string]: Option }} */ ({}));
   const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
   const [isLoading, setIsLoading] = useState(false);
-  // FIXME: We should use preact signals for this purpose, as re-rendering during
-  // hover is not the most performant thing to do
-  const [activeDescendant, setActiveDescendant] = useState("");
-  const scrollToActiveDescendantRef = useRef(false);
+  // NOTE: Using ref for performance. Setting few attributes by re-rendering a large list is too expensive.
+  const activeDescendant = useRef("");
   const [warningIconHovered, setWarningIconHovered] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
@@ -540,9 +538,9 @@ const PreactCombobox = ({
     [],
   );
 
-  const allOptions = Array.isArray(allowedOptions)
-    ? allowedOptions
-    : Object.values(cachedOptions.current);
+  const allOptions = useDeepMemo(
+    Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current),
+  );
   const allOptionsLookup = useMemo(
     () =>
       allOptions.reduce((acc, o) => {
@@ -556,29 +554,36 @@ const PreactCombobox = ({
     return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
   }, [allowFreeText, arrayValues, allOptionsLookup]);
 
-  const activateDescendant = useCallback((descendant) => {
-    setActiveDescendant(descendant);
+  const activateDescendant = useCallback((descendant, scroll = true) => {
+    // NOTE: Using direct DOM API for performance
+    // Remove current aria-selected from previous activeDescendant
+    if (activeDescendant.current && popperRef.current) {
+      popperRef.current
+        .querySelector(`[aria-selected="true"]`)
+        ?.setAttribute("aria-selected", "false");
+    }
+
+    activeDescendant.current = descendant;
+
+    // Set the places in DOM where aria-activedescendant and aria-selected are set
     inputRef.current?.setAttribute("aria-activedescendant", descendant);
-    scrollToActiveDescendantRef.current = true;
-  }, []);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
-  useLayoutEffect(() => {
-    if (scrollToActiveDescendantRef.current && popperRef.current) {
-      scrollToActiveDescendantRef.current = false;
-      const activeDescendantElement = popperRef.current.querySelector(`[aria-selected="true"]`);
+    if (descendant && popperRef.current) {
+      const activeDescendantElement = popperRef.current.querySelector(`[id="${descendant}"]`);
       if (activeDescendantElement) {
-        const dropdownRect = popperRef.current.getBoundingClientRect();
-        const itemRect = activeDescendantElement.getBoundingClientRect();
+        activeDescendantElement.setAttribute("aria-selected", "true");
+        if (scroll) {
+          const dropdownRect = popperRef.current.getBoundingClientRect();
+          const itemRect = activeDescendantElement.getBoundingClientRect();
 
-        if (itemRect.top < dropdownRect.top) {
-          popperRef.current.scrollTop += itemRect.top - dropdownRect.top;
-        } else if (itemRect.bottom > dropdownRect.bottom) {
-          popperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
+          if (itemRect.top < dropdownRect.top) {
+            popperRef.current.scrollTop += itemRect.top - dropdownRect.top;
+          } else if (itemRect.bottom > dropdownRect.bottom) {
+            popperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
+          }
         }
       }
     }
-  }, [scrollToActiveDescendantRef.current === true, activeDescendant, getIsDropdownOpen]);
+  }, []);
 
   // Setup popper when dropdown is opened
   // Reset activeDescendant and filteredOptions when dropdown closes
@@ -822,10 +827,11 @@ const PreactCombobox = ({
    */
   const handleKeyDown = useCallback(
     (e) => {
+      const currentActiveDescendant = activeDescendant.current;
       if (e.key === "Enter") {
         e.preventDefault();
-        const currentIndex = activeDescendant
-          ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
+        const currentIndex = currentActiveDescendant
+          ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
           : -1;
         if (currentIndex > -1) {
           handleOptionSelect(filteredOptions[currentIndex].value, { toggleSelected: true });
@@ -839,12 +845,12 @@ const PreactCombobox = ({
         if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
         const currentIndex =
-          activeDescendant && activeDescendant !== "add-option"
-            ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
+          currentActiveDescendant && currentActiveDescendant !== "add-option"
+            ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
             : -1;
         if (
           hasAddOption &&
-          activeDescendant !== "add-option" &&
+          currentActiveDescendant !== "add-option" &&
           (currentIndex < 0 || currentIndex === filteredOptions.length - 1)
         ) {
           setIsDropdownOpen(true);
@@ -861,13 +867,13 @@ const PreactCombobox = ({
         if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
         const currentIndex =
-          activeDescendant && activeDescendant !== "add-option"
-            ? filteredOptions.findIndex((o) => `option-${o.value}` === activeDescendant)
+          currentActiveDescendant && currentActiveDescendant !== "add-option"
+            ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
             : 0;
         if (
           hasAddOption &&
-          activeDescendant !== "add-option" &&
-          ((currentIndex === 0 && activeDescendant) || !filteredOptions.length)
+          currentActiveDescendant !== "add-option" &&
+          ((currentIndex === 0 && currentActiveDescendant) || !filteredOptions.length)
         ) {
           setIsDropdownOpen(true);
           activateDescendant("add-option");
@@ -898,7 +904,6 @@ const PreactCombobox = ({
       }
     },
     [
-      activeDescendant,
       activateDescendant,
       allowFreeText,
       filteredOptions,
@@ -966,6 +971,17 @@ const PreactCombobox = ({
     redoStack.current = [];
   }, [onChange, singleSelectValue]);
 
+  // Memoize whatever JSX that can be memoized
+  const selectChildren = useMemo(
+    () =>
+      arrayValues.map((val) => (
+        <option key={val} value={val}>
+          {allOptionsLookup[val]?.label || val}
+        </option>
+      )),
+    [arrayValues, allOptionsLookup],
+  );
+
   return (
     <div
       className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className}`}
@@ -1001,7 +1017,7 @@ const PreactCombobox = ({
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
             aria-controls="options-listbox"
-            aria-activedescendant={activeDescendant}
+            aria-activedescendant={activeDescendant.current}
             disabled={disabled}
             required={required && arrayValues.length === 0}
             {...inputProps}
@@ -1068,17 +1084,12 @@ const PreactCombobox = ({
                   <li
                     key={inputTrimmed}
                     id="add-option"
-                    className={[
-                      "PreactCombobox-option",
-                      activeDescendant === "add-option" ? "PreactCombobox-option--active" : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ")}
+                    className="PreactCombobox-option"
                     role="option"
                     tabIndex={-1}
                     data-test-value={inputTrimmed}
-                    aria-selected={activeDescendant === "add-option"}
-                    onMouseEnter={() => activateDescendant(`option-${inputTrimmed}`)}
+                    aria-selected={activeDescendant.current === "add-option"}
+                    onMouseEnter={() => activateDescendant("add-option", false)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1089,12 +1100,11 @@ const PreactCombobox = ({
                   </li>
                 )}
               {filteredOptions.map((option) => {
-                const isActiveOption = activeDescendant === `option-${option.value}`;
+                const isActiveOption = activeDescendant.current === `option-${option.value}`;
                 const isSelected = arrayValues.includes(option.value);
                 const isInvalid = invalidValues.includes(option.value);
                 const optionClasses = [
                   "PreactCombobox-option",
-                  isActiveOption ? "PreactCombobox-option--active" : "",
                   isSelected ? "PreactCombobox-option--selected" : "",
                   isInvalid ? "PreactCombobox-option--invalid" : "",
                 ]
@@ -1109,7 +1119,7 @@ const PreactCombobox = ({
                     tabIndex={-1}
                     data-value={option.value}
                     aria-selected={isActiveOption}
-                    onMouseEnter={() => activateDescendant(`option-${option.value}`)}
+                    onMouseEnter={() => activateDescendant(`option-${option.value}`, false)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1167,11 +1177,7 @@ const PreactCombobox = ({
         value={value}
         name={name}
       >
-        {arrayValues.map((val) => (
-          <option key={val} value={val}>
-            {allOptionsLookup[val]?.label || val}
-          </option>
-        ))}
+        {selectChildren}
       </select>
       {invalidValues.length > 0 && warningIconHovered && (
         <Portal parent={portal}>

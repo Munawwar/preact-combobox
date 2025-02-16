@@ -9,6 +9,7 @@ A Preact multi-select combobox component
 ## Installation
 
 ```bash
+# `npm add preact` first
 npm add preact-combobox @popperjs/core
 ```
 
@@ -32,6 +33,7 @@ function App() {
       <PreactCombobox
         allowedOptions={options}
         values={values}
+        // Make onChange callback is stable. Use `useCallback` if needed. 
         onChange={setValues}
       />
 
