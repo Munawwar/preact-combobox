@@ -1,5 +1,5 @@
 import { createPopper } from "@popperjs/core";
-import { createPortal } from "preact/compat";
+import { createPortal, Fragment } from "preact/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
@@ -33,8 +33,14 @@ import "./PreactCombobox.css";
  */
 
 /**
- * @typedef {(label: VNode[], value: VNode[], match: OptionMatch, language: string, showValue: boolean) => VNode} LabelTransformFunction
- * @typedef {(label: string) => VNode} ValueTransformFunction
+ * @typedef {(
+ *   match: OptionMatch,
+ *   language: string,
+ *   isActive: boolean,
+ *   isSelected: boolean,
+ *   isInvalid: boolean,
+ *   showValue: boolean,
+ * ) => VNode} OptionTransformFunction
  */
 
 /**
@@ -65,8 +71,7 @@ import "./PreactCombobox.css";
  * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
- * @property {LabelTransformFunction} [labelTransform=identity] Transform the label text
- * @property {ValueTransformFunction} [valueTransform=identity] Transform the value text
+ * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
  */
 
 // --- end of types ---
@@ -390,33 +395,11 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 }
 
 /**
- * @type {LabelTransformFunction}
- */
-export function defaultLabelTransform(labelNodes, valueNodes, match, _language, showValue) {
-  const isLabelSameAsValue = match.value === match.label;
-  return (
-    <span className="PreactCombobox-labelFlex">
-      <span>{labelNodes}</span>
-      {isLabelSameAsValue || !showValue ? null : (
-        <span className="PreactCombobox-value">({valueNodes})</span>
-      )}
-    </span>
-  );
-}
-
-// /**
-//  * @type {ValueTransformFunction}
-//  */
-// function defaultValueTransform(label) {
-//   return label;
-// }
-
-/**
  * @param {OptionMatch['matchSlices']} matchSlices
  * @param {string} text
  * @returns {VNode[]}
  */
-function matchSlicesToNodes(matchSlices, text) {
+export function matchSlicesToNodes(matchSlices, text) {
   const nodes = /** @type {VNode[]} */ ([]);
   let index = 0;
   matchSlices.map((slice) => {
@@ -437,26 +420,6 @@ function matchSlicesToNodes(matchSlices, text) {
   return nodes;
 }
 
-/**
- * @param {OptionMatch} match
- * @param {LabelTransformFunction} labelTransform
- * @param {string} language
- * @param {boolean} showValue
- */
-function highlightMatches(match, labelTransform, language, showValue) {
-  const { label, value, matched, matchSlices } = match;
-  if (matched === "label" || (matched === "value" && value === label)) {
-    const labelNodes = matchSlicesToNodes(matchSlices, label);
-    return labelTransform(labelNodes, [value], match, language, showValue);
-  }
-  if (matched === "value") {
-    const valueNodes = matchSlicesToNodes(matchSlices, value);
-    return labelTransform([label], valueNodes, match, language, showValue);
-  }
-  // if matched === "none"
-  return labelTransform([label], [value], match, language, showValue);
-}
-
 const warningIcon = (
   <svg
     className="PreactCombobox-warningIcon"
@@ -468,6 +431,54 @@ const warningIcon = (
     <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
   </svg>
 );
+
+/**
+ * @type {OptionTransformFunction}
+ */
+export function defaultOptionTransform(
+  match,
+  _language,
+  isActive,
+  isSelected,
+  isInvalid,
+  showValue,
+) {
+  const isLabelSameAsValue = match.value === match.label;
+  const getLabel = (labelNodes, valueNodes) => (
+    <span className="PreactCombobox-labelFlex">
+      <span>{labelNodes}</span>
+      {isLabelSameAsValue || !showValue ? null : (
+        <span className="PreactCombobox-value">({valueNodes})</span>
+      )}
+    </span>
+  );
+
+  const { label, value, matched, matchSlices } = match;
+  let labelElement;
+  if (matched === "label" || (matched === "value" && value === label)) {
+    const labelNodes = matchSlicesToNodes(matchSlices, label);
+    labelElement = getLabel(labelNodes, [value]);
+  } else if (matched === "value") {
+    const valueNodes = matchSlicesToNodes(matchSlices, value);
+    labelElement = getLabel([label], valueNodes);
+  } else {
+    // if matched === "none"
+    labelElement = getLabel([label], [value]);
+  }
+
+  return (
+    <Fragment>
+      {isActive && <span className="PreactCombobox-srOnly">Current option:</span>}
+      <span
+        className={`PreactCombobox-checkbox ${isSelected ? "PreactCombobox-checkbox--selected" : ""}`}
+      >
+        {isSelected && <span aria-hidden="true">✓</span>}
+      </span>
+      {labelElement}
+      {isInvalid && warningIcon}
+    </Fragment>
+  );
+}
 
 const defaultArrayValue = [];
 
@@ -493,9 +504,9 @@ const PreactCombobox = ({
   inputProps: { tooltipContent = null, ...inputProps } = {},
   selectElementProps,
   showValue = true,
-  labelTransform = defaultLabelTransform,
-  // TODO: implement this
-  // valueTransform = defaultValueTransform,
+  optionTransform = defaultOptionTransform,
+  // private option for now
+  maxNumberOfPresentedOptions = 100,
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -618,10 +629,17 @@ const PreactCombobox = ({
     if (typeof allowedOptions === "function") {
       abortController = new AbortController();
       setIsLoading(true);
-      const newUnknownValues = arrayValues.filter((v) => !cachedOptions.current[v]).slice(100);
-      // Send query + max 100 selected options that don't have a label to the backend (if not cached)
+      const newUnknownValues = arrayValues
+        .filter((v) => !cachedOptions.current[v])
+        .slice(maxNumberOfPresentedOptions);
+      // Send query + maxNumberOfPresentedOptions selected options that don't have a label to the backend (if not cached)
       // Once we get label for a value, then we can cache it so as to not request it again.
-      allowedOptions(inputTrimmed, 100, newUnknownValues, abortController.signal)
+      allowedOptions(
+        inputTrimmed,
+        maxNumberOfPresentedOptions,
+        newUnknownValues,
+        abortController.signal,
+      )
         .then((receivedOptions) => {
           setIsLoading(false);
           let updatedOptions = receivedOptions;
@@ -634,8 +652,6 @@ const PreactCombobox = ({
             updateCachedOptions(unreturnedValues);
             updatedOptions = unreturnedValues.concat(receivedOptions);
           }
-          // update cache even if the line we could find out that the request was aborted
-          if (abortController.signal.aborted) return;
           // we didn't send all existing selections to the backend, so we need to merge the results
           const mergedOptions = arrayValues
             .filter((v) => !cachedOptions.current[v])
@@ -646,11 +662,12 @@ const PreactCombobox = ({
             ? mergedOptions
             : sortValuesToTop(mergedOptions, arrayValues);
           // we don't need to re-sort what the backend returns, so pass filterAndSort=false to getMatchScore()
+          // TODO: Re-use past objects for stable object references
           setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
         })
         .catch((error) => {
-          setIsLoading(false);
           if (!abortController.signal.aborted) {
+            setIsLoading(false);
             throw error;
           }
         });
@@ -661,6 +678,7 @@ const PreactCombobox = ({
         .concat(allowedOptions);
       // when search is applied don't sort the selected values to the top
       const options = inputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
+      // TODO: Re-use past objects for stable object references
       setFilteredOptions(getMatchScore(inputValue, options, language, true));
     }
     // Clean up function
@@ -980,12 +998,12 @@ const PreactCombobox = ({
   // Memoize whatever JSX that can be memoized
   const selectChildren = useMemo(
     () =>
-      arrayValues.map((val) => (
+      arrayValues.slice(maxNumberOfPresentedOptions).map((val) => (
         <option key={val} value={val}>
           {allOptionsLookup[val]?.label || val}
         </option>
       )),
-    [arrayValues, allOptionsLookup],
+    [arrayValues, allOptionsLookup, maxNumberOfPresentedOptions],
   );
 
   return (
@@ -1079,7 +1097,9 @@ const PreactCombobox = ({
           data-test-id={`${id}-autocomplete-options`}
         >
           {isLoading ? (
-            <li className="PreactCombobox-option">Loading...</li>
+            <li className="PreactCombobox-option" aria-disabled>
+              Loading...
+            </li>
           ) : (
             <>
               {!isLoading &&
@@ -1132,6 +1152,7 @@ const PreactCombobox = ({
                       if (!multiple) {
                         setIsDropdownOpen(false);
                         handleOptionSelect(option.value);
+                        // Don't wait till next render cycle (which destroys the popper) to hide the popper
                         if (popperRef.current) {
                           // @ts-ignore
                           popperRef.current.style.display = "none";
@@ -1147,16 +1168,14 @@ const PreactCombobox = ({
                       }
                     }}
                   >
-                    {isActiveOption && (
-                      <span className="PreactCombobox-srOnly">Current option:</span>
+                    {optionTransform(
+                      option,
+                      language,
+                      isActiveOption,
+                      isSelected,
+                      isInvalid,
+                      showValue,
                     )}
-                    <span
-                      className={`PreactCombobox-checkbox ${isSelected ? "PreactCombobox-checkbox--selected" : ""}`}
-                    >
-                      {isSelected && <span aria-hidden="true">✓</span>}
-                    </span>
-                    {highlightMatches(option, labelTransform, language, showValue)}
-                    {isInvalid && warningIcon}
                   </li>
                 );
               })}
@@ -1165,7 +1184,7 @@ const PreactCombobox = ({
                 (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
                   <li className="PreactCombobox-option">No options available</li>
                 )}
-              {filteredOptions.length === 100 && (
+              {filteredOptions.length === maxNumberOfPresentedOptions && (
                 <li className="PreactCombobox-option">...type to load more options</li>
               )}
             </>

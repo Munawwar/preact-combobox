@@ -1,12 +1,13 @@
 Priority
+- Improve performance
+- Test screen reader support
 - Test preservation props of allowedOptions
 - Test remote options
-- Test label transformers
+- Test option transformers
 
 Nice to have
 - Option level disabling
 - Specialized mobile design - full width, bottom aligned popup
-- Use signal for hover class change (and keyboard up / down arrow key class change). But then remove react and use only preact.
 
 Questions
 - Add "remove all" button again? Optional?
