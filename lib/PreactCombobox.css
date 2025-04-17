@@ -83,7 +83,7 @@
   background-color: #f0f0f0;
 }
 
-.PreactCombobox-option[aria-selected="true"] {
+.PreactCombobox-option--active {
   background-color: #e0e0e0;
 }
 

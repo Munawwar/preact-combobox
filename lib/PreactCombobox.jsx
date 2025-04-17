@@ -1,5 +1,5 @@
 import { createPopper } from "@popperjs/core";
-import { createPortal, Fragment } from "preact/compat";
+import { Fragment, createPortal } from "preact/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
@@ -81,6 +81,18 @@ import "./PreactCombobox.css";
  */
 function unique(arr) {
   return Array.from(new Set(arr));
+}
+
+/**
+ * Converts any text into a valid HTML ID attribute value.
+ * Returns empty string if text becomes empty after removing invalid characters.
+ * 
+ * @param {string} text - The text to convert into an HTML ID
+ * @returns {string} A valid HTML ID or empty string
+ */
+function toHTMLId(text) {
+  // Remove any characters that are not letters, numbers, hyphens, underscores, colons, or periods
+  return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
 }
 
 /**
@@ -290,7 +302,9 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
     // This match needs to be case and accent insensitive
     if (!langUtils.wordSegmenter) {
-      langUtils.wordSegmenter = new Intl.Segmenter(language, { granularity: "word" });
+      langUtils.wordSegmenter = new Intl.Segmenter(language, {
+        granularity: "word",
+      });
     }
     const { wordSegmenter } = langUtils;
     if (!querySegments) {
@@ -385,7 +399,9 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     matches = matches.filter((match) => match.score > 0);
     matches.sort((a, b) => {
       if (a.score === b.score) {
-        const val = a.label.localeCompare(b.label, undefined, { sensitivity: "base" });
+        const val = a.label.localeCompare(b.label, undefined, {
+          sensitivity: "base",
+        });
         return val === 0 ? a.value.localeCompare(b.value, undefined, { sensitivity: "base" }) : val;
       }
       return b.score - a.score;
@@ -468,9 +484,19 @@ export function defaultOptionTransform(
 
   return (
     <Fragment>
-      {isActive && <span className="PreactCombobox-srOnly">Current option:</span>}
+      {isActive && !isSelected ? (
+        <span className="PreactCombobox-srOnly">Active option:</span>
+      ) : null}
+      {isSelected && !isActive ? (
+        <span className="PreactCombobox-srOnly">Selected option:</span>
+      ) : null}
+      {isActive && isSelected ? (
+        <span className="PreactCombobox-srOnly">Active and selected option:</span>
+      ) : null}
       <span
-        className={`PreactCombobox-checkbox ${isSelected ? "PreactCombobox-checkbox--selected" : ""}`}
+        className={`PreactCombobox-checkbox ${
+          isSelected ? "PreactCombobox-checkbox--selected" : ""
+        }`}
       >
         {isSelected && <span aria-hidden="true">✓</span>}
       </span>
@@ -487,7 +513,7 @@ const defaultArrayValue = [];
  * @param {PreactComboboxProps} props - Component props
  */
 const PreactCombobox = ({
-  id,
+  id: idProp,
   multiple = true,
   allowedOptions,
   allowFreeText = false,
@@ -519,7 +545,16 @@ const PreactCombobox = ({
     tempArrayValue = value ? [/** @type {string} */ (value)] : [];
   }
   const arrayValues = useDeepMemo(tempArrayValue);
+  // const arrayValuesAsKey = useMemo(() => JSON.stringify(arrayValues), [arrayValues]);
+  const allowedOptionsAsKey = useMemo(
+    () => (typeof allowedOptions === "function" ? null : JSON.stringify(allowedOptions)),
+    [allowedOptions],
+  );
 
+  const id = useMemo(
+    () => idProp || `PreactCombobox-${Math.random().toString(36).slice(2)}`,
+    [idProp],
+  );
   const [inputValue, setInputValue] = useState("");
   const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const cachedOptions = useRef(/** @type {{ [value: string]: Option }} */ ({}));
@@ -565,23 +600,29 @@ const PreactCombobox = ({
     return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
   }, [allowFreeText, arrayValues, allOptionsLookup]);
 
-  const activateDescendant = useCallback((descendant, scroll = true) => {
+  /**
+   * Note that aria-activedescendant only works with HTML id attributes.
+   * @param {string} optionValue - The value of the option to activate
+   * @param {boolean} [scroll=true] Scroll to the option if it's not already in view
+   */
+  const activateDescendant = useCallback((optionValue, scroll = true) => {
     // NOTE: Using direct DOM API for performance
-    // Remove current aria-selected from previous activeDescendant
+    // Remove current active element CSS
     if (activeDescendant.current && popperRef.current) {
       popperRef.current
-        .querySelector(`[aria-selected="true"]`)
-        ?.setAttribute("aria-selected", "false");
+        .querySelector(".PreactCombobox-option--active")
+        ?.classList.remove("PreactCombobox-option--active");
     }
 
-    activeDescendant.current = descendant;
+    activeDescendant.current = optionValue;
 
     // Set the places in DOM where aria-activedescendant and aria-selected are set
-    inputRef.current?.setAttribute("aria-activedescendant", descendant);
-    if (descendant && popperRef.current) {
-      const activeDescendantElement = popperRef.current.querySelector(`[id="${descendant}"]`);
+    const elementId = optionValue ? `${id}-option-${toHTMLId(optionValue)}` : "";
+    inputRef.current?.setAttribute("aria-activedescendant", elementId);
+    if (elementId && popperRef.current) {
+      const activeDescendantElement = popperRef.current.querySelector(`#${elementId}`);
       if (activeDescendantElement) {
-        activeDescendantElement.setAttribute("aria-selected", "true");
+        activeDescendantElement.classList.add("PreactCombobox-option--active");
         if (scroll) {
           const dropdownRect = popperRef.current.getBoundingClientRect();
           const itemRect = activeDescendantElement.getBoundingClientRect();
@@ -594,7 +635,7 @@ const PreactCombobox = ({
         }
       }
     }
-  }, []);
+  }, [id]);
 
   // Setup popper when dropdown is opened
   // Reset activeDescendant and filteredOptions when dropdown closes
@@ -618,9 +659,12 @@ const PreactCombobox = ({
       }
     }
   }, [getIsDropdownOpen, activateDescendant]);
+
   // Fill the dropdown with options on open and also on input change
   // Not on useEffect deps:
-  //   1. arrayValues is not fully stable dependency yet. Check the comment in arrayValues creation useMemo
+  //   1. arrayValues doesn't need to be a dependency except on an unexpected selection change from parent
+  //      because options info don't change on arrayValues change rather only the toggle state of the rendered
+  //      option changes.
   //   2. The allowedOptions and allOptionsLookup dependency is too complex here.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above comment
   useEffect(() => {
@@ -685,13 +729,7 @@ const PreactCombobox = ({
     return () => {
       abortController?.abort();
     };
-  }, [
-    getIsDropdownOpen,
-    activateDescendant,
-    inputTrimmed,
-    language,
-    typeof allowedOptions === "function" ? null : allowedOptions,
-  ]);
+  }, [getIsDropdownOpen, inputTrimmed, language, allowedOptionsAsKey]);
   useEffect(() => {
     if (
       invalidValues.length > 0 &&
@@ -840,7 +878,7 @@ const PreactCombobox = ({
         const isRemoteSearch = typeof allowedOptions === "function";
         return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
       });
-      activateDescendant(`option-${newValue}`);
+      activateDescendant(newValue);
     },
     [allowedOptions, language, handleOptionSelect, activateDescendant, inputTrimmed],
   );
@@ -855,56 +893,62 @@ const PreactCombobox = ({
       if (e.key === "Enter") {
         e.preventDefault();
         const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
+          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
           : -1;
         if (currentIndex > -1) {
-          handleOptionSelect(filteredOptions[currentIndex].value, { toggleSelected: true });
+          handleOptionSelect(filteredOptions[currentIndex].value, {
+            toggleSelected: true,
+          });
         } else if (allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
         }
         // ArrowDown highlights next option
       } else if (e.key === "ArrowDown") {
-        const hasAddOption =
-          !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed);
-        if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
-        const currentIndex =
-          currentActiveDescendant && currentActiveDescendant !== "add-option"
-            ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
-            : -1;
+        setIsDropdownOpen(true);
+        const hasAddOption =
+          !isLoading &&
+          allowFreeText &&
+          inputTrimmed &&
+          !arrayValues.includes(inputTrimmed) &&
+          !filteredOptions.find((o) => o.value === inputTrimmed);
+        if (!filteredOptions.length && !hasAddOption) return;
+        const currentIndex = currentActiveDescendant
+          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
+          : -1;
         if (
           hasAddOption &&
-          currentActiveDescendant !== "add-option" &&
+          currentActiveDescendant !== inputTrimmed &&
           (currentIndex < 0 || currentIndex === filteredOptions.length - 1)
         ) {
-          setIsDropdownOpen(true);
-          activateDescendant("add-option");
+          activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          setIsDropdownOpen(true);
           const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          activateDescendant(`option-${filteredOptions[nextIndex].value}`);
+          activateDescendant(filteredOptions[nextIndex].value);
         }
         // ArrowUp highlights previous option
       } else if (e.key === "ArrowUp") {
-        const hasAddOption =
-          !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed);
-        if (!filteredOptions.length && !hasAddOption) return;
         e.preventDefault();
-        const currentIndex =
-          currentActiveDescendant && currentActiveDescendant !== "add-option"
-            ? filteredOptions.findIndex((o) => `option-${o.value}` === currentActiveDescendant)
-            : 0;
+        setIsDropdownOpen(true);
+        const hasAddOption =
+          !isLoading &&
+          allowFreeText &&
+          inputTrimmed &&
+          !arrayValues.includes(inputTrimmed) &&
+          !filteredOptions.find((o) => o.value === inputTrimmed);
+        if (!filteredOptions.length && !hasAddOption) return;
+        const currentIndex = currentActiveDescendant
+          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
+          : 0;
         if (
           hasAddOption &&
-          currentActiveDescendant !== "add-option" &&
+          currentActiveDescendant !== inputTrimmed &&
           ((currentIndex === 0 && currentActiveDescendant) || !filteredOptions.length)
         ) {
-          setIsDropdownOpen(true);
-          activateDescendant("add-option");
+          activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          setIsDropdownOpen(true);
           const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          activateDescendant(`option-${filteredOptions[prevIndex].value}`);
+          activateDescendant(filteredOptions[prevIndex].value);
         }
         // Escape blurs input
       } else if (e.key === "Escape") {
@@ -1036,12 +1080,14 @@ const PreactCombobox = ({
               blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
             }}
             onPaste={handlePaste}
-            className={`PreactCombobox-input ${multiple ? "PreactCombobox-input--multiple" : ""} ${disabled ? "PreactCombobox-input--disabled" : ""}`}
+            className={`PreactCombobox-input ${
+              multiple ? "PreactCombobox-input--multiple" : ""
+            } ${disabled ? "PreactCombobox-input--disabled" : ""}`}
             role="combobox"
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
             aria-controls="options-listbox"
-            aria-activedescendant={activeDescendant.current}
+            aria-activedescendant={activeDescendant.current ? `${id}-option-${toHTMLId(activeDescendant.current)}` : undefined}
             disabled={disabled}
             required={required && arrayValues.length === 0}
             {...inputProps}
@@ -1094,7 +1140,6 @@ const PreactCombobox = ({
           id={`${id}-options-listbox`}
           hidden={!getIsDropdownOpen()}
           ref={popperRef}
-          data-test-id={`${id}-autocomplete-options`}
         >
           {isLoading ? (
             <li className="PreactCombobox-option" aria-disabled>
@@ -1109,13 +1154,12 @@ const PreactCombobox = ({
                 !filteredOptions.find((o) => o.value === inputTrimmed) && (
                   <li
                     key={inputTrimmed}
-                    id="add-option"
+                    id={`${id}-option-${toHTMLId(inputTrimmed)}`}
                     className="PreactCombobox-option"
                     role="option"
                     tabIndex={-1}
-                    data-test-value={inputTrimmed}
-                    aria-selected={activeDescendant.current === "add-option"}
-                    onMouseEnter={() => activateDescendant("add-option", false)}
+                    aria-selected={false}
+                    onMouseEnter={() => activateDescendant(inputTrimmed, false)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1126,11 +1170,14 @@ const PreactCombobox = ({
                   </li>
                 )}
               {filteredOptions.map((option) => {
-                const isActiveOption = activeDescendant.current === `option-${option.value}`;
+                // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
+                // aria-activedescendant is used to tell screen readers the active option.
+                const isActive = activeDescendant.current === option.value;
                 const isSelected = arrayValues.includes(option.value);
                 const isInvalid = invalidValues.includes(option.value);
                 const optionClasses = [
                   "PreactCombobox-option",
+                  isActive ? "PreactCombobox-option--active" : "",
                   isSelected ? "PreactCombobox-option--selected" : "",
                   isInvalid ? "PreactCombobox-option--invalid" : "",
                 ]
@@ -1139,13 +1186,12 @@ const PreactCombobox = ({
                 return (
                   <li
                     key={option.value}
-                    id={`option-${option.value}`}
+                    id={`${id}-option-${toHTMLId(option.value)}`}
                     className={optionClasses}
                     role="option"
                     tabIndex={-1}
-                    data-value={option.value}
-                    aria-selected={isActiveOption}
-                    onMouseEnter={() => activateDescendant(`option-${option.value}`, false)}
+                    aria-selected={isSelected}
+                    onMouseEnter={() => activateDescendant(option.value, false)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1168,14 +1214,7 @@ const PreactCombobox = ({
                       }
                     }}
                   >
-                    {optionTransform(
-                      option,
-                      language,
-                      isActiveOption,
-                      isSelected,
-                      isInvalid,
-                      showValue,
-                    )}
+                    {optionTransform(option, language, isActive, isSelected, isInvalid, showValue)}
                   </li>
                 );
               })}
