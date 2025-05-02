@@ -10,6 +10,6 @@ export function useDeepMemo<T>(getNewState: () => T, dependencies?: any[]): T;
 /**
  * @template T
  * @param {T} initialValue
- * @returns {[() => T, (value: T) => void]}
+ * @returns {[() => T, (value: T) => void, boolean]}
  */
-export function useLive<T>(initialValue: T): [() => T, (value: T) => void];
+export function useLive<T>(initialValue: T): [() => T, (value: T) => void, boolean];
