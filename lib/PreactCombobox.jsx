@@ -24,9 +24,9 @@ import "./PreactCombobox.css";
 /**
  * Cache for language-specific word segmenters
  * @typedef {Object} LanguageCache
- * @property {Intl.Collator} [baseMatcher] - The base matcher for the language
- * @property {Intl.Collator} [caseMatcher] - The case matcher for the language
- * @property {Intl.Segmenter} [wordSegmenter] - The word segmenter for the language
+ * @property {Intl.Collator} baseMatcher - The base matcher for the language
+ * @property {Intl.Collator} caseMatcher - The case matcher for the language
+ * @property {Intl.Segmenter} wordSegmenter - The word segmenter for the language
  */
 
 /**
@@ -172,6 +172,68 @@ const tooltipPopperModifiers = [
 const languageCache = {};
 
 /**
+ * @param {string} query
+ * @param {Option} option
+ * @param {string} language
+ * @returns {OptionMatch|null}
+ */
+function getExactMatchScore(query, option, language) {
+  const { label, value, ...rest } = option;
+  if (value === query) {
+    return {
+      ...rest,
+      label,
+      value,
+      score: 9,
+      /** @type {'value'} */
+      matched: "value",
+      /** @type {Array<[number, number]>} */
+      matchSlices: [[0, value.length]],
+    };
+  }
+  if (label === query) {
+    return {
+      ...rest,
+      label,
+      value,
+      score: 9,
+      /** @type {'label'} */
+      matched: "label",
+      /** @type {Array<[number, number]>} */
+      matchSlices: [[0, label.length]],
+    };
+  }
+
+  const { caseMatcher } =  languageCache[language];
+  if (caseMatcher.compare(value, query) === 0) {
+    return {
+      ...rest,
+      label,
+      value,
+      score: 7,
+      /** @type {'value'} */
+      matched: "value",
+      /** @type {Array<[number, number]>} */
+      matchSlices: [[0, value.length]],
+    };
+  }
+  if (caseMatcher.compare(label, query) === 0) {
+    return {
+      ...rest,
+      label,
+      value,
+      score: 7,
+      /** @type {'label'} */
+      matched: "label",
+      /** @type {Array<[number, number]>} */
+      matchSlices: [[0, label.length]],
+    };
+  }
+
+  return null;
+}
+
+/**
  * Calculates the match score between a query text and a list of option labels.
  * It returns scores for each option sorted in descending order.
  *
@@ -204,82 +266,52 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
   }
 
   if (!languageCache[language]) {
-    languageCache[language] = {};
+    languageCache[language] = {
+      baseMatcher: new Intl.Collator(language, {
+        usage: "search",
+        sensitivity: "base",
+      }),
+      caseMatcher: new Intl.Collator(language, {
+        usage: "search",
+        sensitivity: "accent",
+      }),
+      wordSegmenter: new Intl.Segmenter(language, {
+        granularity: "word",
+      }),
+    };
   }
-  const langUtils = languageCache[language];
+  const { baseMatcher, caseMatcher, wordSegmenter } = languageCache[language];
+
+  const isCommaSeparated = query.includes(",");
 
   let querySegments;
   let queryWords;
-  let matches = options.map(({ label, value, ...rest }) => {
+  let matches = options.map((option) => {
+    const { label, value, ...rest } = option;
     // TODO: Handle case where query is a comma separated list of values
+    if (isCommaSeparated) {
+      const querySegments = query.split(",");
+      const matches = querySegments
+        .map((querySegment) => getExactMatchScore(querySegment.trim(), option, language))
+        .filter((match) => match !== null)
+        .sort((a, b) => b.score - a.score);
+      return matches[0] || {
+        ...rest,
+        label,
+        value,
+        score: 0,
+        matched: "none",
+      };
+    }
 
     // Rule 1: Exact match (case sensitive)
-    if (value === query) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 9,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
-    if (label === query) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 9,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
-    }
-
     // Rule 2: Exact match (case insensitive)
-    if (!langUtils.caseMatcher) {
-      langUtils.caseMatcher = new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "accent",
-      });
-    }
-    const { caseMatcher } = langUtils;
-    if (caseMatcher.compare(value, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 7,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
-    if (caseMatcher.compare(label, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 7,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
+    const exactMatch = getExactMatchScore(query, option, language);
+    if (exactMatch) {
+      return exactMatch;
     }
 
     // Rule 3: Exact match with accents normalized (case insensitive)
-    if (!langUtils.baseMatcher) {
-      langUtils.baseMatcher = new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "base",
-      });
-    }
-    const { baseMatcher } = langUtils;
     if (baseMatcher.compare(label, query) === 0) {
       return {
         ...rest,
@@ -307,12 +339,6 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 
     // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
     // This match needs to be case and accent insensitive
-    if (!langUtils.wordSegmenter) {
-      langUtils.wordSegmenter = new Intl.Segmenter(language, {
-        granularity: "word",
-      });
-    }
-    const { wordSegmenter } = langUtils;
     if (!querySegments) {
       querySegments = Array.from(wordSegmenter.segment(query));
     }
@@ -1027,6 +1053,22 @@ const PreactCombobox = ({
         // Escape blurs input
       } else if (e.key === "Escape") {
         closeDropdown(true);
+        // Home key navigates to first option
+      } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
+        e.preventDefault();
+        if (filteredOptions.length > 0) {
+          activateDescendant(filteredOptions[0].value);
+        } else if (addNewOptionVisible) {
+          activateDescendant(inputTrimmed);
+        }
+        // End key navigates to last option
+      } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
+        e.preventDefault();
+        if (filteredOptions.length > 0) {
+          activateDescendant(filteredOptions[filteredOptions.length - 1].value);
+        } else if (addNewOptionVisible) {
+          activateDescendant(inputTrimmed);
+        }
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
@@ -1055,6 +1097,7 @@ const PreactCombobox = ({
       inputValue,
       inputTrimmed,
       onChange,
+      getIsDropdownOpen,
       setIsDropdownOpen,
       value,
       closeDropdown,

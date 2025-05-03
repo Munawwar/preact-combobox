@@ -3,11 +3,12 @@ Priority
 - Test screen reader support
 - Test preservation props of allowedOptions
 - Test option transformers
-- Support more keyboard keys as per https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Roles/listbox_role - e.g. Home, End
 
 Nice to have
 - Option level disabling
 - Specialized mobile design - full width, bottom aligned popup
+- Ability to add icon prefix to single-select value. Instead of just plain placeholder
+- Internationalization
 
 Questions
 - Add "remove all" button again? Optional?
