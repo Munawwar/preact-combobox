@@ -110,6 +110,7 @@
   white-space: nowrap;
   pointer-events: none;
   transition: opacity 0.2s ease-in-out;
+  z-index: 110;
 }
 
 .PreactCombobox-srOnly {

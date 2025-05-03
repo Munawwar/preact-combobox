@@ -1,3 +1,4 @@
+// TODO: Think about internationalization
 import { createPopper } from "@popperjs/core";
 import { Fragment, createPortal } from "preact/compat";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
@@ -210,6 +211,8 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
   let querySegments;
   let queryWords;
   let matches = options.map(({ label, value, ...rest }) => {
+    // TODO: Handle case where query is a comma separated list of values
+
     // Rule 1: Exact match (case sensitive)
     if (value === query) {
       return {
@@ -448,6 +451,18 @@ const warningIcon = (
     aria-hidden="true"
   >
     <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+  </svg>
+);
+
+const chevronIcon = (
+  <svg
+    className="PreactCombobox-chevron"
+    viewBox="0 0 24 24"
+    width="24"
+    height="24"
+    aria-hidden="true"
+  >
+    <path d="M7 10l5 5 5-5z" />
   </svg>
 );
 
@@ -738,13 +753,13 @@ const PreactCombobox = ({
         });
 
         setIsLoading(false);
-        if (searchResults) {
+        if (searchResults?.length) {
           updateCachedOptions(searchResults);
         }
-        if (selectedResults) {
+        if (selectedResults?.length) {
           updateCachedOptions(selectedResults);
         }
-        let updatedOptions = searchResults;
+        let updatedOptions = searchResults || [];
         // Handle case where backend doesn't return labels for all the sent selections
         if (!inputTrimmed) {
           const unreturnedValues = newUnknownValues
@@ -1054,7 +1069,7 @@ const PreactCombobox = ({
       // only handle paste in multi-select mode
       if (!values) return;
 
-      e.preventDefault();
+      // e.preventDefault();
       // Case 1 : Exact matches
       const valuesLookup = {
         ...Object.fromEntries(values.map((v) => [v, v])),
@@ -1086,6 +1101,8 @@ const PreactCombobox = ({
       onChange(newValues);
       undoStack.current.push(values);
       redoStack.current = [];
+      // force a re-render
+      setFilteredOptions(setFilteredOptions.slice());
     },
     [allOptions, onChange, values],
   );
@@ -1153,7 +1170,7 @@ const PreactCombobox = ({
             role="combobox"
             aria-expanded={getIsDropdownOpen()}
             aria-haspopup="listbox"
-            aria-controls="options-listbox"
+            aria-controls={`${id}-options-listbox`}
             aria-activedescendant={
               activeDescendant.current
                 ? `${id}-option-${toHTMLId(activeDescendant.current)}`
@@ -1173,34 +1190,22 @@ const PreactCombobox = ({
               <span aria-hidden="true">&#x2715;</span>
             </button>
           ) : null}
-          {/* TODO:  ability to customize the warning icon? */}
+          {/* TODO: ability to customize the warning icon? */}
           {invalidValues.length > 0 && (
-            <svg
+            <span
               ref={warningIconRef}
-              className="PreactCombobox-warningIcon"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-              aria-hidden="true"
+              className="PreactCombobox-warningIconWrapper"
               onMouseEnter={() => setWarningIconHovered(true)}
               onMouseLeave={() => setWarningIconHovered(false)}
             >
-              <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
-            </svg>
+              {warningIcon}
+            </span>
           )}
           {multiple && values && values.length > 1 && (
             <span className="PreactCombobox-badge">{values.length}</span>
           )}
           {/* TODO: ability to customize the chevron icon? */}
-          <svg
-            className="PreactCombobox-chevron"
-            viewBox="0 0 24 24"
-            width="24"
-            height="24"
-            aria-hidden="true"
-          >
-            <path d="M7 10l5 5 5-5z" />
-          </svg>
+          {chevronIcon}
         </div>
       </div>
 
@@ -1209,9 +1214,11 @@ const PreactCombobox = ({
           className="PreactCombobox-options"
           role="listbox"
           id={`${id}-options-listbox`}
+          aria-multiselectable={multiple ? "true" : undefined}
           hidden={!getIsDropdownOpen()}
           ref={dropdownPopperRef}
         >
+          {/* TODO: ability to customize the loading state? */}
           {isLoading ? (
             <li className="PreactCombobox-option" aria-disabled>
               Loading...

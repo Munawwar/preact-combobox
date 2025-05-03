@@ -38,7 +38,8 @@ const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, sign
   
   // Check if aborted
   if (signal.aborted) {
-    throw new Error("Aborted");
+    console.log("Aborted");
+    return [];
   }
 
   // If queryOrValues is an array, we're resolving existing values (initial load)
@@ -127,7 +128,6 @@ function App() {
           allowFreeText=${false}
           value=${carrierValues}
           onChange=${setCarrierValues}
-          showValue=${false}
           placeholder="Search for carriers..."
         />
         <br/>
