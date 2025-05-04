@@ -1,6 +1,5 @@
 Priority
 - Improve performance
-- Test screen reader support
 - Test preservation props of allowedOptions
 - Test option transformers
 

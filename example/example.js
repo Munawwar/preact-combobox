@@ -34,8 +34,8 @@ const carrierData = [
 // Simulate remote data fetching
 const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, signal) => {
   // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
   // Check if aborted
   if (signal.aborted) {
     console.log("Aborted");
@@ -45,16 +45,16 @@ const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, sign
   // If queryOrValues is an array, we're resolving existing values (initial load)
   if (Array.isArray(queryOrValues)) {
     return queryOrValues
-      .map(value => carrierData.find(option => option.value === value))
+      .map((value) => carrierData.find((option) => option.value === value))
       .filter(Boolean);
   }
-  
+
   // Otherwise, we're searching based on user input
   const query = queryOrValues.toLowerCase();
   return carrierData
-    .filter(option => 
-      option.label.toLowerCase().includes(query) || 
-      option.value.toLowerCase().includes(query)
+    .filter(
+      (option) =>
+        option.label.toLowerCase().includes(query) || option.value.toLowerCase().includes(query),
     )
     .slice(0, limit);
 };
@@ -70,12 +70,12 @@ function App() {
   const [value1, setValue1] = useState("India");
   const [carrierValues, setCarrierValues] = useState([
     "550e8400-e29b-41d4-a716-446655440001", // DHL
-    "550e8400-e29b-41d4-a716-446655440004"  // Aramex
+    "550e8400-e29b-41d4-a716-446655440004", // Aramex
   ]);
-  
+
   return html`
     <form>
-        <h3>Multi-select, Free text allowed</h3>
+        <label for="example-1">Multi-select, Free text allowed, Form Submit Compatible</label>
         <${PreactCombobox}
           id="example-1"
           allowedOptions=${allowedOptions}
@@ -84,10 +84,11 @@ function App() {
           onChange=${setValues1}
           name="example-1"
           required=${true}
+          formSubmitCompatible=${true}
         />
         <br/>
 
-        <h3>Free text not allowed (with invalid values)</h3>
+        <label for="example-2">Single-select, Free text not allowed, with invalid values</label>
         <${PreactCombobox}
           id="example-2"
           allowedOptions=${allowedOptions}
@@ -97,7 +98,7 @@ function App() {
         />
         <br/>
 
-        <h3>Disabled</h3>
+        <label for="example-3">Disabled</label>
         <${PreactCombobox}
           id="example-3"
           allowedOptions=${allowedOptions}
@@ -107,7 +108,7 @@ function App() {
         />
         <br/>
 
-        <h3>Single-select, No free text allowed</h3>
+        <label for="example-4">Single-select, No free text allowed</label>
         <${PreactCombobox}
           id="example-4"
           multiple=${false}
@@ -120,8 +121,7 @@ function App() {
         />
         <br/>
         
-        <h3>Remote data fetching (Carrier Accounts)</h3>
-        <p>Selected values are UUIDs that get resolved to carrier names</p>
+        <label for="example-5">Remote data fetching (Carrier Accounts)</label>
         <${PreactCombobox}
           id="example-5"
           allowedOptions=${fetchCarrierOptions}
@@ -129,7 +129,11 @@ function App() {
           value=${carrierValues}
           onChange=${setCarrierValues}
           placeholder="Search for carriers..."
+          inputProps=${{
+            "aria-describedby": "example-5-explanation"
+          }}
         />
+        <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <br/>
 
         <button type="submit">Test Form Submit</button>
