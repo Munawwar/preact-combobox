@@ -140,9 +140,21 @@ export type PreactComboboxProps = {
      * Transform the label text
      */
     optionTransform?: OptionTransformFunction | undefined;
+    /**
+     * Custom warning icon element or component
+     */
+    warningIcon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * Custom chevron icon element or component
+     */
+    chevronIcon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * Custom loading indicator element or text
+     */
+    loadingIndicator?: string | import("preact").VNode<any> | undefined;
 };
 /**
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, }: PreactComboboxProps): import("preact").JSX.Element;

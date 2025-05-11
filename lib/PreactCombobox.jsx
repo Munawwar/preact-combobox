@@ -75,6 +75,9 @@ import "./PreactCombobox.css";
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
  * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
+ * @property {VNode | string} [warningIcon] Custom warning icon element or component
+ * @property {VNode | string} [chevronIcon] Custom chevron icon element or component
+ * @property {VNode | string} [loadingIndicator] Custom loading indicator element or text
  */
 
 // --- end of types ---
@@ -471,7 +474,8 @@ export function matchSlicesToNodes(matchSlices, text) {
   return nodes;
 }
 
-const warningIcon = (
+// Default icons
+const defaultWarningIcon = (
   <svg
     className="PreactCombobox-warningIcon"
     viewBox="0 0 24 24"
@@ -483,7 +487,7 @@ const warningIcon = (
   </svg>
 );
 
-const chevronIcon = (
+const defaultChevronIcon = (
   <svg
     className="PreactCombobox-chevron"
     viewBox="0 0 24 24"
@@ -493,6 +497,12 @@ const chevronIcon = (
   >
     <path d="M7 10l5 5 5-5z" />
   </svg>
+);
+
+const defaultLoadingIndicator = (
+  <li className="PreactCombobox-option" aria-disabled>
+    Loading...
+  </li>
 );
 
 /**
@@ -613,6 +623,9 @@ const PreactCombobox = ({
   singleSelectedStateIcon = defaultSingleSelectedStateIcon,
   // private option for now
   maxNumberOfPresentedOptions = 100,
+  warningIcon = defaultWarningIcon,
+  chevronIcon = defaultChevronIcon,
+  loadingIndicator = defaultLoadingIndicator,
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -1375,7 +1388,6 @@ const PreactCombobox = ({
               <span aria-hidden="true">&#x2715;</span>
             </button>
           ) : null}
-          {/* TODO: ability to customize the warning icon? */}
           {invalidValues.length > 0 && (
             <span
               ref={warningIconRef}
@@ -1389,7 +1401,6 @@ const PreactCombobox = ({
           {multiple && values && values.length > 1 && (
             <span className="PreactCombobox-badge">{values.length}</span>
           )}
-          {/* TODO: ability to customize the chevron icon? */}
           {chevronIcon}
         </div>
       </div>
@@ -1403,12 +1414,7 @@ const PreactCombobox = ({
           hidden={!getIsDropdownOpen()}
           ref={dropdownPopperRef}
         >
-          {/* TODO: ability to customize the loading state? */}
-          {isLoading ? (
-            <li className="PreactCombobox-option" aria-disabled>
-              Loading...
-            </li>
-          ) : (
+          {isLoading ? loadingIndicator : (
             <>
               {addNewOptionVisible && (
                 <li
