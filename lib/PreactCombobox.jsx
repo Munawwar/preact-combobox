@@ -1,6 +1,6 @@
 // TODO: Think about internationalization
 import { createPopper } from "@popperjs/core";
-import { Fragment, createPortal } from "preact/compat";
+import { createPortal } from "preact/compat";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
@@ -71,6 +71,8 @@ import "./PreactCombobox.css";
  * @property {Record<string, any>} [rootElementProps] Root element props
  * @property {Record<string, any>} [inputProps] Input element props
  * @property {boolean} [formSubmitCompatible=false] Render a hidden select for progressive enhanced compatible form submission
+ * @property {boolean} [isServer] Whether the component is rendered on the server (auto-detected if not provided).
+ * This prop is only relevant if formSubmitCompatible is true.
  * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
@@ -84,6 +86,9 @@ import "./PreactCombobox.css";
 
 // @ts-ignore
 const isPlaywright = navigator.webdriver === true;
+
+// Auto-detect server-side rendering
+const isServerDefault = typeof self === 'undefined';
 
 /**
  * @param {string[]} arr Array to remove duplicates from
@@ -516,7 +521,7 @@ export function defaultOptionTransform({
 }) {
   const isLabelSameAsValue = option.value === option.label;
   const getLabel = (labelNodes, valueNodes) => (
-    <Fragment>
+    <>
       {option.icon && (
         <span className="PreactCombobox-optionIcon" aria-hidden="true">
           {option.icon}
@@ -530,7 +535,7 @@ export function defaultOptionTransform({
           </span>
         )}
       </span>
-    </Fragment>
+    </>
   );
 
   const { label, value, matched, matchSlices } = option;
@@ -547,7 +552,7 @@ export function defaultOptionTransform({
   }
 
   return (
-    <Fragment>
+    <>
       <span
         className={`PreactCombobox-checkbox ${
           isSelected ? "PreactCombobox-checkbox--selected" : ""
@@ -557,7 +562,7 @@ export function defaultOptionTransform({
       </span>
       {labelElement}
       {isInvalid && warningIcon}
-    </Fragment>
+    </>
   );
 }
 
@@ -617,6 +622,7 @@ const PreactCombobox = ({
   rootElementProps,
   inputProps: { tooltipContent = null, ...inputProps } = {},
   formSubmitCompatible = false,
+  isServer = isServerDefault,
   selectElementProps,
   showValue = true,
   optionTransform = defaultOptionTransform,
@@ -638,9 +644,8 @@ const PreactCombobox = ({
     tempArrayValue = value ? [/** @type {string} */ (value)] : [];
   }
   const arrayValues = useDeepMemo(tempArrayValue);
-  const allowedOptionsAsKey = useMemo(
-    () => (typeof allowedOptions === "function" ? null : JSON.stringify(allowedOptions)),
-    [allowedOptions],
+  const allowedOptionsAsKey = useDeepMemo(
+    typeof allowedOptions === "function" ? null : allowedOptions,
   );
 
   const autoId = useId();
@@ -716,6 +721,7 @@ const PreactCombobox = ({
       if (activeDescendant.current && dropdownPopperRef.current) {
         const el = dropdownPopperRef.current.querySelector(".PreactCombobox-option--active");
         el?.classList.remove("PreactCombobox-option--active");
+        // Remove non-active options from screen reader announcement
         el?.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "true");
         el?.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "true");
       }
@@ -1288,6 +1294,9 @@ const PreactCombobox = ({
     }
   }, [isLoading, loadingAnnouncement, getIsDropdownOpen, filteredOptions.length]);
 
+  // Determine if we should render interactive elements
+  const isServerSideForm = isServer && formSubmitCompatible;
+
   return (
     <div
       className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className}`}
@@ -1321,165 +1330,169 @@ const PreactCombobox = ({
       </div>
 
       <div className={`PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`}>
-        <div className="PreactCombobox-inputWrapper">
-          {/* Show icon for single select mode */}
-          {!multiple && singleSelectValue && allOptionsLookup[singleSelectValue]?.icon &&
-            singleSelectedStateIcon(allOptionsLookup[singleSelectValue])
-          }
-          <input
-            id={id}
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            placeholder={
-              getIsDropdownOpen()
-                ? "Search..."
-                : arrayValues.length > 0
-                  ? arrayValues.map((value) => allOptionsLookup[value]?.label || value).join(", ")
-                  : placeholder
+        {!isServerSideForm && (
+          <>
+            {/* Show icon for single select mode */}
+            {!multiple && singleSelectValue && allOptionsLookup[singleSelectValue]?.icon &&
+              singleSelectedStateIcon(allOptionsLookup[singleSelectValue])
             }
-            onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={handleInputFocus}
-            onBlur={() => {
-              // @ts-ignore
-              blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
-            }}
-            onPaste={handlePaste}
-            className={`PreactCombobox-input ${
-              multiple ? "PreactCombobox-input--multiple" : ""
-            } ${disabled ? "PreactCombobox-input--disabled" : ""}`}
-            role="combobox"
-            aria-expanded={getIsDropdownOpen()}
-            aria-haspopup="listbox"
-            aria-controls={`${id}-options-listbox`}
-            aria-activedescendant={
-              activeDescendant.current
-                ? `${id}-option-${toHTMLId(activeDescendant.current)}`
-                : undefined
-            }
-            disabled={disabled}
-            required={required && arrayValues.length === 0}
-            {...inputProps}
-          />
-          {/* This is a hidden select element to allow for form submission */}
-          {formSubmitCompatible ? (
-            <select
-              {...selectElementProps}
-              multiple={multiple}
-              hidden
-              tabIndex={-1}
-              // @ts-expect-error this is a valid react attribute
-              readOnly
-              value={value}
-              name={name}
-              size="1"
-            >
-              {selectChildren}
-            </select>
-          ) : null}
-          {!multiple && singleSelectValue && !disabled && !required ? (
-            <button
-              type="button"
-              className="PreactCombobox-clearButton"
-              aria-label="Clear value"
-              onClick={handleClearValue}
-            >
-              <span aria-hidden="true">&#x2715;</span>
-            </button>
-          ) : null}
-          {invalidValues.length > 0 && (
-            <span
-              ref={warningIconRef}
-              className="PreactCombobox-warningIconWrapper"
-              onMouseEnter={() => setWarningIconHovered(true)}
-              onMouseLeave={() => setWarningIconHovered(false)}
-            >
-              {warningIcon}
-            </span>
-          )}
-          {multiple && values && values.length > 1 && (
-            <span className="PreactCombobox-badge">{values.length}</span>
-          )}
-          {chevronIcon}
-        </div>
+            <input
+              id={id}
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              placeholder={
+                getIsDropdownOpen()
+                  ? "Search..."
+                  : arrayValues.length > 0
+                    ? arrayValues.map((value) => allOptionsLookup[value]?.label || value).join(", ")
+                    : placeholder
+              }
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
+              onBlur={() => {
+                // @ts-ignore
+                blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
+              }}
+              onPaste={handlePaste}
+              className={`PreactCombobox-input ${
+                multiple ? "PreactCombobox-input--multiple" : ""
+              } ${disabled ? "PreactCombobox-input--disabled" : ""}`}
+              role="combobox"
+              aria-expanded={getIsDropdownOpen()}
+              aria-haspopup="listbox"
+              aria-controls={`${id}-options-listbox`}
+              aria-activedescendant={
+                activeDescendant.current
+                  ? `${id}-option-${toHTMLId(activeDescendant.current)}`
+                  : undefined
+              }
+              disabled={disabled}
+              required={required && arrayValues.length === 0}
+              {...inputProps}
+            />
+            {!multiple && singleSelectValue && !disabled && !required ? (
+              <button
+                type="button"
+                className="PreactCombobox-clearButton"
+                aria-label="Clear value"
+                onClick={handleClearValue}
+              >
+                <span aria-hidden="true">&#x2715;</span>
+              </button>
+            ) : null}
+            {invalidValues.length > 0 && (
+              <span
+                ref={warningIconRef}
+                className="PreactCombobox-warningIconWrapper"
+                onMouseEnter={() => setWarningIconHovered(true)}
+                onMouseLeave={() => setWarningIconHovered(false)}
+              >
+                {warningIcon}
+              </span>
+            )}
+            {multiple && values && values.length > 1 && (
+              <span className="PreactCombobox-badge">{values.length}</span>
+            )}
+            {chevronIcon}
+          </>
+        )}
+
+        {/* This is a hidden select element to allow for form submission */}
+        {formSubmitCompatible ? (
+          <select
+            {...selectElementProps}
+            multiple={multiple}
+            hidden={!isServerSideForm}
+            tabIndex={isServerSideForm ? 0 : -1}
+            // @ts-expect-error this is a valid react attribute
+            readOnly={!isServerSideForm}
+            value={value}
+            name={name}
+            size="1"
+            className={isServerSideForm ? "PreactCombobox-formSelect" : ""}
+          >
+            {selectChildren}
+          </select>
+        ) : null}
       </div>
 
-      <Portal parent={portal}>
-        <ul
-          className="PreactCombobox-options"
-          role="listbox"
-          id={`${id}-options-listbox`}
-          aria-multiselectable={multiple ? "true" : undefined}
-          hidden={!getIsDropdownOpen()}
-          ref={dropdownPopperRef}
-        >
-          {isLoading ? loadingIndicator : (
-            <>
-              {addNewOptionVisible && (
-                <li
-                  key={inputTrimmed}
-                  id={`${id}-option-${toHTMLId(inputTrimmed)}`}
-                  className="PreactCombobox-option"
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={false}
-                  onMouseEnter={() => activateDescendant(inputTrimmed, false)}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleAddNewOption(inputTrimmed);
-                    if (!multiple) {
-                      closeDropdown();
-                    }
-                    inputRef.current?.focus();
-                  }}
-                >
-                  {`Add "${inputTrimmed}"`}
-                </li>
-              )}
-              {filteredOptions.map((option) => {
-                // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
-                // aria-activedescendant is used to tell screen readers the active option.
-                const isActive = activeDescendant.current === option.value;
-                const isSelected = arrayValues.includes(option.value);
-                const isInvalid = invalidValues.includes(option.value);
-                const optionClasses = [
-                  "PreactCombobox-option",
-                  isActive ? "PreactCombobox-option--active" : "",
-                  isSelected ? "PreactCombobox-option--selected" : "",
-                  isInvalid ? "PreactCombobox-option--invalid" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-                return (
+      {!isServerSideForm && (
+        <Portal parent={portal}>
+          <ul
+            className="PreactCombobox-options"
+            role="listbox"
+            id={`${id}-options-listbox`}
+            aria-multiselectable={multiple ? "true" : undefined}
+            hidden={!getIsDropdownOpen()}
+            ref={dropdownPopperRef}
+          >
+            {isLoading ? loadingIndicator : (
+              <>
+                {addNewOptionVisible && (
                   <li
-                    key={option.value}
-                    id={`${id}-option-${toHTMLId(option.value)}`}
-                    className={optionClasses}
+                    key={inputTrimmed}
+                    id={`${id}-option-${toHTMLId(inputTrimmed)}`}
+                    className="PreactCombobox-option"
                     role="option"
                     tabIndex={-1}
-                    aria-selected={isSelected}
-                    onMouseEnter={() => activateDescendant(option.value, false)}
+                    aria-selected={false}
+                    onMouseEnter={() => activateDescendant(inputTrimmed, false)}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      handleOptionSelect(option.value, { toggleSelected: true });
+                      handleAddNewOption(inputTrimmed);
                       if (!multiple) {
                         closeDropdown();
                       }
                       inputRef.current?.focus();
                     }}
                   >
-                    {optionTransform({
-                      option,
-                      language,
-                      isActive,
-                      isSelected,
-                      isInvalid,
-                      showValue
-                    })}
-                    <Fragment>
+                    {`Add "${inputTrimmed}"`}
+                  </li>
+                )}
+                {filteredOptions.map((option) => {
+                  // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
+                  // aria-activedescendant is used to tell screen readers the active option.
+                  const isActive = activeDescendant.current === option.value;
+                  const isSelected = arrayValues.includes(option.value);
+                  const isInvalid = invalidValues.includes(option.value);
+                  const optionClasses = [
+                    "PreactCombobox-option",
+                    isActive ? "PreactCombobox-option--active" : "",
+                    isSelected ? "PreactCombobox-option--selected" : "",
+                    isInvalid ? "PreactCombobox-option--invalid" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  return (
+                    <li
+                      key={option.value}
+                      id={`${id}-option-${toHTMLId(option.value)}`}
+                      className={optionClasses}
+                      role="option"
+                      tabIndex={-1}
+                      aria-selected={isSelected}
+                      onMouseEnter={() => activateDescendant(option.value, false)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleOptionSelect(option.value, { toggleSelected: true });
+                        if (!multiple) {
+                          closeDropdown();
+                        }
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      {optionTransform({
+                        option,
+                        language,
+                        isActive,
+                        isSelected,
+                        isInvalid,
+                        showValue
+                      })}
                       {isSelected ? (
                         <span
                           className="PreactCombobox-srOnly"
@@ -1500,23 +1513,23 @@ const PreactCombobox = ({
                           Invalid option.
                         </span>
                       ) : null}
-                    </Fragment>
-                  </li>
-                );
-              })}
-              {filteredOptions.length === 0 &&
-                !isLoading &&
-                (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
-                  <li className="PreactCombobox-option">No options found</li>
+                    </li>
+                  );
+                })}
+                {filteredOptions.length === 0 &&
+                  !isLoading &&
+                  (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
+                    <li className="PreactCombobox-option">No options found</li>
+                  )}
+                {filteredOptions.length === maxNumberOfPresentedOptions && (
+                  <li className="PreactCombobox-option">...type to load more options</li>
                 )}
-              {filteredOptions.length === maxNumberOfPresentedOptions && (
-                <li className="PreactCombobox-option">...type to load more options</li>
-              )}
-            </>
-          )}
-        </ul>
-      </Portal>
-      {invalidValues.length > 0 && warningIconHovered && (
+              </>
+            )}
+          </ul>
+        </Portal>
+      )}
+      {invalidValues.length > 0 && warningIconHovered && !isServerSideForm && (
         <Portal parent={portal}>
           <div className="PreactCombobox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
             Invalid values:

@@ -108,6 +108,7 @@ function App() {
     "550e8400-e29b-41d4-a716-446655440001", // DHL
     "550e8400-e29b-41d4-a716-446655440004", // Aramex
   ]);
+  const [serverSideValue, setServerSideValue] = useState("usa");
 
   return html`
     <form>
@@ -170,6 +171,20 @@ function App() {
             "aria-describedby": "example-5-explanation",
           }}
           showValue=${false}
+        />
+        <br/>
+
+        <label for="example-6">Server-Side Rendering Example</label>
+        <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
+        <${PreactCombobox}
+          id="example-6"
+          multiple=${false}
+          allowedOptions=${allowedOptions}
+          value=${serverSideValue}
+          onChange=${setServerSideValue}
+          name="server-side-example"
+          isServer=${true}
+          formSubmitCompatible=${true}
         />
         <br/>
 

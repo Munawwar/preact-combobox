@@ -129,6 +129,11 @@ export type PreactComboboxProps = {
      */
     formSubmitCompatible?: boolean | undefined;
     /**
+     * Whether the component is rendered on the server (auto-detected if not provided).
+     * This prop is only relevant if formSubmitCompatible is true.
+     */
+    isServer?: boolean | undefined;
+    /**
      * Props for the hidden select element. This is useful for forms
      */
     selectElementProps?: Record<string, any> | undefined;
@@ -157,4 +162,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, }: PreactComboboxProps): import("preact").JSX.Element;
