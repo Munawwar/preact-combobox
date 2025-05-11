@@ -2,11 +2,10 @@ export function isEqual(value1: any, value2: any): any;
 /**
  * Both dependencies and state are compared using a deep equality function.
  * @template T
- * @param {() => T} getNewState
- * @param {any[]} dependencies
+ * @param {T} newState
  * @returns {T}
  */
-export function useDeepMemo<T>(getNewState: () => T, dependencies?: any[]): T;
+export function useDeepMemo<T>(newState: T): T;
 /**
  * @template T
  * @param {T} initialValue
