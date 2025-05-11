@@ -46,6 +46,13 @@
   background: transparent;
   text-overflow: ellipsis;
 }
+
+/* Make placeholder look like a label */
+.PreactCombobox-input:not(:focus)::placeholder {
+  color: #222;
+  font-weight: 500;
+}
+
 .PreactCombobox-input--disabled {
   cursor: not-allowed;
 }
@@ -85,6 +92,10 @@
 
 .PreactCombobox-option--active {
   background-color: #e0e0e0;
+}
+
+.PreactCombobox-optionIcon {
+  margin-right: 8px;
 }
 
 .PreactCombobox-labelFlex {

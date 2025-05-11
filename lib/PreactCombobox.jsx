@@ -10,6 +10,7 @@ import "./PreactCombobox.css";
  * @typedef {Object} Option
  * @property {string} label - The display text for the option
  * @property {string} value - The value of the option
+ * @property {VNode | string} [icon] - Optional icon element or URL to display before the label
  */
 
 /**
@@ -289,7 +290,6 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
   let queryWords;
   let matches = options.map((option) => {
     const { label, value, ...rest } = option;
-    // TODO: Handle case where query is a comma separated list of values
     if (isCommaSeparated) {
       const querySegments = query.split(",");
       const matches = querySegments
@@ -506,14 +506,21 @@ export function defaultOptionTransform({
 }) {
   const isLabelSameAsValue = option.value === option.label;
   const getLabel = (labelNodes, valueNodes) => (
-    <span className="PreactCombobox-labelFlex">
-      <span>{labelNodes}</span>
-      {isLabelSameAsValue || !showValue ? null : (
-        <span className="PreactCombobox-value" aria-hidden="true">
-          ({valueNodes})
+    <Fragment>
+      {option.icon && (
+        <span className="PreactCombobox-optionIcon" aria-hidden="true">
+          {option.icon}
         </span>
       )}
-    </span>
+      <span className="PreactCombobox-labelFlex">
+        <span>{labelNodes}</span>
+        {isLabelSameAsValue || !showValue ? null : (
+          <span className="PreactCombobox-value" aria-hidden="true">
+            ({valueNodes})
+          </span>
+        )}
+      </span>
+    </Fragment>
   );
 
   const { label, value, matched, matchSlices } = option;
@@ -541,6 +548,14 @@ export function defaultOptionTransform({
       {labelElement}
       {isInvalid && warningIcon}
     </Fragment>
+  );
+}
+
+function defaultSingleSelectedStateIcon(option) {
+  return (
+    <span className="PreactCombobox-optionIcon" aria-hidden="true">
+      {option.icon}
+    </span>
   );
 }
 
@@ -595,6 +610,7 @@ const PreactCombobox = ({
   selectElementProps,
   showValue = true,
   optionTransform = defaultOptionTransform,
+  singleSelectedStateIcon = defaultSingleSelectedStateIcon,
   // private option for now
   maxNumberOfPresentedOptions = 100,
 }) => {
@@ -1293,6 +1309,10 @@ const PreactCombobox = ({
 
       <div className={`PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`}>
         <div className="PreactCombobox-inputWrapper">
+          {/* Show icon for single select mode */}
+          {!multiple && singleSelectValue && allOptionsLookup[singleSelectValue]?.icon &&
+            singleSelectedStateIcon(allOptionsLookup[singleSelectValue])
+          }
           <input
             id={id}
             ref={inputRef}
@@ -1445,7 +1465,14 @@ const PreactCombobox = ({
                       inputRef.current?.focus();
                     }}
                   >
-                    {optionTransform({ option, language, isActive, isSelected, isInvalid, showValue })}
+                    {optionTransform({
+                      option,
+                      language,
+                      isActive,
+                      isSelected,
+                      isInvalid,
+                      showValue
+                    })}
                     <Fragment>
                       {isSelected ? (
                         <span

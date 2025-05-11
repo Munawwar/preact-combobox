@@ -6,15 +6,51 @@ const html = htm.bind(createElement);
 import PreactCombobox from "../dist/esm/PreactCombobox.js";
 
 let allowedOptions = [
-  { label: "United States of America", value: "usa" },
-  { label: "France", value: "france" },
-  { label: "Japan", value: "japan" },
-  { label: "Brazil", value: "brazil" },
-  { label: "Australia", value: "australia" },
-  { label: "China", value: "china" },
-  { label: "Russia", value: "russia" },
-  { label: "South Korea", value: "korea" },
-  { label: "Indonesia", value: "indonesia" },
+  {
+    label: "United States of America",
+    value: "usa",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇺🇸</span>`,
+  },
+  {
+    label: "France",
+    value: "france",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇫🇷</span>`,
+  },
+  {
+    label: "Japan",
+    value: "japan",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇯🇵</span>`,
+  },
+  {
+    label: "Brazil",
+    value: "brazil",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇧🇷</span>`,
+  },
+  {
+    label: "Australia",
+    value: "australia",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇦🇺</span>`,
+  },
+  {
+    label: "China",
+    value: "china",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇨🇳</span>`,
+  },
+  {
+    label: "Russia",
+    value: "russia",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇷🇺</span>`,
+  },
+  {
+    label: "South Korea",
+    value: "korea",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇰🇷</span>`,
+  },
+  {
+    label: "Indonesia",
+    value: "indonesia",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇮🇩</span>`,
+  },
 ];
 
 // Carrier data for remote fetching simulation
@@ -34,7 +70,7 @@ const carrierData = [
 // Simulate remote data fetching
 const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, signal) => {
   // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 5000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
 
   // Check if aborted
   if (signal.aborted) {
@@ -67,7 +103,7 @@ const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, sign
 function App() {
   const [values1, setValues1] = useState(["United Arab Emirates"]);
   const [values2, setValues2] = useState(["India"]);
-  const [value1, setValue1] = useState("India");
+  const [value3, setValue3] = useState("usa");
   const [carrierValues, setCarrierValues] = useState([
     "550e8400-e29b-41d4-a716-446655440001", // DHL
     "550e8400-e29b-41d4-a716-446655440004", // Aramex
@@ -88,7 +124,7 @@ function App() {
         />
         <br/>
 
-        <label for="example-2">Single-select, Free text not allowed, with invalid values</label>
+        <label for="example-2">Multi-select, Free text not allowed, with invalid values</label>
         <${PreactCombobox}
           id="example-2"
           allowedOptions=${allowedOptions}
@@ -114,14 +150,15 @@ function App() {
           multiple=${false}
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
-          value=${value1}
-          onChange=${setValue1}
+          value=${value3}
+          onChange=${setValue3}
           name="example-4"
           required=${true}
         />
         <br/>
         
-        <label for="example-5">Remote data fetching (Carrier Accounts)</label>
+        <label for="example-5">Remote data fetching</label>
+        <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <${PreactCombobox}
           id="example-5"
           allowedOptions=${fetchCarrierOptions}
@@ -130,10 +167,10 @@ function App() {
           onChange=${setCarrierValues}
           placeholder="Search for carriers..."
           inputProps=${{
-            "aria-describedby": "example-5-explanation"
+            "aria-describedby": "example-5-explanation",
           }}
+          showValue=${false}
         />
-        <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <br/>
 
         <button type="submit">Test Form Submit</button>
