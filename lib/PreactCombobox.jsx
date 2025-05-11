@@ -34,14 +34,14 @@ import "./PreactCombobox.css";
  */
 
 /**
- * @typedef {(
- *   match: OptionMatch,
+ * @typedef {({
+ *   option: OptionMatch,
  *   language: string,
- *   isActive: boolean,
  *   isSelected: boolean,
  *   isInvalid: boolean,
+ *   isActive: boolean,
  *   showValue: boolean,
- * ) => VNode} OptionTransformFunction
+ * }) => VNode} OptionTransformFunction
  */
 
 /**
@@ -498,15 +498,13 @@ const chevronIcon = (
 /**
  * @type {OptionTransformFunction}
  */
-export function defaultOptionTransform(
-  match,
-  _language,
-  isActive,
+export function defaultOptionTransform({
+  option,
   isSelected,
   isInvalid,
   showValue,
-) {
-  const isLabelSameAsValue = match.value === match.label;
+}) {
+  const isLabelSameAsValue = option.value === option.label;
   const getLabel = (labelNodes, valueNodes) => (
     <span className="PreactCombobox-labelFlex">
       <span>{labelNodes}</span>
@@ -518,7 +516,7 @@ export function defaultOptionTransform(
     </span>
   );
 
-  const { label, value, matched, matchSlices } = match;
+  const { label, value, matched, matchSlices } = option;
   let labelElement;
   if (matched === "label" || (matched === "value" && value === label)) {
     const labelNodes = matchSlicesToNodes(matchSlices, label);
@@ -542,26 +540,6 @@ export function defaultOptionTransform(
       </span>
       {labelElement}
       {isInvalid && warningIcon}
-      {isSelected ? (
-        <span
-          className="PreactCombobox-srOnly"
-          aria-atomic="true"
-          data-reader="selected"
-          aria-hidden={!isActive}
-        >
-          Selected option.
-        </span>
-      ) : null}
-      {isInvalid ? (
-        <span
-          className="PreactCombobox-srOnly"
-          aria-atomic="true"
-          data-reader="invalid"
-          aria-hidden={!isActive}
-        >
-          Invalid option.
-        </span>
-      ) : null}
     </Fragment>
   );
 }
@@ -1467,7 +1445,29 @@ const PreactCombobox = ({
                       inputRef.current?.focus();
                     }}
                   >
-                    {optionTransform(option, language, isActive, isSelected, isInvalid, showValue)}
+                    {optionTransform({ option, language, isActive, isSelected, isInvalid, showValue })}
+                    <Fragment>
+                      {isSelected ? (
+                        <span
+                          className="PreactCombobox-srOnly"
+                          aria-atomic="true"
+                          data-reader="selected"
+                          aria-hidden={!isActive}
+                        >
+                          Selected option.
+                        </span>
+                      ) : null}
+                      {isInvalid ? (
+                        <span
+                          className="PreactCombobox-srOnly"
+                          aria-atomic="true"
+                          data-reader="invalid"
+                          aria-hidden={!isActive}
+                        >
+                          Invalid option.
+                        </span>
+                      ) : null}
+                    </Fragment>
                   </li>
                 );
               })}
