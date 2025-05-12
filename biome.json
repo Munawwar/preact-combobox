@@ -12,7 +12,9 @@
       },
       "correctness": {
         "noUnusedImports": "error",
-        "noUnusedVariables": "error"
+        "noUnusedVariables": "error",
+        "noUndeclaredVariables": "error",
+        "noUndeclaredDependencies": "error"
       }
     },
     "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"]

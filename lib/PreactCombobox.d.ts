@@ -4,14 +4,16 @@
  * @returns {VNode[]}
  */
 export function matchSlicesToNodes(matchSlices: OptionMatch["matchSlices"], text: string): VNode[];
-export function defaultOptionTransform({ option: OptionMatch, language: string, isSelected: boolean, isInvalid: boolean, isActive: boolean, showValue: boolean, }: {
+/**
+ * @type {OptionTransformFunction}
+ */
+export function defaultOptionTransform({ option, isSelected, isInvalid, showValue, warningIcon }: {
     option: any;
-    language: any;
     isSelected: any;
     isInvalid: any;
-    isActive: any;
     showValue: any;
-}): VNode;
+    warningIcon: any;
+}): import("preact").JSX.Element;
 export default PreactCombobox;
 export type Option = {
     /**
@@ -67,7 +69,6 @@ export type LanguageCache = {
     wordSegmenter: Intl.Segmenter;
 };
 export type VNode = import("preact").VNode;
-export type OptionTransformFunction = ({ option: OptionMatch, language: string, isSelected: boolean, isInvalid: boolean, isActive: boolean, showValue: boolean, }: any) => VNode;
 export type PreactComboboxProps = {
     /**
      * The id of the component
@@ -144,19 +145,19 @@ export type PreactComboboxProps = {
     /**
      * Transform the label text
      */
-    optionTransform?: OptionTransformFunction | undefined;
+    optionTransform?: OptionTransformFunction;
     /**
      * Custom warning icon element or component
      */
-    warningIcon?: string | import("preact").VNode<any> | undefined;
+    warningIcon?: import("preact").VNode<any> | undefined;
     /**
      * Custom chevron icon element or component
      */
-    chevronIcon?: string | import("preact").VNode<any> | undefined;
+    chevronIcon?: import("preact").VNode<any> | undefined;
     /**
      * Custom loading indicator element or text
      */
-    loadingIndicator?: string | import("preact").VNode<any> | undefined;
+    loadingIndicator?: import("preact").VNode<any> | undefined;
 };
 /**
  * PreactCombobox component

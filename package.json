@@ -34,7 +34,7 @@
   "license": "MIT",
   "repository": "https://github.com/Munawwar/preact-combobox",
   "devDependencies": {
-    "@biomejs/biome": "1.8.3",
+    "@biomejs/biome": "^1.9.4",
     "@popperjs/core": "^2.0.0",
     "browser-sync": "^3.0.2",
     "concurrently": "^9.1.2",
@@ -43,8 +43,8 @@
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
-    "preact": "^10.0.0",
-    "@popperjs/core": "^2.0.0"
+    "@popperjs/core": "^2.0.0",
+    "preact": "^10.0.0"
   },
   "engines": {
     "node": ">= 10.0.0"

@@ -42,6 +42,7 @@ import "./PreactCombobox.css";
  *   isInvalid: boolean,
  *   isActive: boolean,
  *   showValue: boolean,
+ *   warningIcon?: VNode,
  * }) => VNode} OptionTransformFunction
  */
 
@@ -77,9 +78,9 @@ import "./PreactCombobox.css";
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
  * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
- * @property {VNode | string} [warningIcon] Custom warning icon element or component
- * @property {VNode | string} [chevronIcon] Custom chevron icon element or component
- * @property {VNode | string} [loadingIndicator] Custom loading indicator element or text
+ * @property {VNode} [warningIcon] Custom warning icon element or component
+ * @property {VNode} [chevronIcon] Custom chevron icon element or component
+ * @property {VNode} [loadingIndicator] Custom loading indicator element or text
  */
 
 // --- end of types ---
@@ -88,7 +89,7 @@ import "./PreactCombobox.css";
 const isPlaywright = navigator.webdriver === true;
 
 // Auto-detect server-side rendering
-const isServerDefault = typeof self === 'undefined';
+const isServerDefault = typeof self === "undefined";
 
 /**
  * @param {string[]} arr Array to remove duplicates from
@@ -513,12 +514,7 @@ const defaultLoadingIndicator = (
 /**
  * @type {OptionTransformFunction}
  */
-export function defaultOptionTransform({
-  option,
-  isSelected,
-  isInvalid,
-  showValue,
-}) {
+export function defaultOptionTransform({ option, isSelected, isInvalid, showValue, warningIcon }) {
   const isLabelSameAsValue = option.value === option.label;
   const getLabel = (labelNodes, valueNodes) => (
     <>
@@ -849,7 +845,7 @@ const PreactCombobox = ({
                 abortController.signal,
               )
             : null,
-        ]).catch(() => {
+        ]).catch((error) => {
           if (abortController.signal.aborted) {
             return [null, null];
           }
@@ -1333,9 +1329,10 @@ const PreactCombobox = ({
         {!isServerSideForm && (
           <>
             {/* Show icon for single select mode */}
-            {!multiple && singleSelectValue && allOptionsLookup[singleSelectValue]?.icon &&
-              singleSelectedStateIcon(allOptionsLookup[singleSelectValue])
-            }
+            {!multiple &&
+              singleSelectValue &&
+              allOptionsLookup[singleSelectValue]?.icon &&
+              singleSelectedStateIcon(allOptionsLookup[singleSelectValue])}
             <input
               id={id}
               ref={inputRef}
@@ -1420,21 +1417,26 @@ const PreactCombobox = ({
 
       {!isServerSideForm && (
         <Portal parent={portal}>
+          {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
           <ul
             className="PreactCombobox-options"
+            // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
             role="listbox"
             id={`${id}-options-listbox`}
             aria-multiselectable={multiple ? "true" : undefined}
             hidden={!getIsDropdownOpen()}
             ref={dropdownPopperRef}
           >
-            {isLoading ? loadingIndicator : (
+            {isLoading ? (
+              loadingIndicator
+            ) : (
               <>
                 {addNewOptionVisible && (
                   <li
                     key={inputTrimmed}
                     id={`${id}-option-${toHTMLId(inputTrimmed)}`}
                     className="PreactCombobox-option"
+                    // biome-ignore lint/a11y/useSemanticElements: parent is <ul> so want to keep equivalent semantics
                     role="option"
                     tabIndex={-1}
                     aria-selected={false}
@@ -1471,6 +1473,7 @@ const PreactCombobox = ({
                       key={option.value}
                       id={`${id}-option-${toHTMLId(option.value)}`}
                       className={optionClasses}
+                      // biome-ignore lint/a11y/useSemanticElements: <explanation>
                       role="option"
                       tabIndex={-1}
                       aria-selected={isSelected}
@@ -1491,7 +1494,8 @@ const PreactCombobox = ({
                         isActive,
                         isSelected,
                         isInvalid,
-                        showValue
+                        showValue,
+                        warningIcon,
                       })}
                       {isSelected ? (
                         <span
