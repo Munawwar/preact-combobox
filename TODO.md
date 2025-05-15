@@ -1,6 +1,5 @@
 Priorities
 - Internationalization, RTL support
-- Default Dark theme
 - Docs
 
 Nice to have

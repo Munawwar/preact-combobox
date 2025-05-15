@@ -1,6 +1,6 @@
 import htm from "htm";
 import { createElement, render } from "preact";
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 const html = htm.bind(createElement);
 
 import PreactCombobox from "../dist/esm/PreactCombobox.js";
@@ -109,6 +109,17 @@ function App() {
     "550e8400-e29b-41d4-a716-446655440004", // Aramex
   ]);
   const [serverSideValue, setServerSideValue] = useState("usa");
+  const [value7, setValue7] = useState(["japan", "china"]);
+  const [appTheme, setAppTheme] = useState("light");
+
+  // Listen for theme changes
+  useEffect(() => {
+    const handleThemeChange = (e) => {
+      setAppTheme(e.detail.theme || (e.detail.darkMode ? "dark" : "light"));
+    };
+    window.addEventListener("theme-change", handleThemeChange);
+    return () => window.removeEventListener("theme-change", handleThemeChange);
+  }, []);
 
   return html`
     <form>
@@ -122,6 +133,7 @@ function App() {
           name="example-1"
           required=${true}
           formSubmitCompatible=${true}
+          theme=${appTheme}
         />
         <br/>
 
@@ -132,6 +144,7 @@ function App() {
           allowFreeText=${false}
           value=${values2}
           onChange=${setValues2}
+          theme=${appTheme}
         />
         <br/>
 
@@ -142,6 +155,7 @@ function App() {
           allowFreeText=${true}
           value=${["france"]}
           disabled
+          theme=${appTheme}
         />
         <br/>
 
@@ -155,6 +169,7 @@ function App() {
           onChange=${setValue3}
           name="example-4"
           required=${true}
+          theme=${appTheme}
         />
         <br/>
         
@@ -171,6 +186,7 @@ function App() {
             "aria-describedby": "example-5-explanation",
           }}
           showValue=${false}
+          theme=${appTheme}
         />
         <br/>
 
@@ -185,6 +201,18 @@ function App() {
           name="server-side-example"
           isServer=${true}
           formSubmitCompatible=${true}
+          theme=${appTheme}
+        />
+        <br/>
+
+        <label for="example-7">Always Dark Theme (explicitly set dark theme)</label>
+        <${PreactCombobox}
+          id="example-7"
+          allowedOptions=${allowedOptions}
+          allowFreeText=${true}
+          value=${value7}
+          onChange=${setValue7}
+          theme="dark"
         />
         <br/>
 

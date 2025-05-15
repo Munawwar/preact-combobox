@@ -118,6 +118,10 @@ export type PreactComboboxProps = {
     className?: string | undefined;
     placeholder?: string | undefined;
     /**
+     * Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
+     */
+    theme?: "light" | "dark" | "system" | undefined;
+    /**
      * Root element props
      */
     rootElementProps?: Record<string, any> | undefined;
@@ -163,4 +167,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, theme, }: PreactComboboxProps): import("preact").JSX.Element;

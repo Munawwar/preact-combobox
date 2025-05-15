@@ -68,6 +68,7 @@ import "./PreactCombobox.css";
  * @property {string} [name] name to be set on hidden select element
  * @property {string} [className]
  * @property {string} [placeholder]
+ * @property {'light' | 'dark' | 'system'} [theme='system'] Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
  *
  * @property {Record<string, any>} [rootElementProps] Root element props
  * @property {Record<string, any>} [inputProps] Input element props
@@ -523,10 +524,10 @@ export function defaultOptionTransform({ option, isSelected, isInvalid, showValu
           {option.icon}
         </span>
       )}
-      <span className="PreactCombobox-labelFlex">
+      <span className="PreactCombobox-optionLabelFlex">
         <span>{labelNodes}</span>
         {isLabelSameAsValue || !showValue ? null : (
-          <span className="PreactCombobox-value" aria-hidden="true">
+          <span className="PreactCombobox-optionValue" aria-hidden="true">
             ({valueNodes})
           </span>
         )}
@@ -550,8 +551,8 @@ export function defaultOptionTransform({ option, isSelected, isInvalid, showValu
   return (
     <>
       <span
-        className={`PreactCombobox-checkbox ${
-          isSelected ? "PreactCombobox-checkbox--selected" : ""
+        className={`PreactCombobox-optionCheckbox ${
+          isSelected ? "PreactCombobox-optionCheckbox--selected" : ""
         }`}
       >
         {isSelected && <span aria-hidden="true">✓</span>}
@@ -628,6 +629,7 @@ const PreactCombobox = ({
   warningIcon = defaultWarningIcon,
   chevronIcon = defaultChevronIcon,
   loadingIndicator = defaultLoadingIndicator,
+  theme = "system",
 }) => {
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -1295,7 +1297,7 @@ const PreactCombobox = ({
 
   return (
     <div
-      className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className}`}
+      className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className} ${`PreactCombobox--${theme}`}`}
       aria-disabled={disabled}
       onClick={() => {
         if (!disabled) {
@@ -1419,7 +1421,7 @@ const PreactCombobox = ({
         <Portal parent={portal}>
           {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
           <ul
-            className="PreactCombobox-options"
+            className={`PreactCombobox-options ${`PreactCombobox-options--${theme}`}`}
             // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
             role="listbox"
             id={`${id}-options-listbox`}

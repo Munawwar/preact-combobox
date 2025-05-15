@@ -17,7 +17,8 @@
         "noUndeclaredDependencies": "error"
       }
     },
-    "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"]
+    "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"],
+    "ignore": ["lib/PreactCombobox.d.ts"]
   },
   "formatter": {
     "indentStyle": "space",

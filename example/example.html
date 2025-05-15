@@ -8,18 +8,86 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../dist/esm/PreactCombobox.css">
   <style>
+    :root {
+      --text-color: #222;
+      --bg-color: #fff;
+      --border-color: #ccc;
+      --input-bg-color: #fff;
+      --disabled-bg-color: #f0f0f0;
+      --hover-bg-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    html[data-theme="dark"] {
+      --text-color: #e0e0e0;
+      --bg-color: #222;
+      --border-color: #666;
+      --input-bg-color: #444;
+      --disabled-bg-color: #333;
+      --hover-bg-color: rgba(255, 255, 255, 0.1);
+    }
+    
     body {
       font-family: 'Roboto', sans-serif;
+      padding: 20px;
+      transition: background-color 0.3s, color 0.3s;
+      min-width: 320px;
+      max-width: 500px;
+      margin: 0 auto;
+      background-color: var(--bg-color);
+      color: var(--text-color);
     }
 
     #root {
-      width: 500px;
+      width: 100%;
     }
+    
     label {
       display: block;
       margin: 5px 0;
       font-weight: 700;
       font-size: larger;
+    }
+
+    /* Theme selector styles */
+    .theme-selector {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .theme-selector label {
+      margin-right: 10px;
+      font-size: 16px;
+      font-weight: normal;
+    }
+
+    .theme-selector select {
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--input-bg-color);
+      color: var(--text-color);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Style for example elements */
+    button,
+    p {
+      color: var(--text-color);
+    }
+
+    button {
+      background-color: var(--input-bg-color);
+      border-color: var(--border-color);
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: var(--hover-bg-color);
     }
   </style>
   <script type="importmap">
@@ -37,9 +105,74 @@
 </head>
 
 <body>
-  <h2>Preact Example</h2>
+  <h2>Preact Combobox Example</h2>
+  
+  <div class="theme-selector">
+    <label for="theme-select">Theme:</label>
+    <select id="theme-select">
+      <option value="system">System default</option>
+      <option value="light" selected>Light mode</option>
+      <option value="dark">Dark mode</option>
+    </select>
+  </div>
+  
   <div id="root"></div>
-  <script type="module" src="./example.js"></script>
+  
+  <script type="module">
+    import "./example.js";
+    
+    // Apply theme based on system preference initially
+    document.documentElement.setAttribute('data-theme', 'light');
+    
+    // Handle theme selection changes
+    document.getElementById('theme-select').addEventListener('change', (e) => {
+      const themeValue = e.target.value;
+      
+      // Remove any explicitly set theme
+      document.documentElement.removeAttribute('data-theme');
+      
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (themeValue === 'system') {
+        // Apply system preference
+        if (prefersDark) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      } else if (themeValue === 'dark') {
+        // Apply dark theme
+        document.documentElement.setAttribute('data-theme', 'dark');
+      } else {
+        // Light theme (default, no classes needed)
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+      
+      // Dispatch event for components
+      window.dispatchEvent(new CustomEvent('theme-change', { 
+        detail: { 
+          theme: themeValue,
+          darkMode: themeValue === 'dark' || (themeValue === 'system' && prefersDark) 
+        } 
+      }));
+    });
+    
+    // Listen for system preference changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        const themeSelect = document.getElementById('theme-select');
+        // Only respond to system changes if system option is selected
+        if (themeSelect.value === 'system') {
+          document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+          
+          // Dispatch event for components
+          window.dispatchEvent(new CustomEvent('theme-change', { 
+            detail: { 
+              theme: 'system',
+              darkMode: e.matches 
+            } 
+          }));
+        }
+      });
+    }
+  </script>
 </body>
 
 </html>
