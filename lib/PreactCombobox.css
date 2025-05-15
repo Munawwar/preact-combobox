@@ -179,8 +179,8 @@
   justify-content: center;
 }
 .PreactCombobox-checkbox--selected {
-  background: #007bff;
-  border-color: #007bff;
+  background: #222;
+  border-color: #222;
   color: white;
 }
 
