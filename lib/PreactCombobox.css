@@ -241,12 +241,17 @@
   border-width: 0;
 }
 
+.PreactCombobox-warningIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  padding: 0 3px;
+}
 .PreactCombobox-warningIcon {
   width: 18px;
   height: 18px;
   fill: #f44336;
-  cursor: default;
-  margin: 0 3px;
 }
 
 .PreactCombobox-clearButton {
@@ -263,11 +268,25 @@
   border-radius: 50%;
   box-sizing: border-box;
   padding: 0 8px;
-  margin-left: 3px;
+  margin-inline-start: 3px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  position: relative;
 }
 
 .PreactCombobox-clearButton:hover {
   background-color: var(--preact-combobox-hover-clear-bg);
+}
+
+.PreactCombobox-clearButton:focus {
+  background-color: var(--preact-combobox-hover-clear-bg);
+  color: var(--preact-combobox-text);
+  outline: none;
+}
+
+/* Ensure there's still a visible focus indicator for accessibility */
+.PreactCombobox-clearButton:focus-visible {
+  background-color: var(--preact-combobox-hover-clear-bg);
+  color: var(--preact-combobox-text);
 }
 
 .PreactCombobox-chevron {
@@ -275,7 +294,7 @@
   height: 18px;
   fill: var(--preact-combobox-chevron-fill);
   transition: transform 0.3s;
-  margin-left: 2px;
+  margin-inline-start: 2px;
 }
 
 .PreactCombobox-tooltipValue {
@@ -299,7 +318,7 @@
 }
 
 .PreactCombobox-options {
-  top: 2px;
+  inset-block-start: 2px;
   list-style-type: none;
   padding: 0;
   margin: 0;
@@ -337,7 +356,7 @@
 }
 
 .PreactCombobox-optionIcon {
-  margin-right: 8px;
+  margin-inline-end: 8px;
 }
 
 .PreactCombobox-optionLabelFlex {
@@ -350,7 +369,7 @@
 .PreactCombobox-optionValue {
   font-size: 12px;
   color: var(--preact-combobox-value-text);
-  margin-left: 8px;
+  margin-inline-start: 8px;
 }
 
 .PreactCombobox-optionCheckbox {
@@ -358,7 +377,7 @@
   min-height: 16px;
   border: 1px solid var(--preact-combobox-checkbox-border);
   border-radius: 3px;
-  margin-right: 8px;
+  margin-inline-end: 8px;
   display: flex;
   align-items: center;
   justify-content: center;

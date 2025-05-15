@@ -53,6 +53,46 @@ let allowedOptions = [
   },
 ];
 
+// Arabic options for RTL example
+const arabicOptions = [
+  {
+    label: "المملكة العربية السعودية",
+    value: "saudi-arabia",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇸🇦</span>`,
+  },
+  {
+    label: "مصر",
+    value: "egypt",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇪🇬</span>`,
+  },
+  {
+    label: "الإمارات العربية المتحدة",
+    value: "uae",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇦🇪</span>`,
+  },
+  {
+    label: "قطر",
+    value: "qatar",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇶🇦</span>`,
+  },
+  {
+    label: "المغرب",
+    value: "morocco",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇲🇦</span>`,
+  },
+  // Add some English options to test mixed content
+  {
+    label: "United Kingdom",
+    value: "uk",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇬🇧</span>`,
+  },
+  {
+    label: "Germany",
+    value: "germany",
+    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇩🇪</span>`,
+  },
+];
+
 // Carrier data for remote fetching simulation
 const carrierData = [
   { label: "FedEx", value: "550e8400-e29b-41d4-a716-446655440000" },
@@ -100,6 +140,34 @@ const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, sign
 //   allowedOptions.push({ label: "Option " + i, value: "option" + i });
 // }
 
+// Arabic translations
+const arabicTranslations = {
+  searchPlaceholder: "بحث...",
+  noOptionsFound: "لم يتم العثور على خيارات",
+  loadingOptions: "جاري التحميل...",
+  loadingOptionsAnnouncement: "جاري تحميل الخيارات، يرجى الانتظار...",
+  optionsLoadedAnnouncement: "تم تحميل الخيارات.",
+  noOptionsFoundAnnouncement: "لم يتم العثور على خيارات.",
+  addOption: 'إضافة "{value}"',
+  typeToLoadMore: "...اكتب للمزيد من الخيارات",
+  clearValue: "مسح القيمة",
+  selectedOption: "خيار محدد.",
+  invalidOption: "خيار غير صالح.",
+  invalidValues: "قيم غير صالحة:",
+  fieldContainsInvalidValues: "يحتوي الحقل على قيم غير صالحة",
+  noOptionsSelected: "لم يتم تحديد أي خيارات",
+  selectionAdded: "تمت إضافة",
+  selectionRemoved: "تمت إزالة",
+  selectionsCurrent: "محدد حاليا",
+  selectionsMore: "و {count} خيار إضافي",
+  selectionsMorePlural: "و {count} خيارات إضافية",
+  // Custom formatter for Arabic that explicitly uses Arabic numerals
+  selectedCountFormatter: (count) =>
+    new Intl.NumberFormat("ar", {
+      numberingSystem: "arab",
+    }).format(count),
+};
+
 function App() {
   const [values1, setValues1] = useState(["United Arab Emirates"]);
   const [values2, setValues2] = useState(["India"]);
@@ -111,6 +179,8 @@ function App() {
   const [serverSideValue, setServerSideValue] = useState("usa");
   const [value7, setValue7] = useState(["japan", "china"]);
   const [appTheme, setAppTheme] = useState("light");
+  const [arabicValues, setArabicValues] = useState(["egypt", "uae"]);
+  const [value8, setValue8] = useState(["usa", "france"]);
 
   // Listen for theme changes
   useEffect(() => {
@@ -214,6 +284,22 @@ function App() {
           onChange=${setValue7}
           theme="dark"
         />
+        <br/>
+
+        <label for="example-8">RTL Example with Arabic Translations</label>
+        <p>This example demonstrates explicit RTL direction with Arabic language translations</p>
+        <div class="rtl-container" dir="rtl">
+          <${PreactCombobox}
+            id="example-8"
+            allowedOptions=${arabicOptions}
+            allowFreeText=${true}
+            value=${arabicValues}
+            onChange=${setArabicValues}
+            language="ar"
+            theme=${appTheme}
+            translations=${arabicTranslations}
+          />
+        </div>
         <br/>
 
         <button type="submit">Test Form Submit</button>

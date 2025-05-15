@@ -69,6 +69,92 @@ export type LanguageCache = {
     wordSegmenter: Intl.Segmenter;
 };
 export type VNode = import("preact").VNode;
+export type Translations = {
+    /**
+     * - Placeholder text for search input
+     */
+    searchPlaceholder?: string | undefined;
+    /**
+     * - Placeholder text for search input in RTL mode
+     */
+    searchPlaceholderRtl?: string | undefined;
+    /**
+     * - Text shown when no options match the search
+     */
+    noOptionsFound?: string | undefined;
+    /**
+     * - Text shown when options are loading
+     */
+    loadingOptions?: string | undefined;
+    /**
+     * - Announcement when options are loading (screen reader)
+     */
+    loadingOptionsAnnouncement?: string | undefined;
+    /**
+     * - Announcement when options finish loading (screen reader)
+     */
+    optionsLoadedAnnouncement?: string | undefined;
+    /**
+     * - Announcement when no options found (screen reader)
+     */
+    noOptionsFoundAnnouncement?: string | undefined;
+    /**
+     * - Text for adding a new option (includes {value} placeholder)
+     */
+    addOption?: string | undefined;
+    /**
+     * - Text shown when more options can be loaded
+     */
+    typeToLoadMore?: string | undefined;
+    /**
+     * - Aria label for clear button
+     */
+    clearValue?: string | undefined;
+    /**
+     * - Screen reader text for selected options
+     */
+    selectedOption?: string | undefined;
+    /**
+     * - Screen reader text for invalid options
+     */
+    invalidOption?: string | undefined;
+    /**
+     * - Header text for invalid values tooltip
+     */
+    invalidValues?: string | undefined;
+    /**
+     * - Announcement for invalid values (screen reader)
+     */
+    fieldContainsInvalidValues?: string | undefined;
+    /**
+     * - Announcement when no options are selected
+     */
+    noOptionsSelected?: string | undefined;
+    /**
+     * - Announcement prefix when selection is added
+     */
+    selectionAdded?: string | undefined;
+    /**
+     * - Announcement prefix when selection is removed
+     */
+    selectionRemoved?: string | undefined;
+    /**
+     * - Announcement prefix for current selections
+     */
+    selectionsCurrent?: string | undefined;
+    /**
+     * - Text for additional options (singular)
+     */
+    selectionsMore?: string | undefined;
+    /**
+     * - Text for additional options (plural)
+     */
+    selectionsMorePlural?: string | undefined;
+    /**
+     * - Function to format the count in the badge
+     */
+    selectedCountFormatter?: ((count: number, language: string) => string) | undefined;
+};
 export type PreactComboboxProps = {
     /**
      * The id of the component
@@ -112,6 +198,10 @@ export type PreactComboboxProps = {
      */
     required?: boolean | undefined;
     /**
+     * Show the clear button for single-select mode
+     */
+    showClearButton?: boolean | undefined;
+    /**
      * name to be set on hidden select element
      */
     name?: string | undefined;
@@ -121,6 +211,10 @@ export type PreactComboboxProps = {
      * Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
      */
     theme?: "light" | "dark" | "system" | undefined;
+    /**
+     * Custom translation strings
+     */
+    translations?: Translations | undefined;
     /**
      * Root element props
      */
@@ -161,10 +255,10 @@ export type PreactComboboxProps = {
     /**
      * Custom loading indicator element or text
      */
-    loadingIndicator?: import("preact").VNode<any> | undefined;
+    loadingIndicator?: ((text: string) => VNode) | undefined;
 };
 /**
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, theme, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, theme, translations, }: PreactComboboxProps): import("preact").JSX.Element;

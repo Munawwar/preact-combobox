@@ -5,6 +5,31 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
 
+// Default translations
+const defaultTranslations = {
+  searchPlaceholder: "Search...",
+  noOptionsFound: "No options found",
+  loadingOptions: "Loading...",
+  loadingOptionsAnnouncement: "Loading options, please wait...",
+  optionsLoadedAnnouncement: "Options loaded.",
+  noOptionsFoundAnnouncement: "No options found.",
+  addOption: 'Add "{value}"',
+  typeToLoadMore: "...type to load more options",
+  clearValue: "Clear value",
+  selectedOption: "Selected option.",
+  invalidOption: "Invalid option.",
+  invalidValues: "Invalid values:",
+  fieldContainsInvalidValues: "Field contains invalid values",
+  noOptionsSelected: "No options selected",
+  selectionAdded: "added selection",
+  selectionRemoved: "removed selection",
+  selectionsCurrent: "currently selected",
+  selectionsMore: "and {count} more option",
+  selectionsMorePlural: "and {count} more options",
+  // Function to format the count in badge, receives count and language as parameters
+  selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count),
+};
+
 // --- types ---
 /**
  * @typedef {Object} Option
@@ -47,6 +72,31 @@ import "./PreactCombobox.css";
  */
 
 /**
+ * @typedef {Object} Translations
+ * @property {string} [searchPlaceholder] - Placeholder text for search input
+ * @property {string} [searchPlaceholderRtl] - Placeholder text for search input in RTL mode
+ * @property {string} [noOptionsFound] - Text shown when no options match the search
+ * @property {string} [loadingOptions] - Text shown when options are loading
+ * @property {string} [loadingOptionsAnnouncement] - Announcement when options are loading (screen reader)
+ * @property {string} [optionsLoadedAnnouncement] - Announcement when options finish loading (screen reader)
+ * @property {string} [noOptionsFoundAnnouncement] - Announcement when no options found (screen reader)
+ * @property {string} [addOption] - Text for adding a new option (includes {value} placeholder)
+ * @property {string} [typeToLoadMore] - Text shown when more options can be loaded
+ * @property {string} [clearValue] - Aria label for clear button
+ * @property {string} [selectedOption] - Screen reader text for selected options
+ * @property {string} [invalidOption] - Screen reader text for invalid options
+ * @property {string} [invalidValues] - Header text for invalid values tooltip
+ * @property {string} [fieldContainsInvalidValues] - Announcement for invalid values (screen reader)
+ * @property {string} [noOptionsSelected] - Announcement when no options are selected
+ * @property {string} [selectionAdded] - Announcement prefix when selection is added
+ * @property {string} [selectionRemoved] - Announcement prefix when selection is removed
+ * @property {string} [selectionsCurrent] - Announcement prefix for current selections
+ * @property {string} [selectionsMore] - Text for additional options (singular)
+ * @property {string} [selectionsMorePlural] - Text for additional options (plural)
+ * @property {(count: number, language: string) => string} [selectedCountFormatter] - Function to format the count in the badge
+ */
+
+/**
  * @typedef {Object} PreactComboboxProps
  * @property {string} id The id of the component
  * @property {boolean} [multiple=true] Multi-select or single-select mode
@@ -65,10 +115,12 @@ import "./PreactCombobox.css";
  * @property {boolean} [showValue=false] experimental feature.
  * @property {boolean} [disabled=false] Disable the component
  * @property {boolean} [required=false] Is required for form submission
+ * @property {boolean} [showClearButton=true] Show the clear button for single-select mode
  * @property {string} [name] name to be set on hidden select element
  * @property {string} [className]
  * @property {string} [placeholder]
  * @property {'light' | 'dark' | 'system'} [theme='system'] Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
+ * @property {Translations} [translations] Custom translation strings
  *
  * @property {Record<string, any>} [rootElementProps] Root element props
  * @property {Record<string, any>} [inputProps] Input element props
@@ -81,7 +133,7 @@ import "./PreactCombobox.css";
  * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
  * @property {VNode} [warningIcon] Custom warning icon element or component
  * @property {VNode} [chevronIcon] Custom chevron icon element or component
- * @property {VNode} [loadingIndicator] Custom loading indicator element or text
+ * @property {(text: string) => VNode} [loadingIndicator] Custom loading indicator element or text
  */
 
 // --- end of types ---
@@ -131,8 +183,33 @@ function sortValuesToTop(options, values) {
  * @param {Object} props - Props for the PopperContent component
  * @param {HTMLElement} [props.parent=document.body] The parent element to render the PopperContent component
  * @param {VNode[]} props.children The children to render
+ * @param {React.RefObject} [props.rootElementRef] Reference to the source element to get direction context
  */
-const Portal = ({ parent = document.body, children }) => createPortal(children, parent);
+const Portal = ({ parent = document.body, children, rootElementRef }) => {
+  const [dir, setDir] = useState(null);
+
+  useEffect(() => {
+    if (rootElementRef?.current) {
+      const rootDir = window.getComputedStyle(rootElementRef.current).direction;
+      const parentDir = window.getComputedStyle(parent).direction;
+      if (rootDir !== parentDir) {
+        setDir(rootDir);
+      } else {
+        setDir(null);
+      }
+    }
+  }, [rootElementRef, parent]);
+
+  const wrappedChildren = dir ? (
+    <div dir={dir} style={{ direction: dir }}>
+      {children}
+    </div>
+  ) : (
+    children
+  );
+
+  return createPortal(wrappedChildren, parent);
+};
 
 // Popper.js helper
 const dropdownPopperModifiers = [
@@ -506,11 +583,7 @@ const defaultChevronIcon = (
   </svg>
 );
 
-const defaultLoadingIndicator = (
-  <li className="PreactCombobox-option" aria-disabled>
-    Loading...
-  </li>
-);
+const defaultLoadingIndicator = (loadingText) => loadingText;
 
 /**
  * @type {OptionTransformFunction}
@@ -577,25 +650,35 @@ const defaultArrayValue = [];
  * Creates a human-readable announcement of selected items
  * @param {string[]} selectedValues - Array of selected values
  * @param {"added"|"removed"|null} diff - Lookup object containing option labels
+ * @param {string} language - Language code
  * @param {Object} optionsLookup - Lookup object containing option labels
  * @returns {string} - Human-readable announcement of selections
  */
-function formatSelectionAnnouncement(selectedValues, diff, optionsLookup) {
+function formatSelectionAnnouncement(selectedValues, diff, optionsLookup, language, translations) {
   if (!selectedValues || selectedValues.length === 0) {
-    return "No options selected";
+    return translations.noOptionsSelected;
   }
 
   const labels = selectedValues.map((value) => optionsLookup[value]?.label || value);
 
-  const prefix = diff ? `${diff} selection` : "currently selected";
+  const prefix = diff
+    ? diff === "added"
+      ? translations.selectionAdded
+      : translations.selectionRemoved
+    : translations.selectionsCurrent;
 
   if (selectedValues.length <= 3) {
-    return `${prefix} ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(labels)}`;
+    return `${prefix} ${new Intl.ListFormat(language, { style: "long", type: "conjunction" }).format(labels)}`;
   }
 
   const firstThree = labels.slice(0, 3);
   const remaining = selectedValues.length - 3;
-  return `${prefix} ${firstThree.join(", ")} and ${remaining} more option${remaining > 1 ? "s" : ""}`;
+  const moreText =
+    remaining === 1
+      ? translations.selectionsMore.replace("{count}", remaining.toString())
+      : translations.selectionsMorePlural.replace("{count}", remaining.toString());
+
+  return `${prefix} ${firstThree.join(", ")} ${moreText}`;
 }
 
 /**
@@ -622,6 +705,7 @@ const PreactCombobox = ({
   isServer = isServerDefault,
   selectElementProps,
   showValue = true,
+  showClearButton = true,
   optionTransform = defaultOptionTransform,
   singleSelectedStateIcon = defaultSingleSelectedStateIcon,
   // private option for now
@@ -630,7 +714,13 @@ const PreactCombobox = ({
   chevronIcon = defaultChevronIcon,
   loadingIndicator = defaultLoadingIndicator,
   theme = "system",
+  translations = {},
 }) => {
+  // Merge default translations with provided translations
+  const mergedTranslations = useMemo(
+    () => ({ ...defaultTranslations, ...translations }),
+    [translations],
+  );
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
 
@@ -701,10 +791,16 @@ const PreactCombobox = ({
 
   const updateSelectionAnnouncement = useCallback(
     (selectedValues, isDiff = false) => {
-      const announcement = formatSelectionAnnouncement(selectedValues, isDiff, allOptionsLookup);
+      const announcement = formatSelectionAnnouncement(
+        selectedValues,
+        isDiff,
+        allOptionsLookup,
+        language,
+        mergedTranslations,
+      );
       setLastSelectionAnnouncement(announcement);
     },
-    [allOptionsLookup],
+    [allOptionsLookup, mergedTranslations, language],
   );
 
   /**
@@ -779,8 +875,12 @@ const PreactCombobox = ({
   // Reset activeDescendant and filteredOptions when dropdown closes
   useEffect(() => {
     if (getIsDropdownOpen() && rootElementRef.current && dropdownPopperRef.current) {
+      // Get computed direction to handle RTL layout
+      const computedDir = window.getComputedStyle(rootElementRef.current).direction;
+      const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
+
       const popperInstance = createPopper(rootElementRef.current, dropdownPopperRef.current, {
-        placement: "bottom-start",
+        placement: placement,
         // @ts-ignore
         modifiers: dropdownPopperModifiers,
       });
@@ -918,8 +1018,12 @@ const PreactCombobox = ({
       warningIconRef.current &&
       tooltipPopperRef.current
     ) {
+      // Get computed direction to handle RTL layout
+      const computedDir = window.getComputedStyle(rootElementRef.current).direction;
+      const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
+
       const popperInstance = createPopper(warningIconRef.current, tooltipPopperRef.current, {
-        placement: "bottom-start",
+        placement: placement,
         // @ts-ignore
         modifiers: tooltipPopperModifiers,
       });
@@ -1026,42 +1130,6 @@ const PreactCombobox = ({
     inputTrimmed,
     closeDropdown,
   ]);
-
-  /**
-   * FIXME: Add a clear/remove button
-   * Handle option removal
-   * @param {string} option The option to remove
-   * @param {boolean} [focusNext=false] Whether to focus the next button in the tab order or to focus the autocomplete input field
-   */
-  // const handleRemoveOption = useCallback(
-  //   (option, focusNext = false) => {
-  //     if (!values) {
-  //       // single-select mode
-  //       const newValue = "";
-  //       inputRef.current?.focus();
-  //       onChange(newValue);
-  //       updateSelectionAnnouncement([option], 'removed');
-  //       undoStack.current.push([newValue]);
-  //       redoStack.current = [];
-  //     } else {
-  //       // multi-select mode
-  //       const newValues = values.filter((val) => val !== option);
-  //       const nextEl = document.activeElement?.closest("span")?.nextElementSibling;
-  //       if (focusNext && nextEl && nextEl.tagName === "SPAN" && nextEl.querySelector("button")) {
-  //         nextEl.querySelector("button")?.focus();
-  //       } else {
-  //         inputRef.current?.focus();
-  //       }
-  //       onChange(newValues);
-  //       updateSelectionAnnouncement(newValues, 'removed');
-  //       undoStack.current.push(values);
-  //       redoStack.current = [];
-  //     }
-  //     clearTimeout(blurTimeoutRef.current);
-  //     blurTimeoutRef.current = undefined;
-  //   },
-  //   [onChange, values],
-  // );
 
   const addNewOptionVisible =
     !isLoading &&
@@ -1251,13 +1319,13 @@ const PreactCombobox = ({
   );
 
   const handleClearValue = useCallback(() => {
-    if (!singleSelectValue) return;
     setInputValue("");
-    onChange("");
-    updateSelectionAnnouncement([singleSelectValue], "removed");
-    undoStack.current.push([singleSelectValue]);
+    onChange(multiple ? [] : "");
+    updateSelectionAnnouncement(arrayValues, "removed");
+    undoStack.current.push(arrayValues);
     redoStack.current = [];
-  }, [onChange, singleSelectValue, updateSelectionAnnouncement]);
+    inputRef.current?.focus();
+  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement]);
 
   // Memoize whatever JSX that can be memoized
   const selectChildren = useMemo(
@@ -1276,11 +1344,15 @@ const PreactCombobox = ({
   useEffect(() => {
     // Only announce loading if the dropdown is open
     if (isLoading && getIsDropdownOpen()) {
-      setLoadingAnnouncement("Loading options, please wait...");
+      setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
     } else if (loadingAnnouncement && !isLoading && getIsDropdownOpen()) {
       // Only announce completion if we previously announced loading
       // and the dropdown is still open
-      setLoadingAnnouncement(filteredOptions.length ? "Options loaded." : "No options found.");
+      setLoadingAnnouncement(
+        filteredOptions.length
+          ? mergedTranslations.optionsLoadedAnnouncement
+          : mergedTranslations.noOptionsFoundAnnouncement,
+      );
       // Clear the announcement after a delay
       const timer = setTimeout(() => {
         setLoadingAnnouncement("");
@@ -1290,7 +1362,15 @@ const PreactCombobox = ({
       // Clear any loading announcements when dropdown closes
       setLoadingAnnouncement("");
     }
-  }, [isLoading, loadingAnnouncement, getIsDropdownOpen, filteredOptions.length]);
+  }, [
+    isLoading,
+    loadingAnnouncement,
+    getIsDropdownOpen,
+    filteredOptions.length,
+    mergedTranslations.loadingOptionsAnnouncement,
+    mergedTranslations.optionsLoadedAnnouncement,
+    mergedTranslations.noOptionsFoundAnnouncement,
+  ]);
 
   // Determine if we should render interactive elements
   const isServerSideForm = isServer && formSubmitCompatible;
@@ -1324,7 +1404,9 @@ const PreactCombobox = ({
 
       {/* Live region for announcing loading status to screen readers */}
       <div className="PreactCombobox-srOnly" aria-live="polite" aria-atomic="true">
-        {invalidValues.length > 0 && getIsFocused() ? "Field contains invalid values" : ""}
+        {invalidValues.length > 0 && getIsFocused()
+          ? mergedTranslations.fieldContainsInvalidValues
+          : ""}
       </div>
 
       <div className={`PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`}>
@@ -1342,7 +1424,7 @@ const PreactCombobox = ({
               value={inputValue}
               placeholder={
                 getIsDropdownOpen()
-                  ? "Search..."
+                  ? mergedTranslations.searchPlaceholder
                   : arrayValues.length > 0
                     ? arrayValues.map((value) => allOptionsLookup[value]?.label || value).join(", ")
                     : placeholder
@@ -1371,11 +1453,11 @@ const PreactCombobox = ({
               required={required && arrayValues.length === 0}
               {...inputProps}
             />
-            {!multiple && singleSelectValue && !disabled && !required ? (
+            {!disabled && showClearButton && arrayValues.length > 0 ? (
               <button
                 type="button"
                 className="PreactCombobox-clearButton"
-                aria-label="Clear value"
+                aria-label={mergedTranslations.clearValue}
                 onClick={handleClearValue}
               >
                 <span aria-hidden="true">&#x2715;</span>
@@ -1391,8 +1473,10 @@ const PreactCombobox = ({
                 {warningIcon}
               </span>
             )}
-            {multiple && values && values.length > 1 && (
-              <span className="PreactCombobox-badge">{values.length}</span>
+            {multiple && arrayValues.length > 1 && (
+              <span className="PreactCombobox-badge">
+                {mergedTranslations.selectedCountFormatter(arrayValues.length, language)}
+              </span>
             )}
             {chevronIcon}
           </>
@@ -1418,7 +1502,7 @@ const PreactCombobox = ({
       </div>
 
       {!isServerSideForm && (
-        <Portal parent={portal}>
+        <Portal parent={portal} rootElementRef={rootElementRef}>
           {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
           <ul
             className={`PreactCombobox-options ${`PreactCombobox-options--${theme}`}`}
@@ -1430,7 +1514,9 @@ const PreactCombobox = ({
             ref={dropdownPopperRef}
           >
             {isLoading ? (
-              loadingIndicator
+              <li className="PreactCombobox-option" aria-disabled>
+                {loadingIndicator(mergedTranslations.loadingOptions)}
+              </li>
             ) : (
               <>
                 {addNewOptionVisible && (
@@ -1453,7 +1539,7 @@ const PreactCombobox = ({
                       inputRef.current?.focus();
                     }}
                   >
-                    {`Add "${inputTrimmed}"`}
+                    {mergedTranslations.addOption.replace("{value}", inputTrimmed)}
                   </li>
                 )}
                 {filteredOptions.map((option) => {
@@ -1506,7 +1592,7 @@ const PreactCombobox = ({
                           data-reader="selected"
                           aria-hidden={!isActive}
                         >
-                          Selected option.
+                          {mergedTranslations.selectedOption}
                         </span>
                       ) : null}
                       {isInvalid ? (
@@ -1516,7 +1602,7 @@ const PreactCombobox = ({
                           data-reader="invalid"
                           aria-hidden={!isActive}
                         >
-                          Invalid option.
+                          {mergedTranslations.invalidOption}
                         </span>
                       ) : null}
                     </li>
@@ -1525,10 +1611,10 @@ const PreactCombobox = ({
                 {filteredOptions.length === 0 &&
                   !isLoading &&
                   (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
-                    <li className="PreactCombobox-option">No options found</li>
+                    <li className="PreactCombobox-option">{mergedTranslations.noOptionsFound}</li>
                   )}
                 {filteredOptions.length === maxNumberOfPresentedOptions && (
-                  <li className="PreactCombobox-option">...type to load more options</li>
+                  <li className="PreactCombobox-option">{mergedTranslations.typeToLoadMore}</li>
                 )}
               </>
             )}
@@ -1536,9 +1622,9 @@ const PreactCombobox = ({
         </Portal>
       )}
       {invalidValues.length > 0 && warningIconHovered && !isServerSideForm && (
-        <Portal parent={portal}>
+        <Portal parent={portal} rootElementRef={rootElementRef}>
           <div className="PreactCombobox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
-            Invalid values:
+            {mergedTranslations.invalidValues}
             {invalidValues.map((value) => (
               <div key={value} className="PreactCombobox-tooltipValue">
                 {value}
