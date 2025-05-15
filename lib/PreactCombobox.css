@@ -354,14 +354,18 @@
 }
 
 .PreactCombobox-optionCheckbox {
-  width: 16px;
-  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
   border: 1px solid var(--preact-combobox-checkbox-border);
   border-radius: 3px;
   margin-right: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
 }
 .PreactCombobox-optionCheckbox--selected {
   background: var(--preact-combobox-checkbox-selected-bg);
