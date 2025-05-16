@@ -118,7 +118,7 @@ import "./PreactCombobox.css";
 // --- end of types ---
 
 /** @type {Translations} */
-const defaultTranslations = {
+const defaultEnglishTranslations = {
   searchPlaceholder: "Search...",
   noOptionsFound: "No options found",
   loadingOptions: "Loading...",
@@ -722,12 +722,13 @@ const PreactCombobox = ({
   chevronIcon = defaultChevronIcon,
   loadingIndicator = defaultLoadingIndicator,
   theme = "system",
-  translations = defaultTranslations,
+  translations = defaultEnglishTranslations,
 }) => {
   // Merge default translations with provided translations
-  const mergedTranslations = useMemo(
-    () => ({ ...defaultTranslations, ...translations }),
-    [translations],
+  const mergedTranslations = useDeepMemo(
+    translations === defaultEnglishTranslations
+      ? translations
+      : { ...defaultEnglishTranslations, ...translations },
   );
   const values = multiple ? /** @type {string[]} */ (value) : null;
   const singleSelectValue = multiple ? null : /** @type {string} */ (value);
@@ -786,10 +787,13 @@ const PreactCombobox = ({
   );
   const allOptionsLookup = useMemo(
     () =>
-      allOptions.reduce((acc, o) => {
-        acc[o.value] = o;
-        return acc;
-      }, /** @type {{ [value: string]: Option }} */ ({})),
+      allOptions.reduce(
+        (acc, o) => {
+          acc[o.value] = o;
+          return acc;
+        },
+        /** @type {{ [value: string]: Option }} */ ({}),
+      ),
     [allOptions],
   );
   const invalidValues = useMemo(() => {
@@ -948,22 +952,12 @@ const PreactCombobox = ({
         const signal = /** @type {AbortSignal} */ (abortController.signal);
         const [searchResults, selectedResults] = await Promise.all([
           getIsDropdownOpen()
-            ? allowedOptions(
-                inputTrimmed,
-                maxNumberOfPresentedOptions,
-                arrayValues,
-                signal,
-              )
+            ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
             : /** @type {Option[]} */ ([]),
           // We need to fetch unknown options's labels regardless of whether the dropdown
           // is open or not, because we want to show it in the placeholder.
           newUnknownValues.length > 0
-            ? allowedOptions(
-                newUnknownValues,
-                newUnknownValues.length,
-                arrayValues,
-                signal,
-              )
+            ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal)
             : null,
         ]).catch((error) => {
           if (signal.aborted) {
@@ -1329,7 +1323,7 @@ const PreactCombobox = ({
       const optionsLabelLookup = Object.fromEntries(
         allOptions.map((o) => [o.label.toLowerCase(), o.value]),
       );
-      const pastedText = e.clipboardData?.getData("text") || '';
+      const pastedText = e.clipboardData?.getData("text") || "";
       if (!pastedText) return;
       const pastedOptions = pastedText
         .split(",")

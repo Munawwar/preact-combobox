@@ -169,17 +169,17 @@ const arabicTranslations = {
 };
 
 function App() {
-  const [values1, setValues1] = useState(["United Arab Emirates"]);
-  const [values2, setValues2] = useState(["India"]);
-  const [value3, setValue3] = useState("usa");
+  const [appTheme, setAppTheme] = useState("light");
+  const [valuesBasicExample, setValuesBasicExample] = useState(["United Arab Emirates"]);
+  const [invalidValuesExample, setInvalidValuesExample] = useState(["India"]);
+  const [singleSelectExample, setSingleSelectExample] = useState("usa");
   const [carrierValues, setCarrierValues] = useState([
     "550e8400-e29b-41d4-a716-446655440001", // DHL
     "550e8400-e29b-41d4-a716-446655440004", // Aramex
   ]);
-  const [serverSideValue, setServerSideValue] = useState("usa");
-  const [value7, setValue7] = useState(["japan", "china"]);
-  const [appTheme, setAppTheme] = useState("light");
-  const [arabicValues, setArabicValues] = useState(["egypt", "uae"]);
+  const [valueServerSideExample, setValueServerSideExample] = useState("usa");
+  const [valuesDarkThemeExample, setValuesDarkThemeExample] = useState(["japan", "china"]);
+  const [valuesRTLExample, setValuesRTLExample] = useState(["egypt", "uae"]);
   const [value8, setValue8] = useState(["usa", "france"]);
 
   // Listen for theme changes
@@ -198,8 +198,8 @@ function App() {
           id="example-1"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
-          value=${values1}
-          onChange=${setValues1}
+          value=${valuesBasicExample}
+          onChange=${setValuesBasicExample}
           name="example-1"
           required=${true}
           formSubmitCompatible=${true}
@@ -212,8 +212,8 @@ function App() {
           id="example-2"
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
-          value=${values2}
-          onChange=${setValues2}
+          value=${invalidValuesExample}
+          onChange=${setInvalidValuesExample}
           theme=${appTheme}
         />
         <br/>
@@ -235,8 +235,8 @@ function App() {
           multiple=${false}
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
-          value=${value3}
-          onChange=${setValue3}
+          value=${singleSelectExample}
+          onChange=${setSingleSelectExample}
           name="example-4"
           required=${true}
           theme=${appTheme}
@@ -260,46 +260,46 @@ function App() {
         />
         <br/>
 
-        <label for="example-6">Server-Side Rendering Example</label>
-        <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
+        <label for="example-6">Always Dark Theme (explicitly set dark theme)</label>
         <${PreactCombobox}
           id="example-6"
-          multiple=${false}
-          allowedOptions=${allowedOptions}
-          value=${serverSideValue}
-          onChange=${setServerSideValue}
-          name="server-side-example"
-          isServer=${true}
-          formSubmitCompatible=${true}
-          theme=${appTheme}
-        />
-        <br/>
-
-        <label for="example-7">Always Dark Theme (explicitly set dark theme)</label>
-        <${PreactCombobox}
-          id="example-7"
           allowedOptions=${allowedOptions}
           allowFreeText=${true}
-          value=${value7}
-          onChange=${setValue7}
+          value=${valuesDarkThemeExample}
+          onChange=${setValuesDarkThemeExample}
           theme="dark"
         />
         <br/>
 
-        <label for="example-8">RTL Example with Arabic Translations</label>
+        <label for="example-7">RTL Example with Arabic Translations</label>
         <p>This example demonstrates explicit RTL direction with Arabic language translations</p>
         <div class="rtl-container" dir="rtl">
           <${PreactCombobox}
-            id="example-8"
+            id="example-7"
             allowedOptions=${arabicOptions}
             allowFreeText=${true}
-            value=${arabicValues}
-            onChange=${setArabicValues}
+            value=${valuesRTLExample}
+            onChange=${setValuesRTLExample}
             language="ar"
             theme=${appTheme}
             translations=${arabicTranslations}
           />
         </div>
+        <br/>
+
+        <label for="example-8">Server-Side Rendering Example</label>
+        <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
+        <${PreactCombobox}
+          id="example-8"
+          multiple=${false}
+          allowedOptions=${allowedOptions}
+          value=${valueServerSideExample}
+          onChange=${setValueServerSideExample}
+          name="server-side-example"
+          isServer=${true}
+          formSubmitCompatible=${true}
+          theme=${appTheme}
+        />
         <br/>
 
         <button type="submit">Test Form Submit</button>

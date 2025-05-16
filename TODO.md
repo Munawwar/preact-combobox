@@ -1,4 +1,5 @@
 Priorities
+- Merge singleSelectIcon and `icon` prop into icon generator function
 - Docs
 
 Nice to have
