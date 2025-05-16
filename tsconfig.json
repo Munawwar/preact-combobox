@@ -5,6 +5,7 @@
     "skipLibCheck": true,
     "target": "ESNext",
     "allowJs": true,
+    "checkJs": true,
     "resolveJsonModule": true,
     "moduleDetection": "force",
     "isolatedModules": true,
@@ -21,6 +22,7 @@
     // Include the DOM types
     "lib": ["ESNext", "dom", "dom.iterable"],
     // preact specific options
+    "jsx": "preserve",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment",
     "jsxImportSource": "preact"

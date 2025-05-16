@@ -4,16 +4,15 @@
  * @returns {VNode[]}
  */
 export function matchSlicesToNodes(matchSlices: OptionMatch["matchSlices"], text: string): VNode[];
-/**
- * @type {OptionTransformFunction}
- */
-export function defaultOptionTransform({ option, isSelected, isInvalid, showValue, warningIcon }: {
-    option: any;
-    isSelected: any;
-    isInvalid: any;
-    showValue: any;
-    warningIcon: any;
-}): import("preact").JSX.Element;
+export function defaultOptionTransform(params: {
+    option: OptionMatch;
+    language: string;
+    isSelected: boolean;
+    isInvalid: boolean;
+    isActive: boolean;
+    showValue: boolean;
+    warningIcon?: import("preact").VNode<any> | undefined;
+}): VNode;
 export default PreactCombobox;
 export type Option = {
     /**
@@ -38,6 +37,10 @@ export type OptionMatch = {
      * - The value of the option
      */
     value: string;
+    /**
+     * - Optional icon element or URL to display before the label
+     */
+    icon?: string | import("preact").VNode<any> | undefined;
     /**
      * - The match score
      */
@@ -69,91 +72,96 @@ export type LanguageCache = {
     wordSegmenter: Intl.Segmenter;
 };
 export type VNode = import("preact").VNode;
+export type OptionTransformFunction = (params: {
+    option: OptionMatch;
+    language: string;
+    isSelected: boolean;
+    isInvalid: boolean;
+    isActive: boolean;
+    showValue: boolean;
+    warningIcon?: import("preact").VNode<any> | undefined;
+}) => VNode;
 export type Translations = {
     /**
      * - Placeholder text for search input
      */
-    searchPlaceholder?: string | undefined;
-    /**
-     * - Placeholder text for search input in RTL mode
-     */
-    searchPlaceholderRtl?: string | undefined;
+    searchPlaceholder: string;
     /**
      * - Text shown when no options match the search
      */
-    noOptionsFound?: string | undefined;
+    noOptionsFound: string;
     /**
      * - Text shown when options are loading
      */
-    loadingOptions?: string | undefined;
+    loadingOptions: string;
     /**
      * - Announcement when options are loading (screen reader)
      */
-    loadingOptionsAnnouncement?: string | undefined;
+    loadingOptionsAnnouncement: string;
     /**
      * - Announcement when options finish loading (screen reader)
      */
-    optionsLoadedAnnouncement?: string | undefined;
+    optionsLoadedAnnouncement: string;
     /**
      * - Announcement when no options found (screen reader)
      */
-    noOptionsFoundAnnouncement?: string | undefined;
+    noOptionsFoundAnnouncement: string;
     /**
      * - Text for adding a new option (includes {value} placeholder)
      */
-    addOption?: string | undefined;
+    addOption: string;
     /**
      * - Text shown when more options can be loaded
      */
-    typeToLoadMore?: string | undefined;
+    typeToLoadMore: string;
     /**
      * - Aria label for clear button
      */
-    clearValue?: string | undefined;
+    clearValue: string;
     /**
      * - Screen reader text for selected options
      */
-    selectedOption?: string | undefined;
+    selectedOption: string;
     /**
      * - Screen reader text for invalid options
      */
-    invalidOption?: string | undefined;
+    invalidOption: string;
     /**
      * - Header text for invalid values tooltip
      */
-    invalidValues?: string | undefined;
+    invalidValues: string;
     /**
      * - Announcement for invalid values (screen reader)
      */
-    fieldContainsInvalidValues?: string | undefined;
+    fieldContainsInvalidValues: string;
     /**
      * - Announcement when no options are selected
      */
-    noOptionsSelected?: string | undefined;
+    noOptionsSelected: string;
     /**
      * - Announcement prefix when selection is added
      */
-    selectionAdded?: string | undefined;
+    selectionAdded: string;
     /**
      * - Announcement prefix when selection is removed
      */
-    selectionRemoved?: string | undefined;
+    selectionRemoved: string;
     /**
      * - Announcement prefix for current selections
      */
-    selectionsCurrent?: string | undefined;
+    selectionsCurrent: string;
     /**
      * - Text for additional options (singular)
      */
-    selectionsMore?: string | undefined;
+    selectionsMore: string;
     /**
      * - Text for additional options (plural)
      */
-    selectionsMorePlural?: string | undefined;
+    selectionsMorePlural: string;
     /**
      * - Function to format the count in the badge
      */
-    selectedCountFormatter?: ((count: number, language: string) => string) | undefined;
+    selectedCountFormatter: (count: number, language: string) => string;
 };
 export type PreactComboboxProps = {
     /**
@@ -181,7 +189,7 @@ export type PreactComboboxProps = {
      */
     value: string[] | string;
     /**
-     * Language for word splitting and matching. The language can be any language tag
+     * BCP 47 language code for word splitting and matching. The language can be any language tag
      * recognized by Intl.Segmenter and Intl.Collator
      */
     language?: string | undefined;
@@ -205,7 +213,13 @@ export type PreactComboboxProps = {
      * name to be set on hidden select element
      */
     name?: string | undefined;
+    /**
+     * Additional class names for the component
+     */
     className?: string | undefined;
+    /**
+     * Input placeholder text shown when no selections are made
+     */
     placeholder?: string | undefined;
     /**
      * Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
@@ -243,7 +257,11 @@ export type PreactComboboxProps = {
     /**
      * Transform the label text
      */
-    optionTransform?: OptionTransformFunction;
+    optionTransform?: OptionTransformFunction | undefined;
+    /**
+     * Custom icon element or component for single-select mode
+     */
+    singleSelectedStateIcon?: ((option: Option) => VNode) | undefined;
     /**
      * Custom warning icon element or component
      */
@@ -255,7 +273,11 @@ export type PreactComboboxProps = {
     /**
      * Custom loading indicator element or text
      */
-    loadingIndicator?: ((text: string) => VNode) | undefined;
+    loadingIndicator?: ((text: string) => VNode | string) | undefined;
+    /**
+     * - [private property - do not use] Maximum number of options to present
+     */
+    maxNumberOfPresentedOptions?: number | undefined;
 };
 /**
  * PreactCombobox component

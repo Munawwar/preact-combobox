@@ -5,7 +5,119 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
 
-// Default translations
+// --- types ---
+/**
+ * @typedef {Object} Option
+ * @property {string} label - The display text for the option
+ * @property {string} value - The value of the option
+ * @property {VNode | string} [icon] - Optional icon element or URL to display before the label
+ */
+
+/**
+ * @typedef {Object} OptionMatch
+ * @property {string} label - The display text for the option
+ * @property {string} value - The value of the option
+ * @property {VNode|string} [icon] - Optional icon element or URL to display before the label
+ * @property {number} score - The match score
+ * @property {'value' | 'label' | 'none'} matched - The match type
+ * @property {Array<[number, number]>} matchSlices - The match slices
+ */
+
+/**
+ * Cache for language-specific word segmenters
+ * @typedef {Object} LanguageCache
+ * @property {Intl.Collator} baseMatcher - The base matcher for the language
+ * @property {Intl.Collator} caseMatcher - The case matcher for the language
+ * @property {Intl.Segmenter} wordSegmenter - The word segmenter for the language
+ */
+
+/**
+ * @typedef {import("preact").VNode} VNode
+ */
+
+/**
+ * @callback OptionTransformFunction
+ * @param {Object} params
+ * @param {OptionMatch} params.option
+ * @param {string} params.language
+ * @param {boolean} params.isSelected
+ * @param {boolean} params.isInvalid
+ * @param {boolean} params.isActive
+ * @param {boolean} params.showValue
+ * @param {VNode} [params.warningIcon]
+ * @returns {VNode}
+ */
+
+/**
+ * @typedef {Object} Translations
+ * @property {string} searchPlaceholder - Placeholder text for search input
+ * @property {string} noOptionsFound - Text shown when no options match the search
+ * @property {string} loadingOptions - Text shown when options are loading
+ * @property {string} loadingOptionsAnnouncement - Announcement when options are loading (screen reader)
+ * @property {string} optionsLoadedAnnouncement - Announcement when options finish loading (screen reader)
+ * @property {string} noOptionsFoundAnnouncement - Announcement when no options found (screen reader)
+ * @property {string} addOption - Text for adding a new option (includes {value} placeholder)
+ * @property {string} typeToLoadMore - Text shown when more options can be loaded
+ * @property {string} clearValue - Aria label for clear button
+ * @property {string} selectedOption - Screen reader text for selected options
+ * @property {string} invalidOption - Screen reader text for invalid options
+ * @property {string} invalidValues - Header text for invalid values tooltip
+ * @property {string} fieldContainsInvalidValues - Announcement for invalid values (screen reader)
+ * @property {string} noOptionsSelected - Announcement when no options are selected
+ * @property {string} selectionAdded - Announcement prefix when selection is added
+ * @property {string} selectionRemoved - Announcement prefix when selection is removed
+ * @property {string} selectionsCurrent - Announcement prefix for current selections
+ * @property {string} selectionsMore - Text for additional options (singular)
+ * @property {string} selectionsMorePlural - Text for additional options (plural)
+ * @property {(count: number, language: string) => string} selectedCountFormatter - Function to format the count in the badge
+ */
+
+/**
+ * @typedef {Object} PreactComboboxProps
+ * @property {string} id The id of the component
+ * @property {boolean} [multiple=true] Multi-select or single-select mode
+ * @property {Option[]
+ * | ((
+ *   queryOrValues: string[] | string,
+ *   limit: number,
+ *   currentSelections: string[],
+ *   abortControllerSignal: AbortSignal
+ * ) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
+ * @property {boolean} [allowFreeText=false] Allow free text input
+ * @property {(options: string[] | string) => void} onChange Callback when selection changes
+ * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
+ * @property {string} [language='en'] BCP 47 language code for word splitting and matching. The language can be any language tag
+ * recognized by Intl.Segmenter and Intl.Collator
+ * @property {boolean} [showValue=false] experimental feature.
+ * @property {boolean} [disabled=false] Disable the component
+ * @property {boolean} [required=false] Is required for form submission
+ * @property {boolean} [showClearButton=true] Show the clear button for single-select mode
+ * @property {string} [name] name to be set on hidden select element
+ * @property {string} [className] Additional class names for the component
+ * @property {string} [placeholder] Input placeholder text shown when no selections are made
+ * @property {'light' | 'dark' | 'system'} [theme='system'] Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
+ * @property {Translations} [translations] Custom translation strings
+ *
+ * @property {Record<string, any>} [rootElementProps] Root element props
+ * @property {Record<string, any>} [inputProps] Input element props
+ * @property {boolean} [formSubmitCompatible=false] Render a hidden select for progressive enhanced compatible form submission
+ * @property {boolean} [isServer] Whether the component is rendered on the server (auto-detected if not provided).
+ * This prop is only relevant if formSubmitCompatible is true.
+ * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
+ *
+ * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
+ * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
+ * @property {(option: Option) => VNode} [singleSelectedStateIcon] Custom icon element or component for single-select mode
+ * @property {VNode} [warningIcon] Custom warning icon element or component
+ * @property {VNode} [chevronIcon] Custom chevron icon element or component
+ * @property {(text: string) => VNode|string} [loadingIndicator] Custom loading indicator element or text
+ *
+ * @property {number} [maxNumberOfPresentedOptions=100] - [private property - do not use] Maximum number of options to present
+ */
+
+// --- end of types ---
+
+/** @type {Translations} */
 const defaultTranslations = {
   searchPlaceholder: "Search...",
   noOptionsFound: "No options found",
@@ -29,114 +141,6 @@ const defaultTranslations = {
   // Function to format the count in badge, receives count and language as parameters
   selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count),
 };
-
-// --- types ---
-/**
- * @typedef {Object} Option
- * @property {string} label - The display text for the option
- * @property {string} value - The value of the option
- * @property {VNode | string} [icon] - Optional icon element or URL to display before the label
- */
-
-/**
- * @typedef {Object} OptionMatch
- * @property {string} label - The display text for the option
- * @property {string} value - The value of the option
- * @property {number} score - The match score
- * @property {'value' | 'label' | 'none'} matched - The match type
- * @property {Array<[number, number]>} matchSlices - The match slices
- */
-
-/**
- * Cache for language-specific word segmenters
- * @typedef {Object} LanguageCache
- * @property {Intl.Collator} baseMatcher - The base matcher for the language
- * @property {Intl.Collator} caseMatcher - The case matcher for the language
- * @property {Intl.Segmenter} wordSegmenter - The word segmenter for the language
- */
-
-/**
- * @typedef {import("preact").VNode} VNode
- */
-
-/**
- * @typedef {({
- *   option: OptionMatch,
- *   language: string,
- *   isSelected: boolean,
- *   isInvalid: boolean,
- *   isActive: boolean,
- *   showValue: boolean,
- *   warningIcon?: VNode,
- * }) => VNode} OptionTransformFunction
- */
-
-/**
- * @typedef {Object} Translations
- * @property {string} [searchPlaceholder] - Placeholder text for search input
- * @property {string} [searchPlaceholderRtl] - Placeholder text for search input in RTL mode
- * @property {string} [noOptionsFound] - Text shown when no options match the search
- * @property {string} [loadingOptions] - Text shown when options are loading
- * @property {string} [loadingOptionsAnnouncement] - Announcement when options are loading (screen reader)
- * @property {string} [optionsLoadedAnnouncement] - Announcement when options finish loading (screen reader)
- * @property {string} [noOptionsFoundAnnouncement] - Announcement when no options found (screen reader)
- * @property {string} [addOption] - Text for adding a new option (includes {value} placeholder)
- * @property {string} [typeToLoadMore] - Text shown when more options can be loaded
- * @property {string} [clearValue] - Aria label for clear button
- * @property {string} [selectedOption] - Screen reader text for selected options
- * @property {string} [invalidOption] - Screen reader text for invalid options
- * @property {string} [invalidValues] - Header text for invalid values tooltip
- * @property {string} [fieldContainsInvalidValues] - Announcement for invalid values (screen reader)
- * @property {string} [noOptionsSelected] - Announcement when no options are selected
- * @property {string} [selectionAdded] - Announcement prefix when selection is added
- * @property {string} [selectionRemoved] - Announcement prefix when selection is removed
- * @property {string} [selectionsCurrent] - Announcement prefix for current selections
- * @property {string} [selectionsMore] - Text for additional options (singular)
- * @property {string} [selectionsMorePlural] - Text for additional options (plural)
- * @property {(count: number, language: string) => string} [selectedCountFormatter] - Function to format the count in the badge
- */
-
-/**
- * @typedef {Object} PreactComboboxProps
- * @property {string} id The id of the component
- * @property {boolean} [multiple=true] Multi-select or single-select mode
- * @property {Option[]
- * | ((
- *   queryOrValues: string[] | string,
- *   limit: number,
- *   currentSelections: string[],
- *   abortControllerSignal: AbortSignal
- * ) => Promise<Option[]>)} allowedOptions Array of allowed options or function to fetch allowed options
- * @property {boolean} [allowFreeText=false] Allow free text input
- * @property {(options: string[] | string) => void} onChange Callback when selection changes
- * @property {string[] | string} value Currently selected options (array for multi-select, string for single-select)
- * @property {string} [language='en'] Language for word splitting and matching. The language can be any language tag
- * recognized by Intl.Segmenter and Intl.Collator
- * @property {boolean} [showValue=false] experimental feature.
- * @property {boolean} [disabled=false] Disable the component
- * @property {boolean} [required=false] Is required for form submission
- * @property {boolean} [showClearButton=true] Show the clear button for single-select mode
- * @property {string} [name] name to be set on hidden select element
- * @property {string} [className]
- * @property {string} [placeholder]
- * @property {'light' | 'dark' | 'system'} [theme='system'] Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
- * @property {Translations} [translations] Custom translation strings
- *
- * @property {Record<string, any>} [rootElementProps] Root element props
- * @property {Record<string, any>} [inputProps] Input element props
- * @property {boolean} [formSubmitCompatible=false] Render a hidden select for progressive enhanced compatible form submission
- * @property {boolean} [isServer] Whether the component is rendered on the server (auto-detected if not provided).
- * This prop is only relevant if formSubmitCompatible is true.
- * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
- *
- * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
- * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
- * @property {VNode} [warningIcon] Custom warning icon element or component
- * @property {VNode} [chevronIcon] Custom chevron icon element or component
- * @property {(text: string) => VNode} [loadingIndicator] Custom loading indicator element or text
- */
-
-// --- end of types ---
 
 // @ts-ignore
 const isPlaywright = navigator.webdriver === true;
@@ -182,11 +186,11 @@ function sortValuesToTop(options, values) {
 /**
  * @param {Object} props - Props for the PopperContent component
  * @param {HTMLElement} [props.parent=document.body] The parent element to render the PopperContent component
- * @param {VNode[]} props.children The children to render
- * @param {React.RefObject} [props.rootElementRef] Reference to the source element to get direction context
+ * @param {VNode} props.children The children to render
+ * @param {React.RefObject<HTMLElement>} [props.rootElementRef] Reference to the source element to get direction context
  */
 const Portal = ({ parent = document.body, children, rootElementRef }) => {
-  const [dir, setDir] = useState(null);
+  const [dir, setDir] = useState(/** @type {string|null} */ (null));
 
   useEffect(() => {
     if (rootElementRef?.current) {
@@ -201,7 +205,7 @@ const Portal = ({ parent = document.body, children, rootElementRef }) => {
   }, [rootElementRef, parent]);
 
   const wrappedChildren = dir ? (
-    <div dir={dir} style={{ direction: dir }}>
+    <div dir={/** @type {"auto" | "rtl" | "ltr"} */ (dir)} style={{ direction: dir }}>
       {children}
     </div>
   ) : (
@@ -223,9 +227,11 @@ const dropdownPopperModifiers = [
     enabled: true,
     phase: "beforeWrite",
     requires: ["computeStyles"],
+    // @ts-ignore
     fn: ({ state }) => {
       state.styles.popper.minWidth = `${state.rects.reference.width}px`;
     },
+    // @ts-ignore
     effect: ({ state }) => {
       state.elements.popper.style.minWidth = `${state.elements.reference.offsetWidth}px`;
     },
@@ -293,7 +299,7 @@ function getExactMatchScore(query, option, language) {
     };
   }
 
-  const { caseMatcher } = languageCache[language];
+  const { caseMatcher } = /** @type {LanguageCache} */ (languageCache[language]);
   if (caseMatcher.compare(value, query) === 0) {
     return {
       ...rest,
@@ -343,7 +349,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
   query = query.trim();
 
   if (!query) {
-    const matchSlices = [];
+    const matchSlices = /** @type {Array<[number, number]>} */ ([]);
     return options.map((option) => ({
       ...option,
       label: option.label,
@@ -373,8 +379,6 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 
   const isCommaSeparated = query.includes(",");
 
-  let querySegments;
-  let queryWords;
   let matches = options.map((option) => {
     const { label, value, ...rest } = option;
     if (isCommaSeparated) {
@@ -383,7 +387,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
         .map((querySegment) => getExactMatchScore(querySegment.trim(), option, language))
         .filter((match) => match !== null)
         .sort((a, b) => b.score - a.score);
-      return (
+      return /** @type {OptionMatch} */ (
         matches[0] || {
           ...rest,
           label,
@@ -429,15 +433,14 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
 
     // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
     // This match needs to be case and accent insensitive
-    if (!querySegments) {
-      querySegments = Array.from(wordSegmenter.segment(query));
-    }
+    const querySegments = Array.from(wordSegmenter.segment(query));
     const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
     let len = 0;
     let firstIndex = -1;
     for (let i = 0; i < labelWordSegments.length; i++) {
-      const labelWordSegment = labelWordSegments[i];
+      const labelWordSegment = /** @type {Intl.SegmentData} */ (labelWordSegments[i]);
       const querySegment = querySegments[len];
+      if (!querySegment) break;
       if (len === querySegments.length - 1) {
         // check for partial word match
         // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
@@ -490,9 +493,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     }
 
     // Rule 5: Word matches
-    if (!queryWords) {
-      queryWords = querySegments.filter((s) => s.isWordLike);
-    }
+    const queryWords = querySegments.filter((s) => s.isWordLike);
     const labelWords = labelWordSegments.filter((s) => s.isWordLike);
     /** @type {Array<[number, number]|undefined>} */
     const slices = queryWords.map((word) => {
@@ -583,13 +584,17 @@ const defaultChevronIcon = (
   </svg>
 );
 
+/** @type {NonNullable<PreactComboboxProps['loadingIndicator']>} */
 const defaultLoadingIndicator = (loadingText) => loadingText;
 
-/**
- * @type {OptionTransformFunction}
- */
+/** @type {OptionTransformFunction} */
 export function defaultOptionTransform({ option, isSelected, isInvalid, showValue, warningIcon }) {
   const isLabelSameAsValue = option.value === option.label;
+  /**
+   * @param {(VNode|string)[]} labelNodes
+   * @param {(VNode|string)[]} valueNodes
+   * @returns {VNode}
+   */
   const getLabel = (labelNodes, valueNodes) => (
     <>
       {option.icon && (
@@ -636,6 +641,7 @@ export function defaultOptionTransform({ option, isSelected, isInvalid, showValu
   );
 }
 
+/** @type {NonNullable<PreactComboboxProps['singleSelectedStateIcon']>} */
 function defaultSingleSelectedStateIcon(option) {
   return (
     <span className="PreactCombobox-optionIcon" aria-hidden="true">
@@ -644,14 +650,16 @@ function defaultSingleSelectedStateIcon(option) {
   );
 }
 
+/** @type {string[]} */
 const defaultArrayValue = [];
 
 /**
  * Creates a human-readable announcement of selected items
  * @param {string[]} selectedValues - Array of selected values
- * @param {"added"|"removed"|null} diff - Lookup object containing option labels
+ * @param {"added"|"removed"|null|undefined} diff - Lookup object containing option labels
  * @param {string} language - Language code
- * @param {Object} optionsLookup - Lookup object containing option labels
+ * @param {Record<string, Option>} optionsLookup - Lookup object containing option labels
+ * @param {Translations} translations - Translations object
  * @returns {string} - Human-readable announcement of selections
  */
 function formatSelectionAnnouncement(selectedValues, diff, optionsLookup, language, translations) {
@@ -714,7 +722,7 @@ const PreactCombobox = ({
   chevronIcon = defaultChevronIcon,
   loadingIndicator = defaultLoadingIndicator,
   theme = "system",
-  translations = {},
+  translations = defaultTranslations,
 }) => {
   // Merge default translations with provided translations
   const mergedTranslations = useMemo(
@@ -781,7 +789,7 @@ const PreactCombobox = ({
       allOptions.reduce((acc, o) => {
         acc[o.value] = o;
         return acc;
-      }, {}),
+      }, /** @type {{ [value: string]: Option }} */ ({})),
     [allOptions],
   );
   const invalidValues = useMemo(() => {
@@ -790,10 +798,14 @@ const PreactCombobox = ({
   }, [allowFreeText, arrayValues, allOptionsLookup]);
 
   const updateSelectionAnnouncement = useCallback(
-    (selectedValues, isDiff = false) => {
+    /**
+     * @param {string[]} selectedValues
+     * @param {"added"|"removed"|null} [diff]
+     */
+    (selectedValues, diff) => {
       const announcement = formatSelectionAnnouncement(
         selectedValues,
-        isDiff,
+        diff,
         allOptionsLookup,
         language,
         mergedTranslations,
@@ -809,6 +821,10 @@ const PreactCombobox = ({
    * @param {boolean} [scroll=true] Scroll to the option if it's not already in view
    */
   const activateDescendant = useCallback(
+    /**
+     * @param {string} optionValue
+     * @param {boolean} [scroll=true]
+     */
     (optionValue, scroll = true) => {
       // NOTE: Using direct DOM API for performance
       // Remove current active element CSS
@@ -895,7 +911,7 @@ const PreactCombobox = ({
   const abortControllerRef = useRef(/** @type {AbortController | null} */ (null));
   const inputTypingDebounceTimer = useRef(/** @type {any} */ (null));
   const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
-  const newUnknownValuesAsKey = useMemo(() => JSON.stringify(newUnknownValues), [newUnknownValues]);
+  const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
   // Fill the dropdown with options on open and also on input change
   // Not on useEffect deps:
   // arrayValues doesn't need to be a dependency except on an unexpected selection change from parent
@@ -928,15 +944,17 @@ const PreactCombobox = ({
 
     const callback = async () => {
       if (typeof allowedOptions === "function") {
+        // @ts-ignore
+        const signal = /** @type {AbortSignal} */ (abortController.signal);
         const [searchResults, selectedResults] = await Promise.all([
           getIsDropdownOpen()
             ? allowedOptions(
                 inputTrimmed,
                 maxNumberOfPresentedOptions,
                 arrayValues,
-                abortController.signal,
+                signal,
               )
-            : [],
+            : /** @type {Option[]} */ ([]),
           // We need to fetch unknown options's labels regardless of whether the dropdown
           // is open or not, because we want to show it in the placeholder.
           newUnknownValues.length > 0
@@ -944,11 +962,11 @@ const PreactCombobox = ({
                 newUnknownValues,
                 newUnknownValues.length,
                 arrayValues,
-                abortController.signal,
+                signal,
               )
             : null,
         ]).catch((error) => {
-          if (abortController.signal.aborted) {
+          if (signal.aborted) {
             return [null, null];
           }
           setIsLoading(false);
@@ -970,7 +988,7 @@ const PreactCombobox = ({
             .map((v) => ({ label: v, value: v }));
           if (unreturnedValues.length > 0) {
             updateCachedOptions(unreturnedValues);
-            updatedOptions = unreturnedValues.concat(searchResults);
+            updatedOptions = unreturnedValues.concat(searchResults || []);
           }
         }
         // when search is applied don't sort the selected values to the top
@@ -1016,7 +1034,8 @@ const PreactCombobox = ({
       invalidValues.length > 0 &&
       warningIconHovered &&
       warningIconRef.current &&
-      tooltipPopperRef.current
+      tooltipPopperRef.current &&
+      rootElementRef.current
     ) {
       // Get computed direction to handle RTL layout
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
@@ -1042,6 +1061,10 @@ const PreactCombobox = ({
    * @param {string} selectedValue The selected option value
    */
   const handleOptionSelect = useCallback(
+    /**
+     * @param {string} selectedValue
+     * @param {{ toggleSelected?: boolean }} [options]
+     */
     (selectedValue, { toggleSelected = false } = {}) => {
       if (values) {
         const existingOption = values.includes(selectedValue);
@@ -1139,6 +1162,9 @@ const PreactCombobox = ({
     !filteredOptions.find((o) => o.value === inputTrimmed);
 
   const handleAddNewOption = useCallback(
+    /**
+     * @param {string} newValue
+     */
     (newValue) => {
       handleOptionSelect(newValue);
       setFilteredOptions((options) => {
@@ -1159,9 +1185,11 @@ const PreactCombobox = ({
 
   /**
    * Handle keydown events on the input
-   * @param {React.KeyboardEvent<HTMLInputElement>} e - Keyboard event
    */
   const handleKeyDown = useCallback(
+    /**
+     * @param {import('preact/compat').KeyboardEvent<HTMLInputElement>} e - Keyboard event
+     */
     (e) => {
       const currentActiveDescendant = activeDescendant.current;
       if (e.key === "Enter") {
@@ -1170,7 +1198,8 @@ const PreactCombobox = ({
           ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
           : -1;
         if (currentIndex > -1) {
-          handleOptionSelect(filteredOptions[currentIndex].value, {
+          const option = /** @type {OptionMatch} */ (filteredOptions[currentIndex]);
+          handleOptionSelect(option.value, {
             toggleSelected: true,
           });
         } else if (allowFreeText && inputTrimmed !== "") {
@@ -1193,7 +1222,8 @@ const PreactCombobox = ({
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
           const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          activateDescendant(filteredOptions[nextIndex].value);
+          const option = /** @type {OptionMatch} */ (filteredOptions[nextIndex]);
+          activateDescendant(option.value);
         }
         // ArrowUp highlights previous option
       } else if (e.key === "ArrowUp") {
@@ -1212,7 +1242,8 @@ const PreactCombobox = ({
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
           const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          activateDescendant(filteredOptions[prevIndex].value);
+          const option = /** @type {OptionMatch} */ (filteredOptions[prevIndex]);
+          activateDescendant(option.value);
         }
         // Escape blurs input
       } else if (e.key === "Escape") {
@@ -1221,7 +1252,8 @@ const PreactCombobox = ({
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          activateDescendant(filteredOptions[0].value);
+          const option = /** @type {OptionMatch} */ (filteredOptions[0]);
+          activateDescendant(option.value);
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -1229,7 +1261,8 @@ const PreactCombobox = ({
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          activateDescendant(filteredOptions[filteredOptions.length - 1].value);
+          const option = /** @type {OptionMatch} */ (filteredOptions[filteredOptions.length - 1]);
+          activateDescendant(option.value);
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -1272,9 +1305,11 @@ const PreactCombobox = ({
   );
   /**
    * Handle paste event
-   * @param {React.ClipboardEvent<HTMLInputElement>} e - Clipboard event
    */
   const handlePaste = useCallback(
+    /**
+     * @param {import('preact/compat').ClipboardEvent<HTMLInputElement>} e - Clipboard event
+     */
     (e) => {
       // only handle paste in multi-select mode
       if (!values) return;
@@ -1294,7 +1329,8 @@ const PreactCombobox = ({
       const optionsLabelLookup = Object.fromEntries(
         allOptions.map((o) => [o.label.toLowerCase(), o.value]),
       );
-      const pastedText = e.clipboardData.getData("text");
+      const pastedText = e.clipboardData?.getData("text") || '';
+      if (!pastedText) return;
       const pastedOptions = pastedText
         .split(",")
         .map((x) => x.trim())
@@ -1377,7 +1413,14 @@ const PreactCombobox = ({
 
   return (
     <div
-      className={`PreactCombobox ${disabled ? "PreactCombobox--disabled" : ""} ${className} ${`PreactCombobox--${theme}`}`}
+      className={[
+        className,
+        "PreactCombobox",
+        disabled ? "PreactCombobox--disabled" : "",
+        `PreactCombobox--${theme}`,
+      ]
+        .filter(Boolean)
+        .join(" ")}
       aria-disabled={disabled}
       onClick={() => {
         if (!disabled) {
@@ -1489,11 +1532,11 @@ const PreactCombobox = ({
             multiple={multiple}
             hidden={!isServerSideForm}
             tabIndex={isServerSideForm ? 0 : -1}
-            // @ts-expect-error this is a valid react attribute
             readOnly={!isServerSideForm}
+            // @ts-expect-error this is a valid react attribute
             value={value}
             name={name}
-            size="1"
+            size={1}
             className={isServerSideForm ? "PreactCombobox-formSelect" : ""}
           >
             {selectChildren}
