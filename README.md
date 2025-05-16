@@ -70,7 +70,8 @@ function App() {
 | `className` | `string` | `""` | Additional CSS class |
 | `theme` | `"light" \| "dark" \| "system"` | `"system"` | Theme for the component |
 | `showValue` | `boolean` | `false` | Show value alongside label |
-| `optionTransform` | `Function` | `defaultOptionTransform` | Custom option renderer |
+| `optionRenderer` | `Function` | `defaultOptionRenderer` | Custom option renderer |
+| `optionIconRenderer` | `Function` | `defaultOptionIconRenderer` | Custom icon renderer for options |
 | `translations` | `Translations` | `defaultEnglishTranslations` | Localization strings |
 | `formSubmitCompatible` | `boolean` | `false` | Include hidden form elements for submission |
 | `portal` | `HTMLElement` | `document.body` | Element to render dropdown into |
@@ -79,7 +80,7 @@ function App() {
 | `selectElementProps` | `Object` | `{}` | Props for hidden select element |
 | `warningIcon` | `VNode` | (default icon) | Custom warning icon |
 | `chevronIcon` | `VNode` | (default icon) | Custom dropdown icon |
-| `loadingIndicator` | `(text: string) => VNode\|string` | (default text) | Custom loading indicator |
+| `loadingRenderer` | `(text: string) => VNode\|string` | (default text) | Custom loading indicator |
 
 ## Advanced Features
 

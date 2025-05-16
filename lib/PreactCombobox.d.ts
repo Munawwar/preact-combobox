@@ -4,7 +4,7 @@
  * @returns {VNode[]}
  */
 export function matchSlicesToNodes(matchSlices: OptionMatch["matchSlices"], text: string): VNode[];
-export function defaultOptionTransform(params: {
+export function defaultOptionRenderer(params: {
     option: OptionMatch;
     language: string;
     isSelected: boolean;
@@ -12,6 +12,7 @@ export function defaultOptionTransform(params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }): VNode;
 export default PreactCombobox;
 export type Option = {
@@ -80,6 +81,7 @@ export type OptionTransformFunction = (params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }) => VNode;
 export type Translations = {
     /**
@@ -257,11 +259,14 @@ export type PreactComboboxProps = {
     /**
      * Transform the label text
      */
-    optionTransform?: OptionTransformFunction | undefined;
+    optionRenderer?: OptionTransformFunction | undefined;
     /**
-     * Custom icon element or component for single-select mode
+     * Custom icon renderer for options.
+     * isInput is `true` when rendering the icon besides the input element in single-select mode.
+     * It's `undefined` or `false` when rendering the icon besides each option.
+     * This function is also passed into `optionRenderer` as an argument instead of being used directly for option rendering.
      */
-    singleSelectedStateIcon?: ((option: Option) => VNode) | undefined;
+    optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
     /**
      * Custom warning icon element or component
      */
@@ -273,7 +278,7 @@ export type PreactComboboxProps = {
     /**
      * Custom loading indicator element or text
      */
-    loadingIndicator?: ((text: string) => VNode | string) | undefined;
+    loadingRenderer?: ((text: string) => VNode | string) | undefined;
     /**
      * - [private property - do not use] Maximum number of options to present
      */
@@ -283,4 +288,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionTransform, singleSelectedStateIcon, maxNumberOfPresentedOptions, warningIcon, chevronIcon, loadingIndicator, theme, translations, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, chevronIcon, loadingRenderer, theme, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;

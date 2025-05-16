@@ -9,47 +9,47 @@ let allowedOptions = [
   {
     label: "United States of America",
     value: "usa",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇺🇸</span>`,
+    icon: "🇺🇸",
   },
   {
     label: "France",
     value: "france",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇫🇷</span>`,
+    icon: "🇫🇷",
   },
   {
     label: "Japan",
     value: "japan",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇯🇵</span>`,
+    icon: "🇯🇵",
   },
   {
     label: "Brazil",
     value: "brazil",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇧🇷</span>`,
+    icon: "🇧🇷",
   },
   {
     label: "Australia",
     value: "australia",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇦🇺</span>`,
+    icon: "🇦🇺",
   },
   {
     label: "China",
     value: "china",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇨🇳</span>`,
+    icon: "🇨🇳",
   },
   {
     label: "Russia",
     value: "russia",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇷🇺</span>`,
+    icon: "🇷🇺",
   },
   {
     label: "South Korea",
     value: "korea",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇰🇷</span>`,
+    icon: "🇰🇷",
   },
   {
     label: "Indonesia",
     value: "indonesia",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇮🇩</span>`,
+    icon: "🇮🇩",
   },
 ];
 
@@ -58,38 +58,38 @@ const arabicOptions = [
   {
     label: "المملكة العربية السعودية",
     value: "saudi-arabia",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇸🇦</span>`,
+    icon: "🇸🇦",
   },
   {
     label: "مصر",
     value: "egypt",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇪🇬</span>`,
+    icon: "🇪🇬",
   },
   {
     label: "الإمارات العربية المتحدة",
     value: "uae",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇦🇪</span>`,
+    icon: "🇦🇪",
   },
   {
     label: "قطر",
     value: "qatar",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇶🇦</span>`,
+    icon: "🇶🇦",
   },
   {
     label: "المغرب",
     value: "morocco",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇲🇦</span>`,
+    icon: "🇲🇦",
   },
   // Add some English options to test mixed content
   {
     label: "United Kingdom",
     value: "uk",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇬🇧</span>`,
+    icon: "🇬🇧",
   },
   {
     label: "Germany",
     value: "germany",
-    icon: html`<span style="font-size: 16px;" role="img" aria-hidden="true">🇩🇪</span>`,
+    icon: "🇩🇪",
   },
 ];
 

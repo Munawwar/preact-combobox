@@ -42,9 +42,11 @@ import "./PreactCombobox.css";
  * @param {string} params.language
  * @param {boolean} params.isSelected
  * @param {boolean} params.isInvalid
- * @param {boolean} params.isActive
+ * @param {boolean} params.isActive Active does not mean selected. Active means the option is being hovered over / keyboard focused over.
  * @param {boolean} params.showValue
  * @param {VNode} [params.warningIcon]
+ * @param {(option: Option, isInput?: boolean) => VNode|null} [params.optionIconRenderer] Read PreactComboboxProps
+ * `optionIconRenderer` for more details.
  * @returns {VNode}
  */
 
@@ -106,11 +108,14 @@ import "./PreactCombobox.css";
  * @property {Record<string, any>} [selectElementProps] Props for the hidden select element. This is useful for forms
  *
  * @property {HTMLElement} [portal=document.body] The element to render the Dropdown <ul> element
- * @property {OptionTransformFunction} [optionTransform=identity] Transform the label text
- * @property {(option: Option) => VNode} [singleSelectedStateIcon] Custom icon element or component for single-select mode
+ * @property {OptionTransformFunction} [optionRenderer=identity] Transform the label text
+ * @property {(option: Option, isInput?: boolean) => VNode|null} [optionIconRenderer] Custom icon renderer for options.
+ * isInput is `true` when rendering the icon besides the input element in single-select mode.
+ * It's `undefined` or `false` when rendering the icon besides each option.
+ * This function is also passed into `optionRenderer` as an argument instead of being used directly for option rendering.
  * @property {VNode} [warningIcon] Custom warning icon element or component
  * @property {VNode} [chevronIcon] Custom chevron icon element or component
- * @property {(text: string) => VNode|string} [loadingIndicator] Custom loading indicator element or text
+ * @property {(text: string) => VNode|string} [loadingRenderer] Custom loading indicator element or text
  *
  * @property {number} [maxNumberOfPresentedOptions=100] - [private property - do not use] Maximum number of options to present
  */
@@ -584,11 +589,18 @@ const defaultChevronIcon = (
   </svg>
 );
 
-/** @type {NonNullable<PreactComboboxProps['loadingIndicator']>} */
-const defaultLoadingIndicator = (loadingText) => loadingText;
+/** @type {NonNullable<PreactComboboxProps['loadingRenderer']>} */
+const defaultLoadingRenderer = (loadingText) => loadingText;
 
 /** @type {OptionTransformFunction} */
-export function defaultOptionTransform({ option, isSelected, isInvalid, showValue, warningIcon }) {
+export function defaultOptionRenderer({
+  option,
+  isSelected,
+  isInvalid,
+  showValue,
+  warningIcon,
+  optionIconRenderer,
+}) {
   const isLabelSameAsValue = option.value === option.label;
   /**
    * @param {(VNode|string)[]} labelNodes
@@ -597,11 +609,7 @@ export function defaultOptionTransform({ option, isSelected, isInvalid, showValu
    */
   const getLabel = (labelNodes, valueNodes) => (
     <>
-      {option.icon && (
-        <span className="PreactCombobox-optionIcon" aria-hidden="true">
-          {option.icon}
-        </span>
-      )}
+      {optionIconRenderer?.(option, false)}
       <span className="PreactCombobox-optionLabelFlex">
         <span>{labelNodes}</span>
         {isLabelSameAsValue || !showValue ? null : (
@@ -641,13 +649,13 @@ export function defaultOptionTransform({ option, isSelected, isInvalid, showValu
   );
 }
 
-/** @type {NonNullable<PreactComboboxProps['singleSelectedStateIcon']>} */
-function defaultSingleSelectedStateIcon(option) {
-  return (
-    <span className="PreactCombobox-optionIcon" aria-hidden="true">
+/** @type {NonNullable<PreactComboboxProps['optionIconRenderer']>} */
+function defaultOptionIconRenderer(option) {
+  return option.icon ? (
+    <span className="PreactCombobox-optionIconRenderer" aria-hidden="true" role="img">
       {option.icon}
     </span>
-  );
+  ) : null;
 }
 
 /** @type {string[]} */
@@ -714,15 +722,15 @@ const PreactCombobox = ({
   selectElementProps,
   showValue = true,
   showClearButton = true,
-  optionTransform = defaultOptionTransform,
-  singleSelectedStateIcon = defaultSingleSelectedStateIcon,
-  // private option for now
-  maxNumberOfPresentedOptions = 100,
+  optionRenderer = defaultOptionRenderer,
+  optionIconRenderer = defaultOptionIconRenderer,
   warningIcon = defaultWarningIcon,
   chevronIcon = defaultChevronIcon,
-  loadingIndicator = defaultLoadingIndicator,
+  loadingRenderer = defaultLoadingRenderer,
   theme = "system",
   translations = defaultEnglishTranslations,
+  // private option for now
+  maxNumberOfPresentedOptions = 100,
 }) => {
   // Merge default translations with provided translations
   const mergedTranslations = useDeepMemo(
@@ -1452,8 +1460,8 @@ const PreactCombobox = ({
             {/* Show icon for single select mode */}
             {!multiple &&
               singleSelectValue &&
-              allOptionsLookup[singleSelectValue]?.icon &&
-              singleSelectedStateIcon(allOptionsLookup[singleSelectValue])}
+              allOptionsLookup[singleSelectValue] &&
+              optionIconRenderer?.(allOptionsLookup[singleSelectValue], true)}
             <input
               id={id}
               ref={inputRef}
@@ -1552,7 +1560,7 @@ const PreactCombobox = ({
           >
             {isLoading ? (
               <li className="PreactCombobox-option" aria-disabled>
-                {loadingIndicator(mergedTranslations.loadingOptions)}
+                {loadingRenderer(mergedTranslations.loadingOptions)}
               </li>
             ) : (
               <>
@@ -1613,7 +1621,7 @@ const PreactCombobox = ({
                         inputRef.current?.focus();
                       }}
                     >
-                      {optionTransform({
+                      {optionRenderer({
                         option,
                         language,
                         isActive,
@@ -1621,6 +1629,7 @@ const PreactCombobox = ({
                         isInvalid,
                         showValue,
                         warningIcon,
+                        optionIconRenderer,
                       })}
                       {isSelected ? (
                         <span
