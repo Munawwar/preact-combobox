@@ -652,7 +652,7 @@ export function defaultOptionRenderer({
 /** @type {NonNullable<PreactComboboxProps['optionIconRenderer']>} */
 function defaultOptionIconRenderer(option) {
   return option.icon ? (
-    <span className="PreactCombobox-optionIconRenderer" aria-hidden="true" role="img">
+    <span className="PreactCombobox-optionIcon" aria-hidden="true" role="img">
       {option.icon}
     </span>
   ) : null;

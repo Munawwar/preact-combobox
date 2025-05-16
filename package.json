@@ -1,6 +1,6 @@
 {
   "name": "preact-combobox",
-  "version": "0.0.1-beta.3",
+  "version": "0.1.0",
   "description": "Preact Multi-select Combo Box component",
   "main": "dist/cjs/PreactCombobox.js",
   "module": "dist/esm/PreactCombobox.js",
@@ -10,6 +10,9 @@
       "require": "./dist/cjs/PreactCombobox.js",
       "default": "./dist/esm/PreactCombobox.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "concurrently -i -c \"auto\" \"npm:watch\" \"npm:example\"",

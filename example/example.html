@@ -5,8 +5,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Preact Combobox Example</title>
+  <!-- Use a script to dynamically set the base URL -->
+  <script>
+    // Determine if we're on GitHub Pages or local
+    const isGitHubPages = window.location.hostname.includes('github.io');
+    const baseUrl = isGitHubPages 
+      ? 'https://esm.sh/preact-combobox/'
+      : 'http://localhost:3050/';
+    // Create base element or use it for paths
+    document.write(`<base href="${baseUrl}">`);
+  </script>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../dist/esm/PreactCombobox.css">
+  <link rel="stylesheet" href="/dist/esm/PreactCombobox.css">
   <style>
     :root {
       --text-color: #222;
@@ -139,7 +149,7 @@
   <div id="root"></div>
   
   <script type="module">
-    import "./example.js";
+    import "/example/example.js";
     
     // Apply theme based on system preference initially
     document.documentElement.setAttribute('data-theme', 'light');

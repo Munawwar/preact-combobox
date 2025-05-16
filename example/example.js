@@ -3,7 +3,7 @@ import { createElement, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 const html = htm.bind(createElement);
 
-import PreactCombobox from "../dist/esm/PreactCombobox.js";
+import PreactCombobox from "/dist/esm/PreactCombobox.js";
 
 let allowedOptions = [
   {
@@ -260,7 +260,7 @@ function App() {
         />
         <br/>
 
-        <label for="example-6">Always Dark Theme (explicitly set dark theme)</label>
+        <label for="example-6">Explicity use Dark Theme</label>
         <${PreactCombobox}
           id="example-6"
           allowedOptions=${allowedOptions}
