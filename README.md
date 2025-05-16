@@ -13,10 +13,11 @@ A Preact multi-select/single-select combobox component.
 npm add preact-combobox @popperjs/core
 ```
 
-## Basic Usage
+## Usage
 
 ```jsx
 import PreactCombobox from "preact-combobox";
+import "preact-combobox/dist/esm/PreactCombobox.css";
 
 const options = [
   { label: "Option 1", value: "option-1" },
@@ -51,11 +52,63 @@ function App() {
 }
 ```
 
+## CSS
+
+If you have a build tool:
+```js
+// In your main JS/TS entry file
+import 'preact-combobox/dist/esm/PreactCombobox.css';
+```
+
+Or download the CSS file from `src/PreactCombobox.css` and use it directly. Or you could use a CDN like `esm.sh` or `unpkg.com` if you wish:
+```css
+@import 'https://esm.sh/preact-combobox/dist/esm/PreactCombobox.css';
+/* Or use a CSS layer in modern browser to make overriding design easier */
+@import 'https://esm.sh/preact-combobox/dist/esm/PreactCombobox.css' layer(components);
+/* Or */
+@layer components {
+  @import 'https://esm.sh/preact-combobox/dist/esm/PreactCombobox.css';
+}
+```
+
+### Customizing Styles
+
+You can customize the component's appearance by overriding CSS variables. The component uses CSS variables for theming:
+
+```css
+:root {
+  /* Light theme overrides */
+  --preact-combobox-light-bg: #fff;
+  --preact-combobox-light-text: #333;
+  --preact-combobox-light-border: #ddd;
+  /* See PreactCombobox.css for all available variables */
+}
+```
+
+## Without build tools
+
+```html
+<script type="importmap">
+  {
+    "imports": {
+      "preact": "https://esm.sh/preact@10",
+      "preact/hooks": "https://esm.sh/preact@10/hooks",
+      "preact/jsx-runtime": "https://esm.sh/preact@10/jsx-runtime",
+      "preact/compat": "https://esm.sh/preact@10/compat",
+      "htm": "https://esm.sh/htm",
+      "@popperjs/core": "https://esm.sh/@popperjs/core@2",
+      "preact-combobox": "https://esm.sh/preact-combobox",
+    }
+  }
+</script>
+```
+
 ## Component Props
 
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `id` | `string` | (required) | Component ID |
+| `className` | `string` | `""` | Additional CSS class |
 | `allowedOptions` | `Option[] \| Function` | (required) | Array of options or function for lazy-loading |
 | `onChange` | `Function` | (required) | Callback for value change |
 | `value` | `string[] \| string` | `[]` or `""` | Selected value(s) |
@@ -67,7 +120,6 @@ function App() {
 | `required` | `boolean` | `false` | Mark as required |
 | `showClearButton` | `boolean` | `true` | Show clear button for selections |
 | `name` | `string` | `undefined` | Input name (for forms) |
-| `className` | `string` | `""` | Additional CSS class |
 | `theme` | `"light" \| "dark" \| "system"` | `"system"` | Theme for the component |
 | `showValue` | `boolean` | `false` | Show value alongside label |
 | `optionRenderer` | `Function` | `defaultOptionRenderer` | Custom option renderer |
