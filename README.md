@@ -6,6 +6,10 @@ A Preact multi-select/single-select combobox component.
 
 ![screenshot](./screenshot.png)
 
+Interactive examples - https://munawwar.github.io/preact-combobox/example/example.html
+
+(The code for the examples is in the git repo `example/` directory).
+
 ## Installation
 
 ```bash
