@@ -2,25 +2,25 @@
 :root {
   --preact-combobox-light-bg: #fff;
   --preact-combobox-light-text: #222;
-  --preact-combobox-light-border: #ccc;
+  --preact-combobox-light-border: #c7c7c7;
   --preact-combobox-light-field-bg: #fff;
   --preact-combobox-light-field-disabled-bg: #f0f0f0;
-  --preact-combobox-light-badge-bg: #e0e0e0;
-  --preact-combobox-light-badge-text: #666;
+  --preact-combobox-light-badge-bg: #e5e5e5;
+  --preact-combobox-light-badge-text: #4a4a4a;
   --preact-combobox-light-placeholder: #222;
   --preact-combobox-light-options-bg: #fff;
   --preact-combobox-light-options-border: #ccc;
   --preact-combobox-light-option-hover-bg: #f0f0f0;
   --preact-combobox-light-option-active-bg: #e0e0e0;
-  --preact-combobox-light-value-text: #666;
+  --preact-combobox-light-value-text: #4a4a4a;
   --preact-combobox-light-tooltip-bg: #000;
   --preact-combobox-light-tooltip-text: #fff;
-  --preact-combobox-light-clear-button-color: #888;
+  --preact-combobox-light-clear-button-color: #4a4a4a;
   --preact-combobox-light-chevron-fill: #666;
   --preact-combobox-light-checkbox-border: #ccc;
   --preact-combobox-light-checkbox-selected-bg: #222;
   --preact-combobox-light-checkbox-selected-border: #222;
-  --preact-combobox-light-checkbox-selected-text: white;
+  --preact-combobox-light-checkbox-selected-text: #fff;
   --preact-combobox-light-shadow: rgba(0, 0, 0, 0.1);
   --preact-combobox-light-hover-clear-bg: rgba(0, 0, 0, 0.1);
   --preact-combobox-dark-bg: #333;
@@ -174,12 +174,14 @@
   background: var(--preact-combobox-badge-bg);
   border-radius: 12px;
   padding: 2px 8px;
-  font-size: 12px;
   color: var(--preact-combobox-badge-text);
+  font-size: 12px;
+  font-weight: 700;
   white-space: nowrap;
   margin: 0 3px;
 }
 .PreactCombobox-input {
+  font-size: 0.875rem;
   flex: 1;
   width: auto;
   border: none;
@@ -202,7 +204,7 @@
   padding: 4px 8px;
   box-sizing: border-box;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 0.75rem;
   white-space: nowrap;
   pointer-events: none;
   transition: opacity 0.2s ease-in-out;
@@ -235,7 +237,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 18px;
+  font-size: 12px;
   color: var(--preact-combobox-clear-button-color);
   display: flex;
   align-items: center;
@@ -326,7 +328,7 @@
   width: 100%;
 }
 .PreactCombobox-optionValue {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--preact-combobox-value-text);
   margin-inline-start: 8px;
 }

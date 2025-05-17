@@ -1,5 +1,5 @@
 Priorities
-- Merge singleSelectIcon and `icon` prop into icon generator function
+- Make dark theme pass APCA contrast checker
 - Docs
 
 Nice to have

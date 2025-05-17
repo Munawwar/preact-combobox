@@ -1,6 +1,6 @@
 {
   "name": "preact-combobox",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Preact Multi-select Combo Box component",
   "main": "dist/cjs/PreactCombobox.js",
   "module": "dist/esm/PreactCombobox.js",

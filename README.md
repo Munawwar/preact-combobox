@@ -361,6 +361,13 @@ function CustomRenderingExample() {
 }
 ```
 
+## About Accessibility
+
+Some attempt has been made to make the component accessible in the following dimensions:
+- Keyboard navigation
+- Basic screen reader test only on Orca (v46.1). Help me out to test on more software and platforms.
+- Default colors for light mode theme (passes WCAG and APCA contrast)
+
 ## Run Demo
 
 ```bash
