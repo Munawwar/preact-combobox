@@ -3,7 +3,7 @@ import { createElement, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 const html = htm.bind(createElement);
 
-import PreactCombobox from "/dist/esm/PreactCombobox.js";
+import PreactCombobox from "../dist/esm/PreactCombobox.js";
 
 let allowedOptions = [
   {

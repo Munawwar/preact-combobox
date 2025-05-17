@@ -16,13 +16,13 @@
   },
   "scripts": {
     "dev": "concurrently -i -c \"auto\" \"npm:watch\" \"npm:example\"",
-    "prepublish": "npm run build",
     "lint": "npx @biomejs/biome check --write",
     "tsc": "tsc",
-    "pretest": "npm run build",
     "example": "browser-sync start --port 3050 --server --files 'example' --files 'dist' --startPath '/example/example.html'",
     "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core --watch",
-    "build": "rm -fr dist && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:react && tsc && cp lib/PreactCombobox.d.ts dist/esm/"
+    "build": "rm -fr dist && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:react && tsc && cp lib/PreactCombobox.d.ts dist/esm/  && cp lib/PreactCombobox.d.ts dist/cjs/",
+    "prepare": "husky",
+    "pretest": "npm run build"
   },
   "keywords": [
     "preact",
@@ -42,6 +42,7 @@
     "browser-sync": "^3.0.2",
     "concurrently": "^9.1.2",
     "esbuild": "^0.24.2",
+    "husky": "^9.1.7",
     "preact": "^10.0.0",
     "typescript": "^5.7.3"
   },
