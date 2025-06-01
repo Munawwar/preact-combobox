@@ -293,6 +293,7 @@
   margin: 0;
   max-height: 200px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background-color: var(--preact-combobox-options-bg);
   border: 1px solid var(--preact-combobox-options-border);
   box-sizing: border-box;
