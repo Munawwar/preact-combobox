@@ -291,6 +291,7 @@
   list-style-type: none;
   padding: 0;
   margin: 0;
+  min-width: 50px;
   max-height: 200px;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -305,10 +306,12 @@
   display: none;
 }
 .PreactCombobox-option {
+  box-sizing: border-box;
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
+  min-height: 24px;
   color: var(--preact-combobox-text);
   content-visibility: auto;
   contain-intrinsic-height: auto 35px;

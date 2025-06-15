@@ -12,3 +12,8 @@ export function useDeepMemo<T>(newState: T): T;
  * @returns {[() => T, (value: T) => void, boolean]}
  */
 export function useLive<T>(initialValue: T): [() => T, (value: T) => void, boolean];
+
+/**
+ * Subscribe to virtual keyboard visibility changes (touch devices only)
+ */
+export function subscribeToVirtualKeyboard(callback: (isVisible: boolean) => void): () => void;

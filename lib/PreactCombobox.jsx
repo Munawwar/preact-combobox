@@ -268,6 +268,34 @@ const tooltipPopperModifiers = [
   },
 ];
 
+const isTouchDevice =
+  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+const visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+
+/**
+ * Subscribe to virtual keyboard visibility changes (touch devices only)
+ * @param {(isVisible: boolean) => void} callback - Called with boolean when keyboard visibility changes
+ * @returns {function | null} - Unsubscribe function
+ */
+export function subscribeToVirtualKeyboard(callback) {
+  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
+
+  let isVisible = false;
+  const handleViewportResize = () => {
+    if (!window.visualViewport) return;
+    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
+    const isVisibleNow = heightDiff > 150;
+    if (isVisible !== isVisibleNow) {
+      isVisible = isVisibleNow;
+      callback(isVisible);
+    }
+  };
+  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
+  return () => {
+    window.visualViewport?.removeEventListener("resize", handleViewportResize);
+  };
+}
+
 /** @type {Record<string, LanguageCache>} */
 const languageCache = {};
 
@@ -1122,6 +1150,15 @@ const PreactCombobox = ({
     [setIsDropdownOpen],
   );
 
+  /**
+   * Tristate - null means virtual keyboard is not actively being detected.
+   * True means virtual keyboard was explicitly closed.
+   * False means virtual keyboard was not explicitly closed.
+   * @type {import('preact').RefObject<boolean|null>}
+   */
+  const virtualKeyboardExplicitlyClosedRef = useRef(null);
+  const virtualKeyboardCheckSubscription = useRef(/** @type {function | null} */ (null));
+
   const handleInputFocus = useCallback(() => {
     setIsFocused(true);
     clearTimeout(blurTimeoutRef.current);
@@ -1129,6 +1166,11 @@ const PreactCombobox = ({
     setIsDropdownOpen(true);
     dropdownClosedExplicitlyRef.current = false;
     updateSelectionAnnouncement(arrayValues);
+    if (!virtualKeyboardCheckSubscription.current) {
+      virtualKeyboardCheckSubscription.current = subscribeToVirtualKeyboard((isVisible) => {
+        virtualKeyboardExplicitlyClosedRef.current = !isVisible;
+      });
+    }
   }, [setIsFocused, setIsDropdownOpen, arrayValues, updateSelectionAnnouncement]);
 
   // Delay blur to allow option selection
@@ -1146,6 +1188,9 @@ const PreactCombobox = ({
     }
     setInputValue("");
     setLastSelectionAnnouncement("");
+    virtualKeyboardCheckSubscription.current?.();
+    virtualKeyboardCheckSubscription.current = null;
+    virtualKeyboardExplicitlyClosedRef.current = null;
   }, [
     setIsFocused,
     allOptionsLookup,
@@ -1356,20 +1401,70 @@ const PreactCombobox = ({
     [allOptions, onChange, values, updateSelectionAnnouncement],
   );
 
+  const focusInput = useCallback(
+    (forceOpenKeyboard = false) => {
+      const input = inputRef.current;
+      if (input) {
+        // If user explicitly close their virtual keyboard, we temporarily disable the input
+        // before focusing it to avoid the keyboard from opening again.
+        const shouldTemporarilyDisableInput =
+          getIsDropdownOpen() &&
+          getIsFocused() &&
+          virtualKeyboardExplicitlyClosedRef.current === true &&
+          !forceOpenKeyboard;
+        if (shouldTemporarilyDisableInput) {
+          input.setAttribute("readonly", "readonly");
+        }
+        // Does it make sense to focus the input if it's already focused?
+        // Yes, because it's possible that the next event in the event loop
+        // is the one that will trigger the a 'blur' event. To cancel the blur,
+        // we need to focus the input again.
+        input.focus();
+        if (shouldTemporarilyDisableInput) {
+          setTimeout(() => {
+            input.removeAttribute("readonly");
+          }, 1);
+        }
+      }
+    },
+    [getIsDropdownOpen, getIsFocused],
+  );
+
   const handleClearValue = useCallback(() => {
     setInputValue("");
     onChange(multiple ? [] : "");
     updateSelectionAnnouncement(arrayValues, "removed");
     undoStack.current.push(arrayValues);
     redoStack.current = [];
-    inputRef.current?.focus();
-  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement]);
+    // If current input is focused, we need to prevent a blur event from being triggered
+    // by focusing the input again. Else don't focus the input.
+    if (inputRef.current && document.activeElement === inputRef.current) {
+      focusInput();
+    }
+  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, focusInput]);
+
+  const handleRootElementClick = useCallback(() => {
+    if (!disabled) {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        // We regard an explicit click on the root element as an attempt to open the keyboard.
+        const forceOpenKeyboard = true;
+        focusInput(forceOpenKeyboard);
+      }
+      // This set is not redundant as input may already be focused
+      // and handleInputFocus may not be called
+      setIsDropdownOpen(true);
+      dropdownClosedExplicitlyRef.current = false;
+    }
+  }, [disabled, focusInput, setIsDropdownOpen]);
 
   // Memoize whatever JSX that can be memoized
   const selectChildren = useMemo(
     () =>
       formSubmitCompatible
-        ? arrayValues.map((val) => (
+        ? // FIXME: When isServerSide is true, we need to add not just selected values
+          // but also other options upto maxNumberOfPresentedOptions. This is for
+          // progressive enhancement.
+          arrayValues.map((val) => (
             <option key={val} value={val}>
               {allOptionsLookup[val]?.label || val}
             </option>
@@ -1424,15 +1519,7 @@ const PreactCombobox = ({
         .filter(Boolean)
         .join(" ")}
       aria-disabled={disabled}
-      onClick={() => {
-        if (!disabled) {
-          inputRef.current?.focus();
-          // This set is not redundant as input may already be focused
-          // and handleInputFocus may not be called
-          setIsDropdownOpen(true);
-          dropdownClosedExplicitlyRef.current = false;
-        }
-      }}
+      onClick={handleRootElementClick}
       id={`${id}-root`}
       ref={rootElementRef}
       {...rootElementProps}
@@ -1581,7 +1668,7 @@ const PreactCombobox = ({
                       if (!multiple) {
                         closeDropdown();
                       }
-                      inputRef.current?.focus();
+                      focusInput();
                     }}
                   >
                     {mergedTranslations.addOption.replace("{value}", inputTrimmed)}
@@ -1618,7 +1705,7 @@ const PreactCombobox = ({
                         if (!multiple) {
                           closeDropdown();
                         }
-                        inputRef.current?.focus();
+                        focusInput();
                       }}
                     >
                       {optionRenderer({
