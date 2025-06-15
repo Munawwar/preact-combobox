@@ -1,8 +1,6 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Run build
 npm run build
+npm run lint
 
 # Check if there are any uncommitted changes
 if [ -n "$(git status --porcelain)" ]; then
