@@ -2,9 +2,6 @@ Priorities
 - Make dark theme pass APCA contrast checker
 - Docs
 
-Bugs:
-- Check FIXMEs in code too
-
 Nice to have
 - When field is disabled, there is no way to see what values were selected. Though native select also works this way
 - Option level disabling

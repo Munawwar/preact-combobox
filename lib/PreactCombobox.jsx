@@ -777,6 +777,7 @@ const PreactCombobox = ({
     tempArrayValue = value ? [/** @type {string} */ (value)] : [];
   }
   const arrayValues = useDeepMemo(tempArrayValue);
+  const arrayValuesLookup = useMemo(() => new Set(arrayValues), [arrayValues]);
   const allowedOptionsAsKey = useDeepMemo(
     typeof allowedOptions === "function" ? null : allowedOptions,
   );
@@ -1486,16 +1487,33 @@ const PreactCombobox = ({
   const selectChildren = useMemo(
     () =>
       formSubmitCompatible
-        ? // FIXME: When isServerSide is true, we need to add not just selected values
-          // but also other options upto maxNumberOfPresentedOptions. This is for
-          // progressive enhancement.
-          arrayValues.map((val) => (
-            <option key={val} value={val}>
-              {allOptionsLookup[val]?.label || val}
-            </option>
-          ))
+        ? arrayValues
+            .map((val) => (
+              <option key={val} value={val}>
+                {allOptionsLookup[val]?.label || val}
+              </option>
+            ))
+            .concat(
+              typeof allowedOptions !== "function"
+                ? allowedOptions
+                    .filter((o) => !arrayValuesLookup.has(o.value))
+                    .slice(0, maxNumberOfPresentedOptions - arrayValues.length)
+                    .map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))
+                : [],
+            )
         : null,
-    [arrayValues, allOptionsLookup, formSubmitCompatible],
+    [
+      arrayValues,
+      allOptionsLookup,
+      formSubmitCompatible,
+      allowedOptions,
+      arrayValuesLookup,
+      maxNumberOfPresentedOptions,
+    ],
   );
 
   // Update loading announcement when isLoading changes
