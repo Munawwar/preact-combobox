@@ -1,5 +1,7 @@
 /* CSS Variables for theming */
 :root {
+  --preact-combobox-font-size: 0.875rem;
+
   /* Light theme variables */
   --preact-combobox-light-bg: #fff;
   --preact-combobox-light-text: #222;
@@ -173,12 +175,12 @@
   flex-wrap: nowrap;
   align-items: center;
   min-height: 38px;
+  box-sizing: border-box;
   padding: 2px 8px;
   border: 1px solid var(--preact-combobox-border);
   border-radius: 4px;
   background: var(--preact-combobox-field-bg);
   position: relative;
-  min-width: 0;
 }
 .PreactCombobox-field--disabled {
   background-color: var(--preact-combobox-field-disabled-bg);
@@ -197,9 +199,10 @@
 }
 
 .PreactCombobox-input {
-  font-size: 0.875rem;
+  font-size: var(--preact-combobox-font-size);
   flex: 1;
-  width: auto;
+  width: 100%;
+  box-sizing: border-box;
   border: none;
   outline: none;
   padding: 4px;
@@ -315,7 +318,7 @@
   outline: none;
   background: transparent;
   font-family: inherit;
-  font-size: inherit;
+  font-size: var(--preact-combobox-font-size);
   color: var(--preact-combobox-text);
 }
 
@@ -335,22 +338,24 @@
   border-radius: 4px;
   box-shadow: 0 2px 4px var(--preact-combobox-shadow);
   z-index: 100;
+  scrollbar-width: thin;
 }
 .PreactCombobox-options[hidden] {
   display: none;
 }
 
 .PreactCombobox-option {
+  font-size: var(--preact-combobox-font-size);
   box-sizing: border-box;
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   /*
-  Minimum clickable area WCAG 2.2 level AA.
-  I recommend you to change this to 44px for WCAG level AAA.
+    Minimum clickable area WCAG 2.2 level AA.
+    I recommend you to change this to 44px for WCAG level AAA.
   */
-  min-height: 24px;
+  min-height: 38px;
   color: var(--preact-combobox-text);
 
   /* Performance improvement: Only supported on Safari 18+ */
