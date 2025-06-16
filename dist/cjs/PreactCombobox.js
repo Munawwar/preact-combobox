@@ -3947,6 +3947,12 @@ var PreactCombobox = ({
       if (timer) clearTimeout(timer);
     };
   }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
+  const addNewOptionVisible =
+    !isLoading &&
+    allowFreeText &&
+    inputTrimmed &&
+    !arrayValues.includes(inputTrimmed) &&
+    !filteredOptions.find((o3) => o3.value === inputTrimmed);
   y2(() => {
     if (!getIsDropdownOpen()) return;
     if (
@@ -3954,10 +3960,12 @@ var PreactCombobox = ({
       filteredOptions.find((o3) => o3.value === activeDescendant.current)
     ) {
       activateDescendant(activeDescendant.current);
+    } else if (addNewOptionVisible && activeDescendant.current === inputTrimmed) {
+      activateDescendant(inputTrimmed);
     } else {
       activateDescendant("");
     }
-  }, [getIsDropdownOpen, filteredOptions, activateDescendant]);
+  }, [getIsDropdownOpen, filteredOptions, activateDescendant, addNewOptionVisible, inputTrimmed]);
   y2(() => {
     if (
       invalidValues.length > 0 &&
@@ -3986,10 +3994,10 @@ var PreactCombobox = ({
      */
     (selectedValue, { toggleSelected = false } = {}) => {
       if (values) {
-        const existingOption = values.includes(selectedValue);
+        const isExistingOption = values.includes(selectedValue);
         let newValues;
-        if (!existingOption || (toggleSelected && existingOption)) {
-          if (toggleSelected && existingOption) {
+        if (!isExistingOption || (toggleSelected && isExistingOption)) {
+          if (toggleSelected && isExistingOption) {
             newValues = values.filter((v3) => v3 !== selectedValue);
           } else {
             newValues = [...values, selectedValue];
@@ -4080,32 +4088,35 @@ var PreactCombobox = ({
     inputTrimmed,
     closeDropdown,
   ]);
-  const addNewOptionVisible =
-    !isLoading &&
-    allowFreeText &&
-    inputTrimmed &&
-    !arrayValues.includes(inputTrimmed) &&
-    !filteredOptions.find((o3) => o3.value === inputTrimmed);
   const handleAddNewOption = q2(
     /**
      * @param {string} newValue
      */
     (newValue) => {
       handleOptionSelect(newValue);
-      setFilteredOptions((options) => {
-        options = [
-          /** @type {OptionMatch} */
-          {
-            label: newValue,
-            value: newValue,
-          },
-        ].concat(options);
-        const isRemoteSearch = typeof allowedOptions === "function";
-        return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
-      });
+      if (!filteredOptions.find((o3) => o3.value === newValue)) {
+        setFilteredOptions((options) => {
+          options = [
+            /** @type {OptionMatch} */
+            {
+              label: newValue,
+              value: newValue,
+            },
+          ].concat(options);
+          const isRemoteSearch = typeof allowedOptions === "function";
+          return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
+        });
+      }
       activateDescendant(newValue);
     },
-    [allowedOptions, language, handleOptionSelect, activateDescendant, inputTrimmed],
+    [
+      allowedOptions,
+      language,
+      handleOptionSelect,
+      activateDescendant,
+      inputTrimmed,
+      filteredOptions,
+    ],
   );
   const handleKeyDown = q2(
     /**

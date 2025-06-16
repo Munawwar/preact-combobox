@@ -3,7 +3,6 @@ Priorities
 - Docs
 
 Bugs:
-- Typing a value that is already there doesn't auto add the value. Also it doesn't de-duplicate
 - Check FIXMEs in code too
 
 Nice to have
