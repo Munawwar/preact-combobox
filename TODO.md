@@ -4,7 +4,6 @@ Priorities
 
 Bugs:
 - Typing a value that is already there doesn't auto add the value. Also it doesn't de-duplicate
-- Also while typing existing selection doesn't get unhighlighted
 - Check FIXMEs in code too
 
 Nice to have

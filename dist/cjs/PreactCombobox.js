@@ -3948,6 +3948,17 @@ var PreactCombobox = ({
     };
   }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
   y2(() => {
+    if (!getIsDropdownOpen()) return;
+    if (
+      activeDescendant.current &&
+      filteredOptions.find((o3) => o3.value === activeDescendant.current)
+    ) {
+      activateDescendant(activeDescendant.current);
+    } else {
+      activateDescendant("");
+    }
+  }, [getIsDropdownOpen, filteredOptions, activateDescendant]);
+  y2(() => {
     if (
       invalidValues.length > 0 &&
       warningIconHovered &&

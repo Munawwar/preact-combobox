@@ -1059,6 +1059,20 @@ const PreactCombobox = ({
       if (timer) clearTimeout(timer);
     };
   }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
+
+  // Detect changes to filtered options and re-activate or deactivate the active descendant
+  useEffect(() => {
+    if (!getIsDropdownOpen()) return;
+    if (
+      activeDescendant.current &&
+      filteredOptions.find((o) => o.value === activeDescendant.current)
+    ) {
+      activateDescendant(activeDescendant.current);
+    } else {
+      activateDescendant("");
+    }
+  }, [getIsDropdownOpen, filteredOptions, activateDescendant]);
+
   useEffect(() => {
     if (
       invalidValues.length > 0 &&

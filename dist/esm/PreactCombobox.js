@@ -878,6 +878,17 @@ var PreactCombobox = ({
     };
   }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
   useEffect(() => {
+    if (!getIsDropdownOpen()) return;
+    if (
+      activeDescendant.current &&
+      filteredOptions.find((o) => o.value === activeDescendant.current)
+    ) {
+      activateDescendant(activeDescendant.current);
+    } else {
+      activateDescendant("");
+    }
+  }, [getIsDropdownOpen, filteredOptions, activateDescendant]);
+  useEffect(() => {
     if (
       invalidValues.length > 0 &&
       warningIconHovered &&
