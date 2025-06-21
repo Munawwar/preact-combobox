@@ -1,4 +1,3 @@
-// TODO: Think about internationalization
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
@@ -1676,7 +1675,7 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {!isServerSideForm && (
+      {!isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
           <ul
@@ -1797,7 +1796,7 @@ const PreactCombobox = ({
           </ul>
         </Portal>
       )}
-      {invalidValues.length > 0 && warningIconHovered && !isServerSideForm && (
+      {invalidValues.length > 0 && warningIconHovered && !isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           <div className="PreactCombobox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
             {mergedTranslations.invalidValues}

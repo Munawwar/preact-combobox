@@ -3,6 +3,10 @@
   "organizeImports": {
     "enabled": true
   },
+  "files": {
+    "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"],
+    "ignore": ["lib/PreactCombobox.d.ts"]
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -16,9 +20,7 @@
         "noUndeclaredVariables": "error",
         "noUndeclaredDependencies": "error"
       }
-    },
-    "include": ["lib/**/*.jsx", "lib/**/*.js", "lib/**/*.css"],
-    "ignore": ["lib/PreactCombobox.d.ts", "dist/**"]
+    }
   },
   "formatter": {
     "indentStyle": "space",
