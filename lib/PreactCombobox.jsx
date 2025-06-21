@@ -1679,7 +1679,7 @@ const PreactCombobox = ({
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
           <ul
-            className={`PreactCombobox-options ${`PreactCombobox-options--${theme}`}`}
+            className={`PreactCombobox-options ${`PreactCombobox--${theme}`}`}
             // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
             role="listbox"
             id={`${id}-options-listbox`}

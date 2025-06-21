@@ -1,5 +1,4 @@
 Priorities
-- Make dark theme pass APCA contrast checker
 - Docs
 
 Nice to have
@@ -12,4 +11,4 @@ Questions
 - Add "remove all" button again? Optional?
   - Future proof: How will this work with native customizable selects that is being shipped by browsers?
   - Virtualization? Will cause more a11y issues?
-- Package this as a web component?
+- Package this as a web component? (cant do this properly, render functions cannot be supported)

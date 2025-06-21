@@ -3382,7 +3382,7 @@ var PreactCombobox = ({
         !isServer && /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ u3(
           "ul",
           {
-            className: `PreactCombobox-options ${`PreactCombobox-options--${theme}`}`,
+            className: `PreactCombobox-options ${`PreactCombobox--${theme}`}`,
             role: "listbox",
             id: `${id}-options-listbox`,
             "aria-multiselectable": multiple ? "true" : void 0,
@@ -3480,10 +3480,18 @@ var PreactCombobox = ({
             ] })
           }
         ) }),
-        invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ u3("div", { className: `PreactCombobox-valueTooltip ${`PreactCombobox--${theme}`}`, role: "tooltip", ref: tooltipPopperRef, children: [
-          mergedTranslations.invalidValues,
-          invalidValues.map((value2) => /* @__PURE__ */ u3("div", { className: "PreactCombobox-tooltipValue", children: value2 }, value2))
-        ] }) })
+        invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ u3(
+          "div",
+          {
+            className: `PreactCombobox-valueTooltip ${`PreactCombobox--${theme}`}`,
+            role: "tooltip",
+            ref: tooltipPopperRef,
+            children: [
+              mergedTranslations.invalidValues,
+              invalidValues.map((value2) => /* @__PURE__ */ u3("div", { className: "PreactCombobox-tooltipValue", children: value2 }, value2))
+            ]
+          }
+        ) })
       ]
     }
   );
