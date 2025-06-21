@@ -1,14 +1,7 @@
 // lib/PreactCombobox.jsx
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
-import {
-  useCallback as useCallback2,
-  useEffect,
-  useId,
-  useMemo as useMemo2,
-  useRef as useRef2,
-  useState as useState2,
-} from "preact/hooks";
+import { useCallback as useCallback2, useEffect, useId, useMemo as useMemo2, useRef as useRef2, useState as useState2 } from "preact/hooks";
 
 // lib/hooks.js
 import { useCallback, useMemo, useRef, useState } from "preact/hooks";
@@ -53,7 +46,7 @@ function isEqual(value1, value2) {
 function useDeepMemo(newState) {
   const state = useRef(
     /** @type {T} */
-    null,
+    null
   );
   if (!isEqual(newState, state.current)) {
     state.current = newState;
@@ -100,7 +93,7 @@ var defaultEnglishTranslations = {
   selectionsMore: "and {count} more option",
   selectionsMorePlural: "and {count} more options",
   // Function to format the count in badge, receives count and language as parameters
-  selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count),
+  selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count)
 };
 var isPlaywright = navigator.webdriver === true;
 var isServerDefault = typeof self === "undefined";
@@ -122,7 +115,7 @@ function sortValuesToTop(options, values) {
 var Portal = ({ parent = document.body, children, rootElementRef }) => {
   const [dir, setDir] = useState2(
     /** @type {string|null} */
-    null,
+    null
   );
   useEffect(() => {
     if (rootElementRef?.current) {
@@ -135,21 +128,16 @@ var Portal = ({ parent = document.body, children, rootElementRef }) => {
       }
     }
   }, [rootElementRef, parent]);
-  const wrappedChildren = dir
-    ? /* @__PURE__ */ jsx("div", {
-        dir:
-          /** @type {"auto" | "rtl" | "ltr"} */
-          dir,
-        style: { direction: dir },
-        children,
-      })
-    : children;
+  const wrappedChildren = dir ? /* @__PURE__ */ jsx("div", { dir: (
+    /** @type {"auto" | "rtl" | "ltr"} */
+    dir
+  ), style: { direction: dir }, children }) : children;
   return createPortal(wrappedChildren, parent);
 };
 var dropdownPopperModifiers = [
   {
     name: "flip",
-    enabled: true,
+    enabled: true
   },
   {
     // make the popper width same as root element
@@ -164,35 +152,34 @@ var dropdownPopperModifiers = [
     // @ts-ignore
     effect: ({ state }) => {
       state.elements.popper.style.minWidth = `${state.elements.reference.offsetWidth}px`;
-    },
+    }
   },
   {
     name: "eventListeners",
     enabled: true,
     options: {
       scroll: true,
-      resize: true,
-    },
-  },
+      resize: true
+    }
+  }
 ];
 var tooltipPopperModifiers = [
   {
     name: "offset",
     options: {
-      offset: [0, 2],
-    },
+      offset: [0, 2]
+    }
   },
   {
     name: "eventListeners",
     enabled: true,
     options: {
       scroll: true,
-      resize: true,
-    },
-  },
+      resize: true
+    }
+  }
 ];
-var isTouchDevice =
-  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
 var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
 function subscribeToVirtualKeyboard(callback) {
   if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
@@ -223,7 +210,7 @@ function getExactMatchScore(query, option, language) {
       /** @type {'value'} */
       matched: "value",
       /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
+      matchSlices: [[0, value.length]]
     };
   }
   if (label === query) {
@@ -235,12 +222,13 @@ function getExactMatchScore(query, option, language) {
       /** @type {'label'} */
       matched: "label",
       /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
+      matchSlices: [[0, label.length]]
     };
   }
-  const { caseMatcher } =
+  const { caseMatcher } = (
     /** @type {LanguageCache} */
-    languageCache[language];
+    languageCache[language]
+  );
   if (caseMatcher.compare(value, query) === 0) {
     return {
       ...rest,
@@ -250,7 +238,7 @@ function getExactMatchScore(query, option, language) {
       /** @type {'value'} */
       matched: "value",
       /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
+      matchSlices: [[0, value.length]]
     };
   }
   if (caseMatcher.compare(label, query) === 0) {
@@ -262,7 +250,7 @@ function getExactMatchScore(query, option, language) {
       /** @type {'label'} */
       matched: "label",
       /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
+      matchSlices: [[0, label.length]]
     };
   }
   return null;
@@ -270,31 +258,32 @@ function getExactMatchScore(query, option, language) {
 function getMatchScore(query, options, language = "en", filterAndSort = true) {
   query = query.trim();
   if (!query) {
-    const matchSlices =
+    const matchSlices = (
       /** @type {Array<[number, number]>} */
-      [];
+      []
+    );
     return options.map((option) => ({
       ...option,
       label: option.label,
       value: option.value,
       score: 0,
       matched: "none",
-      matchSlices,
+      matchSlices
     }));
   }
   if (!languageCache[language]) {
     languageCache[language] = {
       baseMatcher: new Intl.Collator(language, {
         usage: "search",
-        sensitivity: "base",
+        sensitivity: "base"
       }),
       caseMatcher: new Intl.Collator(language, {
         usage: "search",
-        sensitivity: "accent",
+        sensitivity: "accent"
       }),
       wordSegmenter: new Intl.Segmenter(language, {
-        granularity: "word",
-      }),
+        granularity: "word"
+      })
     };
   }
   const { baseMatcher, caseMatcher, wordSegmenter } = languageCache[language];
@@ -303,10 +292,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     const { label, value, ...rest } = option;
     if (isCommaSeparated) {
       const querySegments2 = query.split(",");
-      const matches2 = querySegments2
-        .map((querySegment) => getExactMatchScore(querySegment.trim(), option, language))
-        .filter((match) => match !== null)
-        .sort((a, b) => b.score - a.score);
+      const matches2 = querySegments2.map((querySegment) => getExactMatchScore(querySegment.trim(), option, language)).filter((match) => match !== null).sort((a, b) => b.score - a.score);
       return (
         /** @type {OptionMatch} */
         matches2[0] || {
@@ -314,7 +300,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
           label,
           value,
           score: 0,
-          matched: "none",
+          matched: "none"
         }
       );
     }
@@ -331,7 +317,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
         /** @type {'label'} */
         matched: "label",
         /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
+        matchSlices: [[0, label.length]]
       };
     }
     if (baseMatcher.compare(value, query) === 0) {
@@ -343,7 +329,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
         /** @type {'value'} */
         matched: "value",
         /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
+        matchSlices: [[0, value.length]]
       };
     }
     const querySegments = Array.from(wordSegmenter.segment(query));
@@ -351,19 +337,18 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     let len = 0;
     let firstIndex = -1;
     for (let i = 0; i < labelWordSegments.length; i++) {
-      const labelWordSegment =
+      const labelWordSegment = (
         /** @type {Intl.SegmentData} */
-        labelWordSegments[i];
+        labelWordSegments[i]
+      );
       const querySegment = querySegments[len];
       if (!querySegment) break;
       if (len === querySegments.length - 1) {
         const lastQueryWord = querySegment.segment;
-        if (
-          baseMatcher.compare(
-            labelWordSegment.segment.slice(0, lastQueryWord.length),
-            lastQueryWord,
-          ) === 0
-        ) {
+        if (baseMatcher.compare(
+          labelWordSegment.segment.slice(0, lastQueryWord.length),
+          lastQueryWord
+        ) === 0) {
           return {
             ...rest,
             label,
@@ -376,9 +361,9 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
             matchSlices: [
               [
                 firstIndex > -1 ? firstIndex : labelWordSegment.index,
-                labelWordSegment.index + lastQueryWord.length,
-              ],
-            ],
+                labelWordSegment.index + lastQueryWord.length
+              ]
+            ]
           };
         }
       } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
@@ -400,14 +385,14 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
         /** @type {'value'} */
         matched: "value",
         /** @type {Array<[number, number]>} */
-        matchSlices: [[0, query.length]],
+        matchSlices: [[0, query.length]]
       };
     }
     const queryWords = querySegments.filter((s) => s.isWordLike);
     const labelWords = labelWordSegments.filter((s) => s.isWordLike);
     const slices = queryWords.map((word) => {
       const match = labelWords.find(
-        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
+        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0
       );
       if (match) {
         return [match.index, match.index + match.segment.length];
@@ -422,7 +407,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
       score: wordScoring,
       /** @type {'label'|'none'} */
       matched: wordScoring ? "label" : "none",
-      matchSlices,
+      matchSlices
     };
   });
   if (filterAndSort) {
@@ -430,7 +415,7 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
     matches.sort((a, b) => {
       if (a.score === b.score) {
         const val = a.label.localeCompare(b.label, void 0, {
-          sensitivity: "base",
+          sensitivity: "base"
         });
         return val === 0 ? a.value.localeCompare(b.value, void 0, { sensitivity: "base" }) : val;
       }
@@ -440,45 +425,46 @@ function getMatchScore(query, options, language = "en", filterAndSort = true) {
   return matches;
 }
 function matchSlicesToNodes(matchSlices, text) {
-  const nodes =
+  const nodes = (
     /** @type {VNode[]} */
-    [];
+    []
+  );
   let index = 0;
   matchSlices.map((slice) => {
     const [start, end] = slice;
     if (index < start) {
-      nodes.push(
-        /* @__PURE__ */ jsx("span", { children: text.slice(index, start) }, `${index}-${start}`),
-      );
+      nodes.push(/* @__PURE__ */ jsx("span", { children: text.slice(index, start) }, `${index}-${start}`));
     }
     nodes.push(/* @__PURE__ */ jsx("u", { children: text.slice(start, end) }, `${start}-${end}`));
     index = end;
   });
   if (index < text.length) {
-    nodes.push(
-      /* @__PURE__ */ jsx("span", { children: text.slice(index) }, `${index}-${text.length}`),
-    );
+    nodes.push(/* @__PURE__ */ jsx("span", { children: text.slice(index) }, `${index}-${text.length}`));
   }
   return nodes;
 }
-var defaultWarningIcon = /* @__PURE__ */ jsx("svg", {
-  className: "PreactCombobox-warningIcon",
-  viewBox: "0 0 24 24",
-  width: "24",
-  height: "24",
-  "aria-hidden": "true",
-  children: /* @__PURE__ */ jsx("path", {
-    d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z",
-  }),
-});
-var defaultChevronIcon = /* @__PURE__ */ jsx("svg", {
-  className: "PreactCombobox-chevron",
-  viewBox: "0 0 24 24",
-  width: "24",
-  height: "24",
-  "aria-hidden": "true",
-  children: /* @__PURE__ */ jsx("path", { d: "M7 10l5 5 5-5z" }),
-});
+var defaultWarningIcon = /* @__PURE__ */ jsx(
+  "svg",
+  {
+    className: "PreactCombobox-warningIcon",
+    viewBox: "0 0 24 24",
+    width: "24",
+    height: "24",
+    "aria-hidden": "true",
+    children: /* @__PURE__ */ jsx("path", { d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" })
+  }
+);
+var defaultChevronIcon = /* @__PURE__ */ jsx(
+  "svg",
+  {
+    className: "PreactCombobox-chevron",
+    viewBox: "0 0 24 24",
+    width: "24",
+    height: "24",
+    "aria-hidden": "true",
+    children: /* @__PURE__ */ jsx("path", { d: "M7 10l5 5 5-5z" })
+  }
+);
 var defaultLoadingRenderer = (loadingText) => loadingText;
 function defaultOptionRenderer({
   option,
@@ -486,31 +472,23 @@ function defaultOptionRenderer({
   isInvalid,
   showValue,
   warningIcon,
-  optionIconRenderer,
+  optionIconRenderer
 }) {
   const isLabelSameAsValue = option.value === option.label;
-  const getLabel = (labelNodes, valueNodes) =>
-    /* @__PURE__ */ jsxs(Fragment, {
-      children: [
-        optionIconRenderer?.(option, false),
-        /* @__PURE__ */ jsxs("span", {
-          className: "PreactCombobox-optionLabelFlex",
-          children: [
-            /* @__PURE__ */ jsx("span", { children: labelNodes }),
-            isLabelSameAsValue || !showValue
-              ? null
-              : /* @__PURE__ */ jsxs("span", {
-                  className: "PreactCombobox-optionValue",
-                  "aria-hidden": "true",
-                  children: ["(", valueNodes, ")"],
-                }),
-          ],
-        }),
-      ],
-    });
+  const getLabel = (labelNodes, valueNodes) => /* @__PURE__ */ jsxs(Fragment, { children: [
+    optionIconRenderer?.(option, false),
+    /* @__PURE__ */ jsxs("span", { className: "PreactCombobox-optionLabelFlex", children: [
+      /* @__PURE__ */ jsx("span", { children: labelNodes }),
+      isLabelSameAsValue || !showValue ? null : /* @__PURE__ */ jsxs("span", { className: "PreactCombobox-optionValue", "aria-hidden": "true", children: [
+        "(",
+        valueNodes,
+        ")"
+      ] })
+    ] })
+  ] });
   const { label, value, matched, matchSlices } = option;
   let labelElement;
-  if (matched === "label" || (matched === "value" && value === label)) {
+  if (matched === "label" || matched === "value" && value === label) {
     const labelNodes = matchSlicesToNodes(matchSlices, label);
     labelElement = getLabel(labelNodes, [value]);
   } else if (matched === "value") {
@@ -519,27 +497,20 @@ function defaultOptionRenderer({
   } else {
     labelElement = getLabel([label], [value]);
   }
-  return /* @__PURE__ */ jsxs(Fragment, {
-    children: [
-      /* @__PURE__ */ jsx("span", {
+  return /* @__PURE__ */ jsxs(Fragment, { children: [
+    /* @__PURE__ */ jsx(
+      "span",
+      {
         className: `PreactCombobox-optionCheckbox ${isSelected ? "PreactCombobox-optionCheckbox--selected" : ""}`,
-        children:
-          isSelected && /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2713" }),
-      }),
-      labelElement,
-      isInvalid && warningIcon,
-    ],
-  });
+        children: isSelected && /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2713" })
+      }
+    ),
+    labelElement,
+    isInvalid && warningIcon
+  ] });
 }
 function defaultOptionIconRenderer(option) {
-  return option.icon
-    ? /* @__PURE__ */ jsx("span", {
-        className: "PreactCombobox-optionIcon",
-        "aria-hidden": "true",
-        role: "img",
-        children: option.icon,
-      })
-    : null;
+  return option.icon ? /* @__PURE__ */ jsx("span", { className: "PreactCombobox-optionIcon", "aria-hidden": "true", role: "img", children: option.icon }) : null;
 }
 var defaultArrayValue = [];
 function formatSelectionAnnouncement(selectedValues, diff, optionsLookup, language, translations) {
@@ -547,20 +518,13 @@ function formatSelectionAnnouncement(selectedValues, diff, optionsLookup, langua
     return translations.noOptionsSelected;
   }
   const labels = selectedValues.map((value) => optionsLookup[value]?.label || value);
-  const prefix = diff
-    ? diff === "added"
-      ? translations.selectionAdded
-      : translations.selectionRemoved
-    : translations.selectionsCurrent;
+  const prefix = diff ? diff === "added" ? translations.selectionAdded : translations.selectionRemoved : translations.selectionsCurrent;
   if (selectedValues.length <= 3) {
     return `${prefix} ${new Intl.ListFormat(language, { style: "long", type: "conjunction" }).format(labels)}`;
   }
   const firstThree = labels.slice(0, 3);
   const remaining = selectedValues.length - 3;
-  const moreText =
-    remaining === 1
-      ? translations.selectionsMore.replace("{count}", remaining.toString())
-      : translations.selectionsMorePlural.replace("{count}", remaining.toString());
+  const moreText = remaining === 1 ? translations.selectionsMore.replace("{count}", remaining.toString()) : translations.selectionsMorePlural.replace("{count}", remaining.toString());
   return `${prefix} ${firstThree.join(", ")} ${moreText}`;
 }
 var PreactCombobox = ({
@@ -592,36 +556,33 @@ var PreactCombobox = ({
   theme = "system",
   translations = defaultEnglishTranslations,
   // private option for now
-  maxNumberOfPresentedOptions = 100,
+  maxNumberOfPresentedOptions = 100
 }) => {
   const mergedTranslations = useDeepMemo(
-    translations === defaultEnglishTranslations
-      ? translations
-      : { ...defaultEnglishTranslations, ...translations },
+    translations === defaultEnglishTranslations ? translations : { ...defaultEnglishTranslations, ...translations }
   );
-  const values = multiple
-    ? /** @type {string[]} */
-      value
-    : null;
-  const singleSelectValue = multiple
-    ? null
-    : /** @type {string} */
-      value;
+  const values = multiple ? (
+    /** @type {string[]} */
+    value
+  ) : null;
+  const singleSelectValue = multiple ? null : (
+    /** @type {string} */
+    value
+  );
   let tempArrayValue;
   if (Array.isArray(value)) {
-    tempArrayValue = /** @type {string[]} */ value;
+    tempArrayValue = /** @type {string[]} */
+    value;
   } else {
-    tempArrayValue = value
-      ? [
-          /** @type {string} */
-          value,
-        ]
-      : [];
+    tempArrayValue = value ? [
+      /** @type {string} */
+      value
+    ] : [];
   }
   const arrayValues = useDeepMemo(tempArrayValue);
   const arrayValuesLookup = useMemo2(() => new Set(arrayValues), [arrayValues]);
   const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions,
+    typeof allowedOptions === "function" ? null : allowedOptions
   );
   const autoId = useId();
   const id = idProp || autoId;
@@ -629,11 +590,11 @@ var PreactCombobox = ({
   const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
   const cachedOptions = useRef2(
     /** @type {{ [value: string]: Option }} */
-    {},
+    {}
   );
   const [filteredOptions, setFilteredOptions] = useState2(
     /** @type {OptionMatch[]} */
-    [],
+    []
   );
   const [isLoading, setIsLoading] = useState2(false);
   const [getIsFocused, setIsFocused] = useLive(false);
@@ -643,30 +604,30 @@ var PreactCombobox = ({
   const [warningIconHovered, setWarningIconHovered] = useState2(false);
   const inputRef = useRef2(
     /** @type {HTMLInputElement | null} */
-    null,
+    null
   );
   const blurTimeoutRef = useRef2(
     /** @type {number | undefined} */
-    void 0,
+    void 0
   );
   const rootElementRef = useRef2(
     /** @type {HTMLDivElement | null} */
-    null,
+    null
   );
   const dropdownPopperRef = useRef2(
     /** @type {HTMLUListElement | null} */
-    null,
+    null
   );
   const dropdownClosedExplicitlyRef = useRef2(false);
   const warningIconRef = useRef2(null);
   const tooltipPopperRef = useRef2(null);
   const undoStack = useRef2(
     /** @type {string[][]} */
-    [],
+    []
   );
   const redoStack = useRef2(
     /** @type {string[][]} */
-    [],
+    []
   );
   const inputTrimmed = inputValue.trim();
   const updateCachedOptions = useCallback2(
@@ -676,22 +637,21 @@ var PreactCombobox = ({
         cachedOptions.current[item.value] = item;
       }
     },
-    [],
+    []
   );
   const allOptions = useDeepMemo(
-    Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current),
+    Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current)
   );
   const allOptionsLookup = useMemo2(
-    () =>
-      allOptions.reduce(
-        (acc, o) => {
-          acc[o.value] = o;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */
-        {},
-      ),
-    [allOptions],
+    () => allOptions.reduce(
+      (acc, o) => {
+        acc[o.value] = o;
+        return acc;
+      },
+      /** @type {{ [value: string]: Option }} */
+      {}
+    ),
+    [allOptions]
   );
   const invalidValues = useMemo2(() => {
     if (allowFreeText) return [];
@@ -708,11 +668,11 @@ var PreactCombobox = ({
         diff,
         allOptionsLookup,
         language,
-        mergedTranslations,
+        mergedTranslations
       );
       setLastSelectionAnnouncement(announcement);
     },
-    [allOptionsLookup, mergedTranslations, language],
+    [allOptionsLookup, mergedTranslations, language]
   );
   const activateDescendant = useCallback2(
     /**
@@ -733,12 +693,8 @@ var PreactCombobox = ({
         const activeDescendantElement = dropdownPopperRef.current.querySelector(`#${elementId}`);
         if (activeDescendantElement) {
           activeDescendantElement.classList.add("PreactCombobox-option--active");
-          activeDescendantElement
-            .querySelector('span[data-reader="selected"]')
-            ?.setAttribute("aria-hidden", "false");
-          activeDescendantElement
-            .querySelector('span[data-reader="invalid"]')
-            ?.setAttribute("aria-hidden", "false");
+          activeDescendantElement.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "false");
+          activeDescendantElement.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "false");
           if (scroll) {
             const dropdownRect = dropdownPopperRef.current.getBoundingClientRect();
             const itemRect = activeDescendantElement.getBoundingClientRect();
@@ -751,7 +707,7 @@ var PreactCombobox = ({
         }
       }
     },
-    [id],
+    [id]
   );
   const closeDropdown = useCallback2(
     (closedExplicitly = false) => {
@@ -765,7 +721,7 @@ var PreactCombobox = ({
       updateSelectionAnnouncement(arrayValues);
       activateDescendant("");
     },
-    [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues],
+    [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues]
   );
   useEffect(() => {
     if (getIsDropdownOpen() && rootElementRef.current && dropdownPopperRef.current) {
@@ -774,7 +730,7 @@ var PreactCombobox = ({
       const popperInstance = createPopper(rootElementRef.current, dropdownPopperRef.current, {
         placement,
         // @ts-ignore
-        modifiers: dropdownPopperModifiers,
+        modifiers: dropdownPopperModifiers
       });
       dropdownPopperRef.current.style.display = "block";
       return () => {
@@ -784,11 +740,11 @@ var PreactCombobox = ({
   }, [getIsDropdownOpen]);
   const abortControllerRef = useRef2(
     /** @type {AbortController | null} */
-    null,
+    null
   );
   const inputTypingDebounceTimer = useRef2(
     /** @type {any} */
-    null,
+    null
   );
   const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
   const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
@@ -799,33 +755,27 @@ var PreactCombobox = ({
     abortControllerRef.current?.abort();
     abortControllerRef.current = abortController;
     let debounceTime = 0;
-    if (
-      typeof allowedOptions === "function" &&
-      !(
-        // don't debounce for initial render (when we have to resolve the labels for selected values).
-        // don't debounce for first time the dropdown is opened as well.
-        (newUnknownValues.length > 0 || (getIsDropdownOpen() && hasDropdownOpenChanged))
-      ) && // Hack: We avoid debouncing to speed up playwright tests
-      !isPlaywright
-    ) {
+    if (typeof allowedOptions === "function" && !// don't debounce for initial render (when we have to resolve the labels for selected values).
+    // don't debounce for first time the dropdown is opened as well.
+    (newUnknownValues.length > 0 || getIsDropdownOpen() && hasDropdownOpenChanged) && // Hack: We avoid debouncing to speed up playwright tests
+    !isPlaywright) {
       debounceTime = 250;
     }
     clearTimeout(inputTypingDebounceTimer.current);
     const callback = async () => {
       if (typeof allowedOptions === "function") {
-        const signal =
+        const signal = (
           /** @type {AbortSignal} */
-          abortController.signal;
+          abortController.signal
+        );
         const [searchResults, selectedResults] = await Promise.all([
-          getIsDropdownOpen()
-            ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
-            : /** @type {Option[]} */
-              [],
+          getIsDropdownOpen() ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
+            /** @type {Option[]} */
+            []
+          ),
           // We need to fetch unknown options's labels regardless of whether the dropdown
           // is open or not, because we want to show it in the placeholder.
-          newUnknownValues.length > 0
-            ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal)
-            : null,
+          newUnknownValues.length > 0 ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal) : null
         ]).catch((error) => {
           if (signal.aborted) {
             return [null, null];
@@ -842,23 +792,16 @@ var PreactCombobox = ({
         }
         let updatedOptions = searchResults || [];
         if (!inputTrimmed) {
-          const unreturnedValues = newUnknownValues
-            .filter((v) => !cachedOptions.current[v])
-            .map((v) => ({ label: v, value: v }));
+          const unreturnedValues = newUnknownValues.filter((v) => !cachedOptions.current[v]).map((v) => ({ label: v, value: v }));
           if (unreturnedValues.length > 0) {
             updateCachedOptions(unreturnedValues);
             updatedOptions = unreturnedValues.concat(searchResults || []);
           }
         }
-        const options = inputTrimmed
-          ? updatedOptions
-          : sortValuesToTop(updatedOptions, arrayValues);
+        const options = inputTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, arrayValues);
         setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
       } else {
-        const mergedOptions = arrayValues
-          .filter((v) => !allOptionsLookup[v])
-          .map((v) => ({ label: v, value: v }))
-          .concat(allowedOptions);
+        const mergedOptions = arrayValues.filter((v) => !allOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
         const options = inputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
         setFilteredOptions(getMatchScore(inputValue, options, language, true));
       }
@@ -878,18 +821,10 @@ var PreactCombobox = ({
       if (timer) clearTimeout(timer);
     };
   }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
-  const addNewOptionVisible =
-    !isLoading &&
-    allowFreeText &&
-    inputTrimmed &&
-    !arrayValues.includes(inputTrimmed) &&
-    !filteredOptions.find((o) => o.value === inputTrimmed);
+  const addNewOptionVisible = !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed) && !filteredOptions.find((o) => o.value === inputTrimmed);
   useEffect(() => {
     if (!getIsDropdownOpen()) return;
-    if (
-      activeDescendant.current &&
-      filteredOptions.find((o) => o.value === activeDescendant.current)
-    ) {
+    if (activeDescendant.current && filteredOptions.find((o) => o.value === activeDescendant.current)) {
       activateDescendant(activeDescendant.current);
     } else if (addNewOptionVisible && activeDescendant.current === inputTrimmed) {
       activateDescendant(inputTrimmed);
@@ -898,19 +833,13 @@ var PreactCombobox = ({
     }
   }, [getIsDropdownOpen, filteredOptions, activateDescendant, addNewOptionVisible, inputTrimmed]);
   useEffect(() => {
-    if (
-      invalidValues.length > 0 &&
-      warningIconHovered &&
-      warningIconRef.current &&
-      tooltipPopperRef.current &&
-      rootElementRef.current
-    ) {
+    if (invalidValues.length > 0 && warningIconHovered && warningIconRef.current && tooltipPopperRef.current && rootElementRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
       const popperInstance = createPopper(warningIconRef.current, tooltipPopperRef.current, {
         placement,
         // @ts-ignore
-        modifiers: tooltipPopperModifiers,
+        modifiers: tooltipPopperModifiers
       });
       tooltipPopperRef.current.style.display = "block";
       return () => {
@@ -927,7 +856,7 @@ var PreactCombobox = ({
       if (values) {
         const isExistingOption = values.includes(selectedValue);
         let newValues;
-        if (!isExistingOption || (toggleSelected && isExistingOption)) {
+        if (!isExistingOption || toggleSelected && isExistingOption) {
           if (toggleSelected && isExistingOption) {
             newValues = values.filter((v) => v !== selectedValue);
           } else {
@@ -936,16 +865,13 @@ var PreactCombobox = ({
           onChange(newValues);
           updateSelectionAnnouncement(
             [selectedValue],
-            newValues.length < values.length ? "removed" : "added",
+            newValues.length < values.length ? "removed" : "added"
           );
           undoStack.current.push(values);
           redoStack.current = [];
         }
       } else {
-        if (
-          singleSelectValue !== selectedValue ||
-          (toggleSelected && singleSelectValue === selectedValue)
-        ) {
+        if (singleSelectValue !== selectedValue || toggleSelected && singleSelectValue === selectedValue) {
           let newValue;
           if (toggleSelected && singleSelectValue === selectedValue) {
             newValue = "";
@@ -961,7 +887,7 @@ var PreactCombobox = ({
         setInputValue("");
       }
     },
-    [onChange, singleSelectValue, values, updateSelectionAnnouncement, closeDropdown],
+    [onChange, singleSelectValue, values, updateSelectionAnnouncement, closeDropdown]
   );
   const handleInputChange = useCallback2(
     /**
@@ -974,12 +900,12 @@ var PreactCombobox = ({
         setIsDropdownOpen(true);
       }
     },
-    [setIsDropdownOpen],
+    [setIsDropdownOpen]
   );
   const virtualKeyboardExplicitlyClosedRef = useRef2(null);
   const virtualKeyboardCheckSubscription = useRef2(
     /** @type {function | null} */
-    null,
+    null
   );
   const handleInputFocus = useCallback2(() => {
     setIsFocused(true);
@@ -1017,7 +943,7 @@ var PreactCombobox = ({
     handleOptionSelect,
     multiple,
     inputTrimmed,
-    closeDropdown,
+    closeDropdown
   ]);
   const handleAddNewOption = useCallback2(
     /**
@@ -1031,8 +957,8 @@ var PreactCombobox = ({
             /** @type {OptionMatch} */
             {
               label: newValue,
-              value: newValue,
-            },
+              value: newValue
+            }
           ].concat(options);
           const isRemoteSearch = typeof allowedOptions === "function";
           return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
@@ -1046,8 +972,8 @@ var PreactCombobox = ({
       handleOptionSelect,
       activateDescendant,
       inputTrimmed,
-      filteredOptions,
-    ],
+      filteredOptions
+    ]
   );
   const handleKeyDown = useCallback2(
     /**
@@ -1057,15 +983,14 @@ var PreactCombobox = ({
       const currentActiveDescendant = activeDescendant.current;
       if (e.key === "Enter") {
         e.preventDefault();
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : -1;
+        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : -1;
         if (currentIndex > -1) {
-          const option =
+          const option = (
             /** @type {OptionMatch} */
-            filteredOptions[currentIndex];
+            filteredOptions[currentIndex]
+          );
           handleOptionSelect(option.value, {
-            toggleSelected: true,
+            toggleSelected: true
           });
         } else if (allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
@@ -1075,20 +1000,15 @@ var PreactCombobox = ({
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
         if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : -1;
-        if (
-          addNewOptionVisible &&
-          currentActiveDescendant !== inputTrimmed &&
-          (currentIndex < 0 || currentIndex === filteredOptions.length - 1)
-        ) {
+        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : -1;
+        if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex < 0 || currentIndex === filteredOptions.length - 1)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
           const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          const option =
+          const option = (
             /** @type {OptionMatch} */
-            filteredOptions[nextIndex];
+            filteredOptions[nextIndex]
+          );
           activateDescendant(option.value);
         }
       } else if (e.key === "ArrowUp") {
@@ -1096,20 +1016,15 @@ var PreactCombobox = ({
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
         if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : 0;
-        if (
-          addNewOptionVisible &&
-          currentActiveDescendant !== inputTrimmed &&
-          ((currentIndex === 0 && currentActiveDescendant) || !filteredOptions.length)
-        ) {
+        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : 0;
+        if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex === 0 && currentActiveDescendant || !filteredOptions.length)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
           const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          const option =
+          const option = (
             /** @type {OptionMatch} */
-            filteredOptions[prevIndex];
+            filteredOptions[prevIndex]
+          );
           activateDescendant(option.value);
         }
       } else if (e.key === "Escape") {
@@ -1117,9 +1032,10 @@ var PreactCombobox = ({
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option =
+          const option = (
             /** @type {OptionMatch} */
-            filteredOptions[0];
+            filteredOptions[0]
+          );
           activateDescendant(option.value);
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
@@ -1127,9 +1043,10 @@ var PreactCombobox = ({
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option =
+          const option = (
             /** @type {OptionMatch} */
-            filteredOptions[filteredOptions.length - 1];
+            filteredOptions[filteredOptions.length - 1]
+          );
           activateDescendant(option.value);
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
@@ -1166,8 +1083,8 @@ var PreactCombobox = ({
       setIsDropdownOpen,
       value,
       closeDropdown,
-      updateSelectionAnnouncement,
-    ],
+      updateSelectionAnnouncement
+    ]
   );
   const handlePaste = useCallback2(
     /**
@@ -1177,28 +1094,20 @@ var PreactCombobox = ({
       if (!values) return;
       const valuesLookup = {
         ...Object.fromEntries(values.map((v) => [v, v])),
-        ...Object.fromEntries(allOptions.map((o) => [o.value, o.value])),
+        ...Object.fromEntries(allOptions.map((o) => [o.value, o.value]))
       };
       const valuesLowerCaseLookup = {
         ...Object.fromEntries(values.map((v) => [v.toLowerCase(), v])),
-        ...Object.fromEntries(allOptions.map((o) => [o.value.toLowerCase(), o.value])),
+        ...Object.fromEntries(allOptions.map((o) => [o.value.toLowerCase(), o.value]))
       };
       const optionsLabelLookup = Object.fromEntries(
-        allOptions.map((o) => [o.label.toLowerCase(), o.value]),
+        allOptions.map((o) => [o.label.toLowerCase(), o.value])
       );
       const pastedText = e.clipboardData?.getData("text") || "";
       if (!pastedText) return;
-      const pastedOptions = pastedText
-        .split(",")
-        .map((x) => x.trim())
-        .filter((x) => x !== "")
-        .map(
-          (x) =>
-            valuesLookup[x] ||
-            valuesLowerCaseLookup[x.toLowerCase()] ||
-            optionsLabelLookup[x.toLocaleLowerCase()] ||
-            x,
-        );
+      const pastedOptions = pastedText.split(",").map((x) => x.trim()).filter((x) => x !== "").map(
+        (x) => valuesLookup[x] || valuesLowerCaseLookup[x.toLowerCase()] || optionsLabelLookup[x.toLocaleLowerCase()] || x
+      );
       const newValues = unique([...values, ...pastedOptions]);
       onChange(newValues);
       updateSelectionAnnouncement(newValues, "added");
@@ -1206,17 +1115,13 @@ var PreactCombobox = ({
       redoStack.current = [];
       setFilteredOptions((filteredOptions2) => filteredOptions2.slice());
     },
-    [allOptions, onChange, values, updateSelectionAnnouncement],
+    [allOptions, onChange, values, updateSelectionAnnouncement]
   );
   const focusInput = useCallback2(
     (forceOpenKeyboard = false) => {
       const input = inputRef.current;
       if (input) {
-        const shouldTemporarilyDisableInput =
-          getIsDropdownOpen() &&
-          getIsFocused() &&
-          virtualKeyboardExplicitlyClosedRef.current === true &&
-          !forceOpenKeyboard;
+        const shouldTemporarilyDisableInput = getIsDropdownOpen() && getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
         if (shouldTemporarilyDisableInput) {
           input.setAttribute("readonly", "readonly");
         }
@@ -1228,7 +1133,7 @@ var PreactCombobox = ({
         }
       }
     },
-    [getIsDropdownOpen, getIsFocused],
+    [getIsDropdownOpen, getIsFocused]
   );
   const handleClearValue = useCallback2(() => {
     setInputValue("");
@@ -1251,44 +1156,24 @@ var PreactCombobox = ({
     }
   }, [disabled, focusInput, setIsDropdownOpen]);
   const selectChildren = useMemo2(
-    () =>
-      formSubmitCompatible
-        ? arrayValues
-            .map((val) =>
-              /* @__PURE__ */ jsx(
-                "option",
-                { value: val, children: allOptionsLookup[val]?.label || val },
-                val,
-              ),
-            )
-            .concat(
-              typeof allowedOptions !== "function"
-                ? allowedOptions
-                    .filter((o) => !arrayValuesLookup.has(o.value))
-                    .slice(0, maxNumberOfPresentedOptions - arrayValues.length)
-                    .map((o) =>
-                      /* @__PURE__ */ jsx("option", { value: o.value, children: o.label }, o.value),
-                    )
-                : [],
-            )
-        : null,
+    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx("option", { value: val, children: allOptionsLookup[val]?.label || val }, val)).concat(
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, children: o.label }, o.value)) : []
+    ) : null,
     [
       arrayValues,
       allOptionsLookup,
       formSubmitCompatible,
       allowedOptions,
       arrayValuesLookup,
-      maxNumberOfPresentedOptions,
-    ],
+      maxNumberOfPresentedOptions
+    ]
   );
   useEffect(() => {
     if (isLoading && getIsDropdownOpen()) {
       setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
     } else if (loadingAnnouncement && !isLoading && getIsDropdownOpen()) {
       setLoadingAnnouncement(
-        filteredOptions.length
-          ? mergedTranslations.optionsLoadedAnnouncement
-          : mergedTranslations.noOptionsFoundAnnouncement,
+        filteredOptions.length ? mergedTranslations.optionsLoadedAnnouncement : mergedTranslations.noOptionsFoundAnnouncement
       );
       const timer = setTimeout(() => {
         setLoadingAnnouncement("");
@@ -1304,286 +1189,209 @@ var PreactCombobox = ({
     filteredOptions.length,
     mergedTranslations.loadingOptionsAnnouncement,
     mergedTranslations.optionsLoadedAnnouncement,
-    mergedTranslations.noOptionsFoundAnnouncement,
+    mergedTranslations.noOptionsFoundAnnouncement
   ]);
   const isServerSideForm = isServer && formSubmitCompatible;
-  return /* @__PURE__ */ jsxs("div", {
-    className: [
-      className,
-      "PreactCombobox",
-      disabled ? "PreactCombobox--disabled" : "",
-      `PreactCombobox--${theme}`,
-    ]
-      .filter(Boolean)
-      .join(" "),
-    "aria-disabled": disabled,
-    onClick: handleRootElementClick,
-    id: `${id}-root`,
-    ref: rootElementRef,
-    ...rootElementProps,
-    children: [
-      /* @__PURE__ */ jsx("div", {
-        className: "PreactCombobox-srOnly",
-        "aria-live": "polite",
-        "aria-atomic": "true",
-        children: getIsFocused() ? lastSelectionAnnouncement : "",
-      }),
-      /* @__PURE__ */ jsx("div", {
-        className: "PreactCombobox-srOnly",
-        "aria-live": "polite",
-        "aria-atomic": "true",
-        children: getIsFocused() ? loadingAnnouncement : "",
-      }),
-      /* @__PURE__ */ jsx("div", {
-        className: "PreactCombobox-srOnly",
-        "aria-live": "polite",
-        "aria-atomic": "true",
-        children:
-          invalidValues.length > 0 && getIsFocused()
-            ? mergedTranslations.fieldContainsInvalidValues
-            : "",
-      }),
-      /* @__PURE__ */ jsxs("div", {
-        className: `PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`,
-        children: [
-          !isServerSideForm &&
-            /* @__PURE__ */ jsxs(Fragment, {
-              children: [
-                !multiple &&
-                  singleSelectValue &&
-                  allOptionsLookup[singleSelectValue] &&
-                  optionIconRenderer?.(allOptionsLookup[singleSelectValue], true),
-                /* @__PURE__ */ jsx("input", {
-                  id,
-                  ref: inputRef,
-                  type: "text",
-                  value: inputValue,
-                  placeholder: getIsDropdownOpen()
-                    ? mergedTranslations.searchPlaceholder
-                    : arrayValues.length > 0
-                      ? arrayValues
-                          .map((value2) => allOptionsLookup[value2]?.label || value2)
-                          .join(", ")
-                      : placeholder,
-                  onChange: handleInputChange,
-                  onKeyDown: handleKeyDown,
-                  onFocus: handleInputFocus,
-                  onBlur: () => {
-                    blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
-                  },
-                  onPaste: handlePaste,
-                  className: `PreactCombobox-input ${multiple ? "PreactCombobox-input--multiple" : ""} ${disabled ? "PreactCombobox-input--disabled" : ""}`,
-                  role: "combobox",
-                  "aria-expanded": getIsDropdownOpen(),
-                  "aria-haspopup": "listbox",
-                  "aria-controls": `${id}-options-listbox`,
-                  "aria-activedescendant": activeDescendant.current
-                    ? `${id}-option-${toHTMLId(activeDescendant.current)}`
-                    : void 0,
-                  disabled,
-                  required: required && arrayValues.length === 0,
-                  ...inputProps,
-                }),
-                !disabled && showClearButton && arrayValues.length > 0
-                  ? /* @__PURE__ */ jsx("button", {
-                      type: "button",
-                      className: "PreactCombobox-clearButton",
-                      "aria-label": mergedTranslations.clearValue,
-                      onClick: handleClearValue,
-                      children: /* @__PURE__ */ jsx("span", {
-                        "aria-hidden": "true",
-                        children: "\u2715",
-                      }),
-                    })
-                  : null,
-                invalidValues.length > 0 &&
-                  /* @__PURE__ */ jsx("span", {
-                    ref: warningIconRef,
-                    className: "PreactCombobox-warningIconWrapper",
-                    onMouseEnter: () => setWarningIconHovered(true),
-                    onMouseLeave: () => setWarningIconHovered(false),
-                    children: warningIcon,
-                  }),
-                multiple &&
-                  arrayValues.length > 1 &&
-                  /* @__PURE__ */ jsx("span", {
-                    className: "PreactCombobox-badge",
-                    children: mergedTranslations.selectedCountFormatter(
-                      arrayValues.length,
-                      language,
-                    ),
-                  }),
-                chevronIcon,
-              ],
-            }),
-          formSubmitCompatible
-            ? /* @__PURE__ */ jsx("select", {
-                ...selectElementProps,
-                multiple,
-                hidden: !isServerSideForm,
-                tabIndex: isServerSideForm ? 0 : -1,
-                readOnly: !isServerSideForm,
-                value,
-                name,
-                size: 1,
-                className: isServerSideForm ? "PreactCombobox-formSelect" : "",
-                children: selectChildren,
-              })
-            : null,
-        ],
-      }),
-      !isServerSideForm &&
-        /* @__PURE__ */ jsx(Portal, {
-          parent: portal,
-          rootElementRef,
-          children: /* @__PURE__ */ jsx("ul", {
+  return /* @__PURE__ */ jsxs(
+    "div",
+    {
+      className: [
+        className,
+        "PreactCombobox",
+        disabled ? "PreactCombobox--disabled" : "",
+        `PreactCombobox--${theme}`
+      ].filter(Boolean).join(" "),
+      "aria-disabled": disabled,
+      onClick: handleRootElementClick,
+      id: `${id}-root`,
+      ref: rootElementRef,
+      ...rootElementProps,
+      children: [
+        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? lastSelectionAnnouncement : "" }),
+        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? loadingAnnouncement : "" }),
+        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: invalidValues.length > 0 && getIsFocused() ? mergedTranslations.fieldContainsInvalidValues : "" }),
+        /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`, children: [
+          !isServerSideForm && /* @__PURE__ */ jsxs(Fragment, { children: [
+            !multiple && singleSelectValue && allOptionsLookup[singleSelectValue] && optionIconRenderer?.(allOptionsLookup[singleSelectValue], true),
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                id,
+                ref: inputRef,
+                type: "text",
+                value: inputValue,
+                placeholder: getIsDropdownOpen() ? mergedTranslations.searchPlaceholder : arrayValues.length > 0 ? arrayValues.map((value2) => allOptionsLookup[value2]?.label || value2).join(", ") : placeholder,
+                onChange: handleInputChange,
+                onKeyDown: handleKeyDown,
+                onFocus: handleInputFocus,
+                onBlur: () => {
+                  blurTimeoutRef.current = setTimeout(handleInputBlur, 200);
+                },
+                onPaste: handlePaste,
+                className: `PreactCombobox-input ${multiple ? "PreactCombobox-input--multiple" : ""} ${disabled ? "PreactCombobox-input--disabled" : ""}`,
+                role: "combobox",
+                "aria-expanded": getIsDropdownOpen(),
+                "aria-haspopup": "listbox",
+                "aria-controls": `${id}-options-listbox`,
+                "aria-activedescendant": activeDescendant.current ? `${id}-option-${toHTMLId(activeDescendant.current)}` : void 0,
+                disabled,
+                required: required && arrayValues.length === 0,
+                ...inputProps
+              }
+            ),
+            !disabled && showClearButton && arrayValues.length > 0 ? /* @__PURE__ */ jsx(
+              "button",
+              {
+                type: "button",
+                className: "PreactCombobox-clearButton",
+                "aria-label": mergedTranslations.clearValue,
+                onClick: handleClearValue,
+                children: /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2715" })
+              }
+            ) : null,
+            invalidValues.length > 0 && /* @__PURE__ */ jsx(
+              "span",
+              {
+                ref: warningIconRef,
+                className: "PreactCombobox-warningIconWrapper",
+                onMouseEnter: () => setWarningIconHovered(true),
+                onMouseLeave: () => setWarningIconHovered(false),
+                children: warningIcon
+              }
+            ),
+            multiple && arrayValues.length > 1 && /* @__PURE__ */ jsx("span", { className: "PreactCombobox-badge", children: mergedTranslations.selectedCountFormatter(arrayValues.length, language) }),
+            chevronIcon
+          ] }),
+          formSubmitCompatible ? /* @__PURE__ */ jsx(
+            "select",
+            {
+              ...selectElementProps,
+              multiple,
+              hidden: !isServerSideForm,
+              tabIndex: isServerSideForm ? 0 : -1,
+              readOnly: !isServerSideForm,
+              value,
+              name,
+              size: 1,
+              className: isServerSideForm ? "PreactCombobox-formSelect" : "",
+              children: selectChildren
+            }
+          ) : null
+        ] }),
+        !isServer && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsx(
+          "ul",
+          {
             className: `PreactCombobox-options ${`PreactCombobox-options--${theme}`}`,
             role: "listbox",
             id: `${id}-options-listbox`,
             "aria-multiselectable": multiple ? "true" : void 0,
             hidden: !getIsDropdownOpen(),
             ref: dropdownPopperRef,
-            children: isLoading
-              ? /* @__PURE__ */ jsx("li", {
+            children: isLoading ? /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", "aria-disabled": true, children: loadingRenderer(mergedTranslations.loadingOptions) }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+              addNewOptionVisible && /* @__PURE__ */ jsx(
+                "li",
+                {
+                  id: `${id}-option-${toHTMLId(inputTrimmed)}`,
                   className: "PreactCombobox-option",
-                  "aria-disabled": true,
-                  children: loadingRenderer(mergedTranslations.loadingOptions),
-                })
-              : /* @__PURE__ */ jsxs(Fragment, {
-                  children: [
-                    addNewOptionVisible &&
-                      /* @__PURE__ */ jsx(
-                        "li",
-                        {
-                          id: `${id}-option-${toHTMLId(inputTrimmed)}`,
-                          className: "PreactCombobox-option",
-                          role: "option",
-                          tabIndex: -1,
-                          "aria-selected": false,
-                          onMouseEnter: () => activateDescendant(inputTrimmed, false),
-                          onMouseDown: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleAddNewOption(inputTrimmed);
-                            if (!multiple) {
-                              closeDropdown();
-                            }
-                            focusInput();
-                          },
-                          children: mergedTranslations.addOption.replace("{value}", inputTrimmed),
-                        },
-                        inputTrimmed,
-                      ),
-                    filteredOptions.map((option) => {
-                      const isActive = activeDescendant.current === option.value;
-                      const isSelected = arrayValues.includes(option.value);
-                      const isInvalid = invalidValues.includes(option.value);
-                      const optionClasses = [
-                        "PreactCombobox-option",
-                        isActive ? "PreactCombobox-option--active" : "",
-                        isSelected ? "PreactCombobox-option--selected" : "",
-                        isInvalid ? "PreactCombobox-option--invalid" : "",
-                      ]
-                        .filter(Boolean)
-                        .join(" ");
-                      return /* @__PURE__ */ jsxs(
-                        "li",
-                        {
-                          id: `${id}-option-${toHTMLId(option.value)}`,
-                          className: optionClasses,
-                          role: "option",
-                          tabIndex: -1,
-                          "aria-selected": isSelected,
-                          onMouseEnter: () => activateDescendant(option.value, false),
-                          onMouseDown: (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleOptionSelect(option.value, { toggleSelected: true });
-                            if (!multiple) {
-                              closeDropdown();
-                            }
-                            focusInput();
-                          },
-                          children: [
-                            optionRenderer({
-                              option,
-                              language,
-                              isActive,
-                              isSelected,
-                              isInvalid,
-                              showValue,
-                              warningIcon,
-                              optionIconRenderer,
-                            }),
-                            isSelected
-                              ? /* @__PURE__ */ jsx("span", {
-                                  className: "PreactCombobox-srOnly",
-                                  "aria-atomic": "true",
-                                  "data-reader": "selected",
-                                  "aria-hidden": !isActive,
-                                  children: mergedTranslations.selectedOption,
-                                })
-                              : null,
-                            isInvalid
-                              ? /* @__PURE__ */ jsx("span", {
-                                  className: "PreactCombobox-srOnly",
-                                  "aria-atomic": "true",
-                                  "data-reader": "invalid",
-                                  "aria-hidden": !isActive,
-                                  children: mergedTranslations.invalidOption,
-                                })
-                              : null,
-                          ],
-                        },
-                        option.value,
-                      );
-                    }),
-                    filteredOptions.length === 0 &&
-                      !isLoading &&
-                      (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) &&
-                      /* @__PURE__ */ jsx("li", {
-                        className: "PreactCombobox-option",
-                        children: mergedTranslations.noOptionsFound,
-                      }),
-                    filteredOptions.length === maxNumberOfPresentedOptions &&
-                      /* @__PURE__ */ jsx("li", {
-                        className: "PreactCombobox-option",
-                        children: mergedTranslations.typeToLoadMore,
-                      }),
-                  ],
-                }),
-          }),
-        }),
-      invalidValues.length > 0 &&
-        warningIconHovered &&
-        !isServerSideForm &&
-        /* @__PURE__ */ jsx(Portal, {
-          parent: portal,
-          rootElementRef,
-          children: /* @__PURE__ */ jsxs("div", {
-            className: "PreactCombobox-valueTooltip",
-            role: "tooltip",
-            ref: tooltipPopperRef,
-            children: [
-              mergedTranslations.invalidValues,
-              invalidValues.map((value2) =>
-                /* @__PURE__ */ jsx(
-                  "div",
-                  { className: "PreactCombobox-tooltipValue", children: value2 },
-                  value2,
-                ),
+                  role: "option",
+                  tabIndex: -1,
+                  "aria-selected": false,
+                  onMouseEnter: () => activateDescendant(inputTrimmed, false),
+                  onMouseDown: (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleAddNewOption(inputTrimmed);
+                    if (!multiple) {
+                      closeDropdown();
+                    }
+                    focusInput();
+                  },
+                  children: mergedTranslations.addOption.replace("{value}", inputTrimmed)
+                },
+                inputTrimmed
               ),
-            ],
-          }),
-        }),
-    ],
-  });
+              filteredOptions.map((option) => {
+                const isActive = activeDescendant.current === option.value;
+                const isSelected = arrayValues.includes(option.value);
+                const isInvalid = invalidValues.includes(option.value);
+                const optionClasses = [
+                  "PreactCombobox-option",
+                  isActive ? "PreactCombobox-option--active" : "",
+                  isSelected ? "PreactCombobox-option--selected" : "",
+                  isInvalid ? "PreactCombobox-option--invalid" : ""
+                ].filter(Boolean).join(" ");
+                return /* @__PURE__ */ jsxs(
+                  "li",
+                  {
+                    id: `${id}-option-${toHTMLId(option.value)}`,
+                    className: optionClasses,
+                    role: "option",
+                    tabIndex: -1,
+                    "aria-selected": isSelected,
+                    onMouseEnter: () => activateDescendant(option.value, false),
+                    onMouseDown: (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleOptionSelect(option.value, { toggleSelected: true });
+                      if (!multiple) {
+                        closeDropdown();
+                      }
+                      focusInput();
+                    },
+                    children: [
+                      optionRenderer({
+                        option,
+                        language,
+                        isActive,
+                        isSelected,
+                        isInvalid,
+                        showValue,
+                        warningIcon,
+                        optionIconRenderer
+                      }),
+                      isSelected ? /* @__PURE__ */ jsx(
+                        "span",
+                        {
+                          className: "PreactCombobox-srOnly",
+                          "aria-atomic": "true",
+                          "data-reader": "selected",
+                          "aria-hidden": !isActive,
+                          children: mergedTranslations.selectedOption
+                        }
+                      ) : null,
+                      isInvalid ? /* @__PURE__ */ jsx(
+                        "span",
+                        {
+                          className: "PreactCombobox-srOnly",
+                          "aria-atomic": "true",
+                          "data-reader": "invalid",
+                          "aria-hidden": !isActive,
+                          children: mergedTranslations.invalidOption
+                        }
+                      ) : null
+                    ]
+                  },
+                  option.value
+                );
+              }),
+              filteredOptions.length === 0 && !isLoading && (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.noOptionsFound }),
+              filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
+            ] })
+          }
+        ) }),
+        invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-valueTooltip ${`PreactCombobox--${theme}`}`, role: "tooltip", ref: tooltipPopperRef, children: [
+          mergedTranslations.invalidValues,
+          invalidValues.map((value2) => /* @__PURE__ */ jsx("div", { className: "PreactCombobox-tooltipValue", children: value2 }, value2))
+        ] }) })
+      ]
+    }
+  );
 };
 var PreactCombobox_default = PreactCombobox;
 export {
   PreactCombobox_default as default,
   defaultOptionRenderer,
   matchSlicesToNodes,
-  subscribeToVirtualKeyboard,
+  subscribeToVirtualKeyboard
 };
 //# sourceMappingURL=PreactCombobox.js.map

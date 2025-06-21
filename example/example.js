@@ -178,7 +178,7 @@ function App() {
     "550e8400-e29b-41d4-a716-446655440004", // Aramex
   ]);
   const [valueServerSideExample, setValueServerSideExample] = useState("usa");
-  const [valuesDarkThemeExample, setValuesDarkThemeExample] = useState(["japan", "china"]);
+  const [valuesDarkThemeExample, setValuesDarkThemeExample] = useState(["japan", "china", "India"]);
   const [valuesRTLExample, setValuesRTLExample] = useState(["egypt", "uae"]);
   const [value8, setValue8] = useState(["usa", "france"]);
 
@@ -264,7 +264,7 @@ function App() {
         <${PreactCombobox}
           id="example-6"
           allowedOptions=${allowedOptions}
-          allowFreeText=${true}
+          allowFreeText=${false}
           value=${valuesDarkThemeExample}
           onChange=${setValuesDarkThemeExample}
           theme="dark"

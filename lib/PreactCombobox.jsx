@@ -1798,7 +1798,11 @@ const PreactCombobox = ({
       )}
       {invalidValues.length > 0 && warningIconHovered && !isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
-          <div className="PreactCombobox-valueTooltip" role="tooltip" ref={tooltipPopperRef}>
+          <div
+            className={`PreactCombobox-valueTooltip ${`PreactCombobox--${theme}`}`}
+            role="tooltip"
+            ref={tooltipPopperRef}
+          >
             {mergedTranslations.invalidValues}
             {invalidValues.map((value) => (
               <div key={value} className="PreactCombobox-tooltipValue">
