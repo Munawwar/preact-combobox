@@ -3222,7 +3222,7 @@ var PreactCombobox = ({
     (forceOpenKeyboard = false) => {
       const input = inputRef.current;
       if (input) {
-        const shouldTemporarilyDisableInput = getIsDropdownOpen() && getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
+        const shouldTemporarilyDisableInput = getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
         if (shouldTemporarilyDisableInput) {
           input.setAttribute("readonly", "readonly");
         }
@@ -3234,7 +3234,7 @@ var PreactCombobox = ({
         }
       }
     },
-    [getIsDropdownOpen, getIsFocused]
+    [getIsFocused]
   );
   const handleClearValue = q2(() => {
     setInputValue("");
@@ -3242,15 +3242,14 @@ var PreactCombobox = ({
     updateSelectionAnnouncement(arrayValues, "removed");
     undoStack.current.push(arrayValues);
     redoStack.current = [];
-    if (inputRef.current && document.activeElement === inputRef.current) {
+    if (getIsFocused()) {
       focusInput();
     }
-  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, focusInput]);
+  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, getIsFocused, focusInput]);
   const handleRootElementClick = q2(() => {
     if (!disabled) {
       if (inputRef.current && document.activeElement !== inputRef.current) {
-        const forceOpenKeyboard = true;
-        focusInput(forceOpenKeyboard);
+        focusInput(true);
       }
       setIsDropdownOpen(true);
       dropdownClosedExplicitlyRef.current = false;

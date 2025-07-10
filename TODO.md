@@ -1,6 +1,10 @@
 Priorities
 - Docs
 - Mobile tray option - for better UX
+  - mobile tray height idea = clamp(200px, calc(100dvh - 50px), 480px)
+    200px minimum to be usable
+    480px (between 3-4 inch) max to be within the thumb's comfort zone
+    and preferred calc(100dvh - 50px), that 50px padding to click outside and close the tray even with onscreen keyboard is open
 
 Nice to have
 - When field is disabled, there is no way to see what values were selected. Though native select also works this way

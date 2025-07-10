@@ -1433,7 +1433,6 @@ const PreactCombobox = ({
         // If user explicitly close their virtual keyboard, we temporarily disable the input
         // before focusing it to avoid the keyboard from opening again.
         const shouldTemporarilyDisableInput =
-          getIsDropdownOpen() &&
           getIsFocused() &&
           virtualKeyboardExplicitlyClosedRef.current === true &&
           !forceOpenKeyboard;
@@ -1452,7 +1451,7 @@ const PreactCombobox = ({
         }
       }
     },
-    [getIsDropdownOpen, getIsFocused],
+    [getIsFocused],
   );
 
   const handleClearValue = useCallback(() => {
@@ -1463,17 +1462,16 @@ const PreactCombobox = ({
     redoStack.current = [];
     // If current input is focused, we need to prevent a blur event from being triggered
     // by focusing the input again. Else don't focus the input.
-    if (inputRef.current && document.activeElement === inputRef.current) {
+    if (getIsFocused()) {
       focusInput();
     }
-  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, focusInput]);
+  }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, getIsFocused, focusInput]);
 
   const handleRootElementClick = useCallback(() => {
     if (!disabled) {
       if (inputRef.current && document.activeElement !== inputRef.current) {
         // We regard an explicit click on the root element as an attempt to open the keyboard.
-        const forceOpenKeyboard = true;
-        focusInput(forceOpenKeyboard);
+        focusInput(true);
       }
       // This set is not redundant as input may already be focused
       // and handleInputFocus may not be called
