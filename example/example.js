@@ -283,6 +283,9 @@ function App() {
             language="ar"
             theme=${appTheme}
             translations=${arabicTranslations}
+            inputProps=${{
+              autocomplete: "off",
+            }}
           />
         </div>
         <br/>

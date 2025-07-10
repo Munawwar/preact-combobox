@@ -1,11 +1,13 @@
 Priorities
 - Docs
+- Mobile tray option - for better UX
 
 Nice to have
 - When field is disabled, there is no way to see what values were selected. Though native select also works this way
-- Option level disabling
+- Top level / prioritized options
+- Disabled Options
+- Group labels?
 - Improve performance (some work has already been done, but not measured enough)
-- Mobile tray option - for better UX
 
 Questions
 - Add "remove all" button again? Optional?
