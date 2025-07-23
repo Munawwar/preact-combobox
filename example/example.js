@@ -51,6 +51,81 @@ let allowedOptions = [
     value: "indonesia",
     icon: "🇮🇩",
   },
+  {
+    label: "Canada",
+    value: "canada",
+    icon: "🇨🇦",
+  },
+  {
+    label: "Pakistan",
+    value: "pakistan",
+    icon: "🇵🇰",
+  },
+  {
+    label: "United Kingdom",
+    value: "uk",
+    icon: "🇬🇧",
+  },
+  {
+    label: "Germany",
+    value: "germany",
+    icon: "🇩🇪",
+  },
+  {
+    label: "Italy",
+    value: "italy",
+    icon: "🇮🇹",
+  },
+  {
+    label: "Spain",
+    value: "spain",
+    icon: "🇪🇸",
+  },
+  {
+    label: "Mexico",
+    value: "mexico",
+    icon: "🇲🇽",
+  },
+  {
+    label: "South Africa",
+    value: "south-africa",
+    icon: "🇿🇦",
+  },
+  {
+    label: "Turkey",
+    value: "turkey",
+    icon: "🇹🇷",
+  },
+  {
+    label: "Argentina",
+    value: "argentina",
+    icon: "🇦🇷",
+  },
+  {
+    label: "Sweden",
+    value: "sweden",
+    icon: "🇸🇪",
+  },
+  {
+    label: "Netherlands",
+    value: "netherlands",
+    icon: "🇳🇱",
+  },
+  {
+    label: "Switzerland",
+    value: "switzerland",
+    icon: "🇨🇭",
+  },
+  {
+    label: "Poland",
+    value: "poland",
+    icon: "🇵🇱",
+  },
+  {
+    label: "Saudi Arabia",
+    value: "saudi-arabia",
+    icon: "🇸🇦",
+  },
 ];
 
 // Arabic options for RTL example
@@ -290,7 +365,7 @@ function App() {
         </div>
         <br/>
 
-        <label for="example-8">Server-Side Rendering Example</label>
+        <label for="example-8">Progressive Enhancement Example</label>
         <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
         <${PreactCombobox}
           id="example-8"
@@ -304,8 +379,10 @@ function App() {
           theme=${appTheme}
         />
         <br/>
-
         <button type="submit">Test Form Submit</button>
+        <p>
+          Note on client-side, when JS loads, isServer is set to false and select will get replaced with the combobox experience.
+        </p>
     </form>
   `;
 }
