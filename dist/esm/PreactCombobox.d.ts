@@ -1,9 +1,14 @@
 /**
  * Subscribe to virtual keyboard visibility changes (touch devices only)
- * @param {(isVisible: boolean) => void} callback - Called with boolean when keyboard visibility changes
+ * @param {Object} params - Parameters for subscribing to virtual keyboard
+ * @param {function(boolean): void} [params.visibleCallback] - Called with boolean when keyboard visibility changes
+ * @param {function(number, boolean): void} [params.heightCallback] - Called with keyboard height when keyboard height changes
  * @returns {function | null} - Unsubscribe function
  */
-export function subscribeToVirtualKeyboard(callback: (isVisible: boolean) => void): Function | null;
+export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }: {
+    visibleCallback?: ((arg0: boolean) => void) | undefined;
+    heightCallback?: ((arg0: number, arg1: boolean) => void) | undefined;
+}): Function | null;
 /**
  * @param {OptionMatch['matchSlices']} matchSlices
  * @param {string} text
@@ -18,6 +23,7 @@ export function defaultOptionRenderer(params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    tickIcon?: import("preact").VNode<any> | undefined;
     optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }): VNode;
 export default PreactCombobox;
@@ -34,6 +40,14 @@ export type Option = {
      * - Optional icon element or URL to display before the label
      */
     icon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * - Whether the option is disabled and cannot be selected
+     */
+    disabled?: boolean | undefined;
+    /**
+     * - Whether to show a divider line below this option (only when search is empty)
+     */
+    divider?: boolean | undefined;
 };
 export type OptionMatch = {
     /**
@@ -48,6 +62,14 @@ export type OptionMatch = {
      * - Optional icon element or URL to display before the label
      */
     icon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * - Whether the option is disabled and cannot be selected
+     */
+    disabled?: boolean | undefined;
+    /**
+     * - Whether to show a divider line below this option (only when search is empty)
+     */
+    divider?: boolean | undefined;
     /**
      * - The match score
      */
@@ -87,6 +109,7 @@ export type OptionTransformFunction = (params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    tickIcon?: import("preact").VNode<any> | undefined;
     optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }) => VNode;
 export type Translations = {
@@ -234,6 +257,18 @@ export type PreactComboboxProps = {
      */
     theme?: "light" | "dark" | "system" | undefined;
     /**
+     * Enable mobile tray mode - true/false or 'auto' for media query detection
+     */
+    tray?: boolean | "auto" | undefined;
+    /**
+     * CSS breakpoint for auto tray mode (e.g., '768px', '50rem')
+     */
+    trayBreakpoint?: string | undefined;
+    /**
+     * Label text for the tray header (auto-detects from associated label if not provided)
+     */
+    trayLabel?: string | undefined;
+    /**
      * Custom translation strings
      */
     translations?: Translations | undefined;
@@ -278,6 +313,10 @@ export type PreactComboboxProps = {
      */
     warningIcon?: import("preact").VNode<any> | undefined;
     /**
+     * Custom tick icon element or component for selected options
+     */
+    tickIcon?: import("preact").VNode<any> | undefined;
+    /**
      * Custom chevron icon element or component
      */
     chevronIcon?: import("preact").VNode<any> | undefined;
@@ -294,4 +333,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, chevronIcon, loadingRenderer, theme, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, tickIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;

@@ -27,6 +27,9 @@
   --preact-combobox-light-shadow: rgba(0, 0, 0, 0.1);
   --preact-combobox-light-hover-clear-bg: rgba(0, 0, 0, 0.1);
   --preact-combobox-light-warning-icon-color: #f44336;
+  --preact-combobox-light-option-disabled-text: #999;
+  --preact-combobox-light-option-disabled-bg: #fafafa;
+  --preact-combobox-light-divider-border: #e0e0e0;
 
   /* Dark theme variables */
   --preact-combobox-dark-bg: #222;
@@ -53,6 +56,9 @@
   --preact-combobox-dark-shadow: rgba(0, 0, 0, 0.3);
   --preact-combobox-dark-hover-clear-bg: rgba(255, 255, 255, 0.1);
   --preact-combobox-dark-warning-icon-color: #ffffff;
+  --preact-combobox-dark-option-disabled-text: #777;
+  --preact-combobox-dark-option-disabled-bg: #2a2a2a;
+  --preact-combobox-dark-divider-border: #444;
 
   /* Default theme variables (using light theme) */
   --preact-combobox-bg: var(--preact-combobox-light-bg);
@@ -79,6 +85,9 @@
   --preact-combobox-shadow: var(--preact-combobox-light-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
 }
 
 /* Support for system theme detection via prefers-color-scheme */
@@ -109,6 +118,9 @@
     --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
     --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
     --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+    --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+    --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+    --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
   }
 }
 
@@ -138,6 +150,9 @@
   --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
 }
 
 /* Explicit light theme via class - explicitly uses light theme variables */
@@ -166,6 +181,9 @@
   --preact-combobox-shadow: var(--preact-combobox-light-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
 }
 
 .PreactCombobox {
@@ -378,6 +396,21 @@
   background-color: var(--preact-combobox-option-active-bg);
 }
 
+.PreactCombobox-option--disabled {
+  color: var(--preact-combobox-option-disabled-text);
+  background-color: var(--preact-combobox-option-disabled-bg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.PreactCombobox-option--disabled:hover {
+  background-color: var(--preact-combobox-option-disabled-bg);
+}
+
+.PreactCombobox-option--divider {
+  border-bottom: 1px solid var(--preact-combobox-divider-border);
+}
+
 .PreactCombobox-optionIcon {
   margin-inline-end: 8px;
 }
@@ -396,6 +429,8 @@
 }
 
 .PreactCombobox-optionCheckbox {
+  width: 16px;
+  height: 16px;
   min-width: 16px;
   min-height: 16px;
   border: 1px solid var(--preact-combobox-checkbox-border);
@@ -413,4 +448,91 @@
   background: var(--preact-combobox-checkbox-selected-bg);
   border-color: var(--preact-combobox-checkbox-selected-border);
   color: var(--preact-combobox-checkbox-selected-text);
+}
+
+.PreactCombobox-tickIcon {
+  display: block;
+  pointer-events: none;
+}
+
+/* Mobile Tray Styles */
+.PreactCombobox-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.PreactCombobox-tray {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh - 60px); /* fallback for old safari */
+  height: calc(100dvh - 60px);
+  background: var(--preact-combobox-options-bg);
+  box-shadow: 0 -4px 20px var(--preact-combobox-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.PreactCombobox-trayLabel {
+  margin: 15px 12px 8px 12px;
+  font-size: var(--preact-combobox-font-size);
+  font-weight: 600;
+  color: var(--preact-combobox-text);
+  margin-bottom: 8px;
+}
+
+.PreactCombobox-trayHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.PreactCombobox-trayInput {
+  margin: 0 12px 8px 12px;
+  font-size: var(--preact-combobox-font-size);
+  padding: 8px 0;
+  border: none;
+  border-bottom: 1px solid var(--preact-combobox-border);
+  background: var(--preact-combobox-field-bg);
+  color: var(--preact-combobox-text);
+  outline: none;
+}
+
+.PreactCombobox-trayInput--noLabel {
+  margin-top: 15px;
+}
+
+.PreactCombobox-virtualKeyboardSpacer {
+  flex-shrink: 0;
+}
+
+.PreactCombobox-trayInput:focus {
+  border-color: var(--preact-combobox-text);
+}
+
+.PreactCombobox-options--tray {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+}
+
+/* Hide normal dropdown on mobile when tray is auto-enabled */
+@media (max-width: 768px) {
+  .PreactCombobox--trayAuto .PreactCombobox-options:not(.PreactCombobox-options--tray) {
+    display: none !important;
+  }
 }

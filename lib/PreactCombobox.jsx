@@ -1,6 +1,14 @@
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "preact/hooks";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { useDeepMemo, useLive } from "./hooks.js";
 import "./PreactCombobox.css";
 
@@ -10,6 +18,8 @@ import "./PreactCombobox.css";
  * @property {string} label - The display text for the option
  * @property {string} value - The value of the option
  * @property {VNode | string} [icon] - Optional icon element or URL to display before the label
+ * @property {boolean} [disabled] - Whether the option is disabled and cannot be selected
+ * @property {boolean} [divider] - Whether to show a divider line below this option (only when search is empty)
  */
 
 /**
@@ -17,6 +27,8 @@ import "./PreactCombobox.css";
  * @property {string} label - The display text for the option
  * @property {string} value - The value of the option
  * @property {VNode|string} [icon] - Optional icon element or URL to display before the label
+ * @property {boolean} [disabled] - Whether the option is disabled and cannot be selected
+ * @property {boolean} [divider] - Whether to show a divider line below this option (only when search is empty)
  * @property {number} score - The match score
  * @property {'value' | 'label' | 'none'} matched - The match type
  * @property {Array<[number, number]>} matchSlices - The match slices
@@ -44,6 +56,7 @@ import "./PreactCombobox.css";
  * @param {boolean} params.isActive Active does not mean selected. Active means the option is being hovered over / keyboard focused over.
  * @param {boolean} params.showValue
  * @param {VNode} [params.warningIcon]
+ * @param {VNode} [params.tickIcon]
  * @param {(option: Option, isInput?: boolean) => VNode|null} [params.optionIconRenderer] Read PreactComboboxProps
  * `optionIconRenderer` for more details.
  * @returns {VNode}
@@ -97,6 +110,9 @@ import "./PreactCombobox.css";
  * @property {string} [className] Additional class names for the component
  * @property {string} [placeholder] Input placeholder text shown when no selections are made
  * @property {'light' | 'dark' | 'system'} [theme='system'] Theme to use - 'light', 'dark', or 'system' (follows data-theme attribute)
+ * @property {boolean | 'auto'} [tray=false] Enable mobile tray mode - true/false or 'auto' for media query detection
+ * @property {string} [trayBreakpoint='768px'] CSS breakpoint for auto tray mode (e.g., '768px', '50rem')
+ * @property {string} [trayLabel] Label text for the tray header (auto-detects from associated label if not provided)
  * @property {Translations} [translations] Custom translation strings
  *
  * @property {Record<string, any>} [rootElementProps] Root element props
@@ -113,6 +129,7 @@ import "./PreactCombobox.css";
  * It's `undefined` or `false` when rendering the icon besides each option.
  * This function is also passed into `optionRenderer` as an argument instead of being used directly for option rendering.
  * @property {VNode} [warningIcon] Custom warning icon element or component
+ * @property {VNode} [tickIcon] Custom tick icon element or component for selected options
  * @property {VNode} [chevronIcon] Custom chevron icon element or component
  * @property {(text: string) => VNode|string} [loadingRenderer] Custom loading indicator element or text
  *
@@ -269,14 +286,18 @@ const tooltipPopperModifiers = [
 
 const isTouchDevice =
   typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-const visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+// Since page hasn't potentially fully loaded yet we get only an approximate height
+let visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+let wasVisualViewportInitialHeightAnApproximate = true;
 
 /**
  * Subscribe to virtual keyboard visibility changes (touch devices only)
- * @param {(isVisible: boolean) => void} callback - Called with boolean when keyboard visibility changes
+ * @param {Object} params - Parameters for subscribing to virtual keyboard
+ * @param {function(boolean): void} [params.visibleCallback] - Called with boolean when keyboard visibility changes
+ * @param {function(number, boolean): void} [params.heightCallback] - Called with keyboard height when keyboard height changes
  * @returns {function | null} - Unsubscribe function
  */
-export function subscribeToVirtualKeyboard(callback) {
+export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
   if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
 
   let isVisible = false;
@@ -286,8 +307,9 @@ export function subscribeToVirtualKeyboard(callback) {
     const isVisibleNow = heightDiff > 150;
     if (isVisible !== isVisibleNow) {
       isVisible = isVisibleNow;
-      callback(isVisible);
+      visibleCallback?.(isVisible);
     }
+    heightCallback?.(heightDiff, isVisible);
   };
   window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
   return () => {
@@ -604,6 +626,18 @@ const defaultWarningIcon = (
   </svg>
 );
 
+const defaultTickIcon = (
+  <svg
+    className="PreactCombobox-tickIcon"
+    viewBox="0 0 24 24"
+    width="14"
+    height="14"
+    aria-hidden="true"
+  >
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor" />
+  </svg>
+);
+
 const defaultChevronIcon = (
   <svg
     className="PreactCombobox-chevron"
@@ -626,6 +660,7 @@ export function defaultOptionRenderer({
   isInvalid,
   showValue,
   warningIcon,
+  tickIcon,
   optionIconRenderer,
 }) {
   const isLabelSameAsValue = option.value === option.label;
@@ -668,7 +703,7 @@ export function defaultOptionRenderer({
           isSelected ? "PreactCombobox-optionCheckbox--selected" : ""
         }`}
       >
-        {isSelected && <span aria-hidden="true">✓</span>}
+        {isSelected && tickIcon}
       </span>
       {labelElement}
       {isInvalid && warningIcon}
@@ -752,9 +787,13 @@ const PreactCombobox = ({
   optionRenderer = defaultOptionRenderer,
   optionIconRenderer = defaultOptionIconRenderer,
   warningIcon = defaultWarningIcon,
+  tickIcon = defaultTickIcon,
   chevronIcon = defaultChevronIcon,
   loadingRenderer = defaultLoadingRenderer,
   theme = "system",
+  tray = "auto",
+  trayBreakpoint = "768px",
+  trayLabel: trayLabelProp,
   translations = defaultEnglishTranslations,
   // private option for now
   maxNumberOfPresentedOptions = 100,
@@ -805,8 +844,94 @@ const PreactCombobox = ({
   const tooltipPopperRef = useRef(null);
   const undoStack = useRef(/** @type {string[][]} */ ([]));
   const redoStack = useRef(/** @type {string[][]} */ ([]));
+  const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
 
-  const inputTrimmed = inputValue.trim();
+  // Tray-related state
+  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
+  const [trayInputValue, setTrayInputValue] = useState("");
+  const trayInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const trayModalRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const trayClosedExplicitlyRef = useRef(false);
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+  const originalOverflowRef = useRef("");
+  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState(0);
+
+  // Media query detection for auto tray mode
+  useEffect(() => {
+    if (tray === "auto") {
+      const mediaQuery = window.matchMedia(`(max-width: ${trayBreakpoint})`);
+      setIsMobileScreen(mediaQuery.matches);
+      const handleChange = (/** @type {MediaQueryListEvent} */ e) => setIsMobileScreen(e.matches);
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [tray, trayBreakpoint]);
+
+  // Determine if tray should be used
+  const shouldUseTray = tray === true || (tray === "auto" && isMobileScreen);
+
+  // Use appropriate input value based on mode
+  const activeInputValue = getIsTrayOpen() ? trayInputValue : inputValue;
+  const inputTrimmed = activeInputValue.trim();
+
+  /**
+   * Get the effective tray label
+   * If needed, automatically detect the label associated with the input field
+   * Following W3C accessible name computation priority order:
+   * 1. aria-labelledby (highest priority)
+   * 2. aria-label
+   * 3. Native HTML label element (label with 'for' attribute or wrapping label)
+   * 4. title attribute (fallback)
+   * @returns {string} The final computed tray label
+   */
+  const computeEffectiveTrayLabel = useCallback(() => {
+    if (trayLabelProp) return trayLabelProp;
+    if (typeof self === "undefined" || isServer || !inputRef.current) return "";
+
+    const inputElement = inputRef.current;
+    const inputId = inputElement.id;
+
+    // Priority 1: aria-labelledby (highest priority)
+    const ariaLabelledBy = inputElement.getAttribute("aria-labelledby");
+    if (ariaLabelledBy) {
+      const labelElement = document.getElementById(ariaLabelledBy);
+      if (labelElement) {
+        return labelElement.textContent?.trim() || "";
+      }
+    }
+
+    // Priority 2: aria-label
+    const ariaLabel = inputElement.getAttribute("aria-label");
+    if (ariaLabel) {
+      return ariaLabel.trim();
+    }
+
+    // Priority 3: Native HTML label element
+    // Method 3a: Look for label with 'for' attribute matching the input id
+    if (inputId) {
+      const labelElement = document.querySelector(`label[for="${inputId}"]`);
+      if (labelElement) {
+        return labelElement.textContent?.trim() || "";
+      }
+    }
+
+    // Method 3b: Look for label that wraps the input element (using closest for efficiency)
+    const wrappingLabel = inputElement.closest("label");
+    if (wrappingLabel) {
+      return wrappingLabel.textContent?.trim() || "";
+    }
+
+    // Priority 4: title attribute (fallback - lowest priority)
+    const title = inputElement.getAttribute("title");
+    if (title) {
+      return title.trim();
+    }
+
+    return "";
+  }, [trayLabelProp, isServer]);
+  useLayoutEffect(() => {
+    setTrayLabel(computeEffectiveTrayLabel());
+  }, [setTrayLabel, computeEffectiveTrayLabel]);
 
   const updateCachedOptions = useCallback(
     /** @param {Option[]} update */
@@ -928,9 +1053,13 @@ const PreactCombobox = ({
   );
 
   // Setup popper when dropdown is opened
-  // Reset activeDescendant and filteredOptions when dropdown closes
   useEffect(() => {
-    if (getIsDropdownOpen() && rootElementRef.current && dropdownPopperRef.current) {
+    if (
+      getIsDropdownOpen() &&
+      !shouldUseTray &&
+      rootElementRef.current &&
+      dropdownPopperRef.current
+    ) {
       // Get computed direction to handle RTL layout
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
@@ -946,7 +1075,10 @@ const PreactCombobox = ({
         popperInstance.destroy();
       };
     }
-  }, [getIsDropdownOpen]);
+    if (shouldUseTray && dropdownPopperRef.current) {
+      dropdownPopperRef.current.style.display = "none";
+    }
+  }, [getIsDropdownOpen, shouldUseTray]);
 
   const abortControllerRef = useRef(/** @type {AbortController | null} */ (null));
   const inputTypingDebounceTimer = useRef(/** @type {any} */ (null));
@@ -959,7 +1091,8 @@ const PreactCombobox = ({
   // option changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above comment
   useEffect(() => {
-    const shouldFetchOptions = getIsDropdownOpen() || typeof allowedOptions === "function";
+    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+    const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
     if (!shouldFetchOptions) return;
 
     const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
@@ -972,7 +1105,10 @@ const PreactCombobox = ({
       !(
         // don't debounce for initial render (when we have to resolve the labels for selected values).
         // don't debounce for first time the dropdown is opened as well.
-        (newUnknownValues.length > 0 || (getIsDropdownOpen() && hasDropdownOpenChanged))
+        (
+          newUnknownValues.length > 0 ||
+          (isOpen && shouldUseTray ? hasTrayOpenChanged : hasDropdownOpenChanged)
+        )
       ) &&
       // Hack: We avoid debouncing to speed up playwright tests
       !isPlaywright
@@ -987,7 +1123,7 @@ const PreactCombobox = ({
         // @ts-ignore
         const signal = /** @type {AbortSignal} */ (abortController.signal);
         const [searchResults, selectedResults] = await Promise.all([
-          getIsDropdownOpen()
+          isOpen
             ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
             : /** @type {Option[]} */ ([]),
           // We need to fetch unknown options's labels regardless of whether the dropdown
@@ -1033,8 +1169,10 @@ const PreactCombobox = ({
           .map((v) => ({ label: v, value: v }))
           .concat(allowedOptions);
         // when search is applied don't sort the selected values to the top
-        const options = inputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(inputValue, options, language, true));
+        const options = activeInputValue
+          ? mergedOptions
+          : sortValuesToTop(mergedOptions, arrayValues);
+        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
       }
     };
 
@@ -1058,7 +1196,15 @@ const PreactCombobox = ({
       abortController?.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
+  }, [
+    getIsDropdownOpen,
+    getIsTrayOpen,
+    shouldUseTray,
+    inputTrimmed,
+    language,
+    newUnknownValuesAsKey,
+    allowedOptionsAsKey,
+  ]);
 
   const addNewOptionVisible =
     !isLoading &&
@@ -1069,7 +1215,8 @@ const PreactCombobox = ({
 
   // Detect changes to filtered options and re-activate or deactivate the active descendant
   useEffect(() => {
-    if (!getIsDropdownOpen()) return;
+    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+    if (!isOpen) return;
     if (
       activeDescendant.current &&
       filteredOptions.find((o) => o.value === activeDescendant.current)
@@ -1080,8 +1227,17 @@ const PreactCombobox = ({
     } else {
       activateDescendant("");
     }
-  }, [getIsDropdownOpen, filteredOptions, activateDescendant, addNewOptionVisible, inputTrimmed]);
+  }, [
+    shouldUseTray,
+    getIsDropdownOpen,
+    getIsTrayOpen,
+    filteredOptions,
+    activateDescendant,
+    addNewOptionVisible,
+    inputTrimmed,
+  ]);
 
+  // Setup warning tooltip popper when hovering over warning icon
   useEffect(() => {
     if (
       invalidValues.length > 0 &&
@@ -1119,6 +1275,11 @@ const PreactCombobox = ({
      * @param {{ toggleSelected?: boolean }} [options]
      */
     (selectedValue, { toggleSelected = false } = {}) => {
+      // Check if the option is disabled
+      const option = allOptionsLookup[selectedValue];
+      if (option?.disabled) {
+        return;
+      }
       if (values) {
         const isExistingOption = values.includes(selectedValue);
         let newValues;
@@ -1156,8 +1317,100 @@ const PreactCombobox = ({
         setInputValue("");
       }
     },
-    [onChange, singleSelectValue, values, updateSelectionAnnouncement, closeDropdown],
+    [
+      onChange,
+      singleSelectValue,
+      values,
+      updateSelectionAnnouncement,
+      closeDropdown,
+      allOptionsLookup,
+    ],
   );
+
+  const focusInput = useCallback(
+    (forceOpenKeyboard = false) => {
+      const input = inputRef.current;
+      if (input) {
+        // If user explicitly close their virtual keyboard, we temporarily disable the input
+        // before focusing it to avoid the keyboard from opening again.
+        const shouldTemporarilyDisableInput =
+          getIsFocused() &&
+          virtualKeyboardExplicitlyClosedRef.current === true &&
+          !forceOpenKeyboard;
+        if (shouldTemporarilyDisableInput) {
+          input.setAttribute("readonly", "readonly");
+        }
+        // Does it make sense to focus the input if it's already focused?
+        // Yes, because it's possible that the next event in the event loop
+        // is the one that will trigger the a 'blur' event. To cancel the blur,
+        // we need to focus the input again.
+        input.focus();
+        if (shouldTemporarilyDisableInput) {
+          setTimeout(() => {
+            input.removeAttribute("readonly");
+          }, 10);
+        }
+      }
+    },
+    [getIsFocused],
+  );
+
+  const openTray = useCallback(() => {
+    if (!shouldUseTray) return;
+    // Get the scrolling element (body or html)
+    const scrollingElement = /** @type {HTMLElement} */ (
+      document.scrollingElement || document.documentElement
+    );
+
+    // Save original overflow and apply hidden
+    originalOverflowRef.current = scrollingElement.style.overflow;
+    scrollingElement.style.overflow = "hidden";
+
+    setIsTrayOpen(true);
+    setIsDropdownOpen(false);
+    trayClosedExplicitlyRef.current = false;
+
+    // Subscribe to virtual keyboard for tray
+    if (!virtualKeyboardHeightAdjustSubscription.current) {
+      if (wasVisualViewportInitialHeightAnApproximate && trayModalRef.current) {
+        trayModalRef.current.style.removeProperty("display");
+        const height = trayModalRef.current.offsetHeight;
+        if (height > 0) {
+          visualViewportInitialHeight = height;
+          wasVisualViewportInitialHeightAnApproximate = false;
+        }
+      }
+      virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
+        heightCallback(keyboardHeight, isVisible) {
+          setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+        },
+      });
+    }
+  }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
+
+  // focus the input when the tray is opened first time
+  useEffect(() => {
+    if (shouldUseTray && getIsTrayOpen()) {
+      trayInputRef.current?.focus();
+    }
+  }, [shouldUseTray, getIsTrayOpen]);
+
+  const closeTray = useCallback(() => {
+    setIsTrayOpen(false);
+    setTrayInputValue("");
+    setVirtualKeyboardHeight(0);
+    virtualKeyboardHeightAdjustSubscription.current?.();
+    virtualKeyboardHeightAdjustSubscription.current = null;
+
+    // Restore original overflow
+    const scrollingElement = /** @type {HTMLElement} */ (
+      document.scrollingElement || document.documentElement
+    );
+    scrollingElement.style.overflow = originalOverflowRef.current;
+
+    trayClosedExplicitlyRef.current = true;
+    focusInput(true);
+  }, [setIsTrayOpen, focusInput]);
 
   const handleInputChange = useCallback(
     /**
@@ -1165,12 +1418,28 @@ const PreactCombobox = ({
      * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
      */
     (e) => {
+      if (shouldUseTray) {
+        e.preventDefault();
+        openTray();
+        return;
+      }
       setInputValue(e.currentTarget.value);
       if (!dropdownClosedExplicitlyRef.current) {
         setIsDropdownOpen(true);
       }
     },
-    [setIsDropdownOpen],
+    [setIsDropdownOpen, shouldUseTray, openTray],
+  );
+
+  const handleTrayInputChange = useCallback(
+    /**
+     * Handle tray input change
+     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     */
+    (e) => {
+      setTrayInputValue(e.currentTarget.value);
+    },
+    [],
   );
 
   /**
@@ -1180,21 +1449,38 @@ const PreactCombobox = ({
    * @type {import('preact').RefObject<boolean|null>}
    */
   const virtualKeyboardExplicitlyClosedRef = useRef(null);
-  const virtualKeyboardCheckSubscription = useRef(/** @type {function | null} */ (null));
+  const virtualKeyboardDismissSubscription = useRef(/** @type {function | null} */ (null));
+  const virtualKeyboardHeightAdjustSubscription = useRef(/** @type {function | null} */ (null));
 
   const handleInputFocus = useCallback(() => {
     setIsFocused(true);
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = undefined;
-    setIsDropdownOpen(true);
-    dropdownClosedExplicitlyRef.current = false;
-    updateSelectionAnnouncement(arrayValues);
-    if (!virtualKeyboardCheckSubscription.current) {
-      virtualKeyboardCheckSubscription.current = subscribeToVirtualKeyboard((isVisible) => {
-        virtualKeyboardExplicitlyClosedRef.current = !isVisible;
-      });
+    if (shouldUseTray) {
+      if (!trayClosedExplicitlyRef.current) {
+        openTray();
+      }
+      trayClosedExplicitlyRef.current = false;
+    } else {
+      setIsDropdownOpen(true);
+      dropdownClosedExplicitlyRef.current = false;
+      if (!virtualKeyboardDismissSubscription.current) {
+        virtualKeyboardDismissSubscription.current = subscribeToVirtualKeyboard({
+          visibleCallback(isVisible) {
+            virtualKeyboardExplicitlyClosedRef.current = !isVisible;
+          },
+        });
+      }
     }
-  }, [setIsFocused, setIsDropdownOpen, arrayValues, updateSelectionAnnouncement]);
+    updateSelectionAnnouncement(arrayValues);
+  }, [
+    setIsFocused,
+    setIsDropdownOpen,
+    openTray,
+    arrayValues,
+    updateSelectionAnnouncement,
+    shouldUseTray,
+  ]);
 
   // Delay blur to allow option selection
   const handleInputBlur = useCallback(() => {
@@ -1211,9 +1497,11 @@ const PreactCombobox = ({
     }
     setInputValue("");
     setLastSelectionAnnouncement("");
-    virtualKeyboardCheckSubscription.current?.();
-    virtualKeyboardCheckSubscription.current = null;
-    virtualKeyboardExplicitlyClosedRef.current = null;
+    if (!shouldUseTray) {
+      virtualKeyboardDismissSubscription.current?.();
+      virtualKeyboardDismissSubscription.current = null;
+      virtualKeyboardExplicitlyClosedRef.current = null;
+    }
   }, [
     setIsFocused,
     allOptionsLookup,
@@ -1222,6 +1510,7 @@ const PreactCombobox = ({
     multiple,
     inputTrimmed,
     closeDropdown,
+    shouldUseTray,
   ]);
 
   const handleAddNewOption = useCallback(
@@ -1293,9 +1582,18 @@ const PreactCombobox = ({
         ) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          const option = /** @type {OptionMatch} */ (filteredOptions[nextIndex]);
-          activateDescendant(option.value);
+          // Find next non-disabled option
+          let nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = /** @type {OptionMatch} */ (filteredOptions[nextIndex]);
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            nextIndex = nextIndex === filteredOptions.length - 1 ? 0 : nextIndex + 1;
+            attempts++;
+          }
         }
         // ArrowUp highlights previous option
       } else if (e.key === "ArrowUp") {
@@ -1313,9 +1611,18 @@ const PreactCombobox = ({
         ) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          const option = /** @type {OptionMatch} */ (filteredOptions[prevIndex]);
-          activateDescendant(option.value);
+          // Find previous non-disabled option
+          let prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = /** @type {OptionMatch} */ (filteredOptions[prevIndex]);
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            prevIndex = (prevIndex - 1 + filteredOptions.length) % filteredOptions.length;
+            attempts++;
+          }
         }
         // Escape blurs input
       } else if (e.key === "Escape") {
@@ -1324,8 +1631,11 @@ const PreactCombobox = ({
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = /** @type {OptionMatch} */ (filteredOptions[0]);
-          activateDescendant(option.value);
+          // Find first non-disabled option
+          const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
+          if (firstNonDisabledOption) {
+            activateDescendant(firstNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -1333,8 +1643,11 @@ const PreactCombobox = ({
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = /** @type {OptionMatch} */ (filteredOptions[filteredOptions.length - 1]);
-          activateDescendant(option.value);
+          // Find last non-disabled option
+          const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
+          if (lastNonDisabledOption) {
+            activateDescendant(lastNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -1426,34 +1739,6 @@ const PreactCombobox = ({
     [allOptions, onChange, values, updateSelectionAnnouncement],
   );
 
-  const focusInput = useCallback(
-    (forceOpenKeyboard = false) => {
-      const input = inputRef.current;
-      if (input) {
-        // If user explicitly close their virtual keyboard, we temporarily disable the input
-        // before focusing it to avoid the keyboard from opening again.
-        const shouldTemporarilyDisableInput =
-          getIsFocused() &&
-          virtualKeyboardExplicitlyClosedRef.current === true &&
-          !forceOpenKeyboard;
-        if (shouldTemporarilyDisableInput) {
-          input.setAttribute("readonly", "readonly");
-        }
-        // Does it make sense to focus the input if it's already focused?
-        // Yes, because it's possible that the next event in the event loop
-        // is the one that will trigger the a 'blur' event. To cancel the blur,
-        // we need to focus the input again.
-        input.focus();
-        if (shouldTemporarilyDisableInput) {
-          setTimeout(() => {
-            input.removeAttribute("readonly");
-          }, 1);
-        }
-      }
-    },
-    [getIsFocused],
-  );
-
   const handleClearValue = useCallback(() => {
     setInputValue("");
     onChange(multiple ? [] : "");
@@ -1469,16 +1754,20 @@ const PreactCombobox = ({
 
   const handleRootElementClick = useCallback(() => {
     if (!disabled) {
-      if (inputRef.current && document.activeElement !== inputRef.current) {
-        // We regard an explicit click on the root element as an attempt to open the keyboard.
-        focusInput(true);
+      if (shouldUseTray) {
+        openTray();
+      } else {
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          // We regard an explicit click on the root element as an attempt to open the keyboard.
+          focusInput(true);
+        }
+        // This set is not redundant as input may already be focused
+        // and handleInputFocus may not be called
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
       }
-      // This set is not redundant as input may already be focused
-      // and handleInputFocus may not be called
-      setIsDropdownOpen(true);
-      dropdownClosedExplicitlyRef.current = false;
     }
-  }, [disabled, focusInput, setIsDropdownOpen]);
+  }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
 
   // Memoize whatever JSX that can be memoized
   const selectChildren = useMemo(
@@ -1486,7 +1775,7 @@ const PreactCombobox = ({
       formSubmitCompatible
         ? arrayValues
             .map((val) => (
-              <option key={val} value={val}>
+              <option key={val} value={val} disabled={allOptionsLookup[val]?.disabled}>
                 {allOptionsLookup[val]?.label || val}
               </option>
             ))
@@ -1496,7 +1785,7 @@ const PreactCombobox = ({
                     .filter((o) => !arrayValuesLookup.has(o.value))
                     .slice(0, maxNumberOfPresentedOptions - arrayValues.length)
                     .map((o) => (
-                      <option key={o.value} value={o.value}>
+                      <option key={o.value} value={o.value} disabled={o.disabled}>
                         {o.label}
                       </option>
                     ))
@@ -1515,10 +1804,11 @@ const PreactCombobox = ({
 
   // Update loading announcement when isLoading changes
   useEffect(() => {
+    const isOpen = getIsDropdownOpen() || getIsTrayOpen();
     // Only announce loading if the dropdown is open
-    if (isLoading && getIsDropdownOpen()) {
+    if (isLoading && isOpen) {
       setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
-    } else if (loadingAnnouncement && !isLoading && getIsDropdownOpen()) {
+    } else if (loadingAnnouncement && !isLoading && isOpen) {
       // Only announce completion if we previously announced loading
       // and the dropdown is still open
       setLoadingAnnouncement(
@@ -1531,7 +1821,7 @@ const PreactCombobox = ({
         setLoadingAnnouncement("");
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (loadingAnnouncement && !getIsDropdownOpen()) {
+    } else if (loadingAnnouncement && !isOpen) {
       // Clear any loading announcements when dropdown closes
       setLoadingAnnouncement("");
     }
@@ -1539,6 +1829,7 @@ const PreactCombobox = ({
     isLoading,
     loadingAnnouncement,
     getIsDropdownOpen,
+    getIsTrayOpen,
     filteredOptions.length,
     mergedTranslations.loadingOptionsAnnouncement,
     mergedTranslations.optionsLoadedAnnouncement,
@@ -1548,6 +1839,157 @@ const PreactCombobox = ({
   // Determine if we should render interactive elements
   const isServerSideForm = isServer && formSubmitCompatible;
 
+  let list = null;
+  if (!isServer) {
+    list = (
+      // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
+      <ul
+        className={[
+          "PreactCombobox-options",
+          `PreactCombobox--${theme}`,
+          shouldUseTray ? "PreactCombobox-options--tray" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
+        role="listbox"
+        id={`${id}-options-listbox`}
+        aria-multiselectable={multiple ? "true" : undefined}
+        hidden={shouldUseTray ? !getIsTrayOpen() : !getIsDropdownOpen()}
+        ref={shouldUseTray ? null : dropdownPopperRef}
+      >
+        {isLoading ? (
+          <li className="PreactCombobox-option" aria-disabled>
+            {loadingRenderer(mergedTranslations.loadingOptions)}
+          </li>
+        ) : (
+          <>
+            {addNewOptionVisible && (
+              <li
+                key={inputTrimmed}
+                id={`${id}-option-${toHTMLId(inputTrimmed)}`}
+                className="PreactCombobox-option"
+                // biome-ignore lint/a11y/useSemanticElements: parent is <ul> so want to keep equivalent semantics
+                role="option"
+                tabIndex={-1}
+                aria-selected={false}
+                onMouseEnter={() => activateDescendant(inputTrimmed, false)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleAddNewOption(inputTrimmed);
+                  if (shouldUseTray) {
+                    if (!multiple) {
+                      closeTray();
+                    } else {
+                      trayInputRef.current?.focus();
+                    }
+                  } else {
+                    if (!multiple) {
+                      closeDropdown();
+                    }
+                    focusInput();
+                  }
+                }}
+              >
+                {mergedTranslations.addOption.replace("{value}", inputTrimmed)}
+              </li>
+            )}
+            {filteredOptions.map((option) => {
+              // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
+              // aria-activedescendant is used to tell screen readers the active option.
+              const isActive = activeDescendant.current === option.value;
+              const isSelected = arrayValues.includes(option.value);
+              const isInvalid = invalidValues.includes(option.value);
+              const isDisabled = option.disabled;
+              const hasDivider = option.divider && !inputTrimmed; // Only show divider when search is empty
+              const optionClasses = [
+                "PreactCombobox-option",
+                isActive ? "PreactCombobox-option--active" : "",
+                isSelected ? "PreactCombobox-option--selected" : "",
+                isInvalid ? "PreactCombobox-option--invalid" : "",
+                isDisabled ? "PreactCombobox-option--disabled" : "",
+                hasDivider ? "PreactCombobox-option--divider" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
+              return (
+                <li
+                  key={option.value}
+                  id={`${id}-option-${toHTMLId(option.value)}`}
+                  className={optionClasses}
+                  // biome-ignore lint/a11y/useSemanticElements: <explanation>
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={isSelected}
+                  aria-disabled={isDisabled}
+                  onMouseEnter={() => !isDisabled && activateDescendant(option.value, false)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleOptionSelect(option.value, { toggleSelected: true });
+                    if (shouldUseTray) {
+                      if (!multiple) {
+                        closeTray();
+                      } else {
+                        trayInputRef.current?.focus();
+                      }
+                    } else {
+                      if (!multiple) {
+                        closeDropdown();
+                      }
+                      focusInput();
+                    }
+                  }}
+                >
+                  {optionRenderer({
+                    option,
+                    language,
+                    isActive,
+                    isSelected,
+                    isInvalid,
+                    showValue,
+                    warningIcon,
+                    tickIcon,
+                    optionIconRenderer,
+                  })}
+                  {isSelected ? (
+                    <span
+                      className="PreactCombobox-srOnly"
+                      aria-atomic="true"
+                      data-reader="selected"
+                      aria-hidden={!isActive}
+                    >
+                      {mergedTranslations.selectedOption}
+                    </span>
+                  ) : null}
+                  {isInvalid ? (
+                    <span
+                      className="PreactCombobox-srOnly"
+                      aria-atomic="true"
+                      data-reader="invalid"
+                      aria-hidden={!isActive}
+                    >
+                      {mergedTranslations.invalidOption}
+                    </span>
+                  ) : null}
+                </li>
+              );
+            })}
+            {filteredOptions.length === 0 &&
+              !isLoading &&
+              (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && (
+                <li className="PreactCombobox-option">{mergedTranslations.noOptionsFound}</li>
+              )}
+            {filteredOptions.length === maxNumberOfPresentedOptions && (
+              <li className="PreactCombobox-option">{mergedTranslations.typeToLoadMore}</li>
+            )}
+          </>
+        )}
+      </ul>
+    );
+  }
+
   return (
     <div
       className={[
@@ -1555,6 +1997,7 @@ const PreactCombobox = ({
         "PreactCombobox",
         disabled ? "PreactCombobox--disabled" : "",
         `PreactCombobox--${theme}`,
+        tray === "auto" ? "PreactCombobox--trayAuto" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -1595,7 +2038,7 @@ const PreactCombobox = ({
               type="text"
               value={inputValue}
               placeholder={
-                getIsDropdownOpen()
+                !shouldUseTray && getIsDropdownOpen()
                   ? mergedTranslations.searchPlaceholder
                   : arrayValues.length > 0
                     ? arrayValues.map((value) => allOptionsLookup[value]?.label || value).join(", ")
@@ -1673,125 +2116,77 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {!isServer && (
+      {list && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
-          {/* biome-ignore lint/a11y/useFocusableInteractive: it's a combobox, focus is on the input */}
-          <ul
-            className={`PreactCombobox-options ${`PreactCombobox--${theme}`}`}
-            // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
-            role="listbox"
-            id={`${id}-options-listbox`}
-            aria-multiselectable={multiple ? "true" : undefined}
-            hidden={!getIsDropdownOpen()}
-            ref={dropdownPopperRef}
-          >
-            {isLoading ? (
-              <li className="PreactCombobox-option" aria-disabled>
-                {loadingRenderer(mergedTranslations.loadingOptions)}
-              </li>
-            ) : (
-              <>
-                {addNewOptionVisible && (
-                  <li
-                    key={inputTrimmed}
-                    id={`${id}-option-${toHTMLId(inputTrimmed)}`}
-                    className="PreactCombobox-option"
-                    // biome-ignore lint/a11y/useSemanticElements: parent is <ul> so want to keep equivalent semantics
-                    role="option"
-                    tabIndex={-1}
-                    aria-selected={false}
-                    onMouseEnter={() => activateDescendant(inputTrimmed, false)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleAddNewOption(inputTrimmed);
-                      if (!multiple) {
-                        closeDropdown();
-                      }
-                      focusInput();
-                    }}
-                  >
-                    {mergedTranslations.addOption.replace("{value}", inputTrimmed)}
-                  </li>
-                )}
-                {filteredOptions.map((option) => {
-                  // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
-                  // aria-activedescendant is used to tell screen readers the active option.
-                  const isActive = activeDescendant.current === option.value;
-                  const isSelected = arrayValues.includes(option.value);
-                  const isInvalid = invalidValues.includes(option.value);
-                  const optionClasses = [
-                    "PreactCombobox-option",
-                    isActive ? "PreactCombobox-option--active" : "",
-                    isSelected ? "PreactCombobox-option--selected" : "",
-                    isInvalid ? "PreactCombobox-option--invalid" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
-                  return (
-                    <li
-                      key={option.value}
-                      id={`${id}-option-${toHTMLId(option.value)}`}
-                      className={optionClasses}
-                      // biome-ignore lint/a11y/useSemanticElements: <explanation>
-                      role="option"
-                      tabIndex={-1}
-                      aria-selected={isSelected}
-                      onMouseEnter={() => activateDescendant(option.value, false)}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleOptionSelect(option.value, { toggleSelected: true });
-                        if (!multiple) {
-                          closeDropdown();
-                        }
-                        focusInput();
-                      }}
+          {shouldUseTray ? (
+            // I couldn't use native <dialog> element because trying to focus input right
+            // after dialog.close() doesn't seem to work on Chrome (Android).
+            <div
+              ref={trayModalRef}
+              className={`PreactCombobox-modal ${`PreactCombobox--${theme}`}`}
+              style={{ display: getIsTrayOpen() ? null : "none" }}
+              onClick={(e) => {
+                // Close modal when clicking backdrop
+                if (e.target === trayModalRef.current) {
+                  closeTray();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  closeTray();
+                }
+              }}
+              // biome-ignore lint/a11y/useSemanticElements: Custom modal implementation instead of dialog element
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={getTrayLabel() ? `${id}-tray-label` : undefined}
+              tabIndex={-1}
+            >
+              <div className={`PreactCombobox-tray ${`PreactCombobox--${theme}`}`}>
+                <div className="PreactCombobox-trayHeader">
+                  {getTrayLabel() && (
+                    <label
+                      id={`${id}-tray-label`}
+                      className="PreactCombobox-trayLabel"
+                      htmlFor={`${id}-tray-input`}
                     >
-                      {optionRenderer({
-                        option,
-                        language,
-                        isActive,
-                        isSelected,
-                        isInvalid,
-                        showValue,
-                        warningIcon,
-                        optionIconRenderer,
-                      })}
-                      {isSelected ? (
-                        <span
-                          className="PreactCombobox-srOnly"
-                          aria-atomic="true"
-                          data-reader="selected"
-                          aria-hidden={!isActive}
-                        >
-                          {mergedTranslations.selectedOption}
-                        </span>
-                      ) : null}
-                      {isInvalid ? (
-                        <span
-                          className="PreactCombobox-srOnly"
-                          aria-atomic="true"
-                          data-reader="invalid"
-                          aria-hidden={!isActive}
-                        >
-                          {mergedTranslations.invalidOption}
-                        </span>
-                      ) : null}
-                    </li>
-                  );
-                })}
-                {filteredOptions.length === 0 &&
-                  !isLoading &&
-                  (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && (
-                    <li className="PreactCombobox-option">{mergedTranslations.noOptionsFound}</li>
+                      {getTrayLabel()}
+                    </label>
                   )}
-                {filteredOptions.length === maxNumberOfPresentedOptions && (
-                  <li className="PreactCombobox-option">{mergedTranslations.typeToLoadMore}</li>
+                  <input
+                    id={`${id}-tray-input`}
+                    ref={trayInputRef}
+                    type="text"
+                    value={trayInputValue}
+                    placeholder={mergedTranslations.searchPlaceholder}
+                    onChange={handleTrayInputChange}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        closeTray();
+                      }
+                    }}
+                    className={`PreactCombobox-trayInput ${!getTrayLabel() ? "PreactCombobox-trayInput--noLabel" : ""}`}
+                    role="combobox"
+                    aria-expanded="true"
+                    aria-haspopup="listbox"
+                    aria-controls={`${id}-options-listbox`}
+                    aria-label={getTrayLabel() || mergedTranslations.searchPlaceholder}
+                    autoComplete="off"
+                  />
+                </div>
+                {list}
+                {virtualKeyboardHeight > 0 && (
+                  <div
+                    className="PreactCombobox-virtualKeyboardSpacer"
+                    style={{ height: `${virtualKeyboardHeight}px` }}
+                    aria-hidden="true"
+                  />
                 )}
-              </>
-            )}
-          </ul>
+              </div>
+            </div>
+          ) : (
+            list
+          )}
         </Portal>
       )}
       {invalidValues.length > 0 && warningIconHovered && !isServer && (

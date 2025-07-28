@@ -5,3 +5,4 @@ __ignore__
 .DS_Store
 npm-debug.log*
 .vscode
+CLAUDE.md

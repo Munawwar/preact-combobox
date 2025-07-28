@@ -1,7 +1,15 @@
 // lib/PreactCombobox.jsx
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
-import { useCallback as useCallback2, useEffect, useId, useMemo as useMemo2, useRef as useRef2, useState as useState2 } from "preact/hooks";
+import {
+  useCallback as useCallback2,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo as useMemo2,
+  useRef as useRef2,
+  useState as useState2
+} from "preact/hooks";
 
 // lib/hooks.js
 import { useCallback, useMemo, useRef, useState } from "preact/hooks";
@@ -181,7 +189,8 @@ var tooltipPopperModifiers = [
 ];
 var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
 var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-function subscribeToVirtualKeyboard(callback) {
+var wasVisualViewportInitialHeightAnApproximate = true;
+function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
   if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
   let isVisible = false;
   const handleViewportResize = () => {
@@ -190,8 +199,9 @@ function subscribeToVirtualKeyboard(callback) {
     const isVisibleNow = heightDiff > 150;
     if (isVisible !== isVisibleNow) {
       isVisible = isVisibleNow;
-      callback(isVisible);
+      visibleCallback?.(isVisible);
     }
+    heightCallback?.(heightDiff, isVisible);
   };
   window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
   return () => {
@@ -454,6 +464,17 @@ var defaultWarningIcon = /* @__PURE__ */ jsx(
     children: /* @__PURE__ */ jsx("path", { d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" })
   }
 );
+var defaultTickIcon = /* @__PURE__ */ jsx(
+  "svg",
+  {
+    className: "PreactCombobox-tickIcon",
+    viewBox: "0 0 24 24",
+    width: "14",
+    height: "14",
+    "aria-hidden": "true",
+    children: /* @__PURE__ */ jsx("path", { d: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z", fill: "currentColor" })
+  }
+);
 var defaultChevronIcon = /* @__PURE__ */ jsx(
   "svg",
   {
@@ -472,6 +493,7 @@ function defaultOptionRenderer({
   isInvalid,
   showValue,
   warningIcon,
+  tickIcon,
   optionIconRenderer
 }) {
   const isLabelSameAsValue = option.value === option.label;
@@ -502,7 +524,7 @@ function defaultOptionRenderer({
       "span",
       {
         className: `PreactCombobox-optionCheckbox ${isSelected ? "PreactCombobox-optionCheckbox--selected" : ""}`,
-        children: isSelected && /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2713" })
+        children: isSelected && tickIcon
       }
     ),
     labelElement,
@@ -551,9 +573,13 @@ var PreactCombobox = ({
   optionRenderer = defaultOptionRenderer,
   optionIconRenderer = defaultOptionIconRenderer,
   warningIcon = defaultWarningIcon,
+  tickIcon = defaultTickIcon,
   chevronIcon = defaultChevronIcon,
   loadingRenderer = defaultLoadingRenderer,
   theme = "system",
+  tray = "auto",
+  trayBreakpoint = "768px",
+  trayLabel: trayLabelProp,
   translations = defaultEnglishTranslations,
   // private option for now
   maxNumberOfPresentedOptions = 100
@@ -629,7 +655,68 @@ var PreactCombobox = ({
     /** @type {string[][]} */
     []
   );
-  const inputTrimmed = inputValue.trim();
+  const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
+  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
+  const [trayInputValue, setTrayInputValue] = useState2("");
+  const trayInputRef = useRef2(
+    /** @type {HTMLInputElement | null} */
+    null
+  );
+  const trayModalRef = useRef2(
+    /** @type {HTMLDivElement | null} */
+    null
+  );
+  const trayClosedExplicitlyRef = useRef2(false);
+  const [isMobileScreen, setIsMobileScreen] = useState2(false);
+  const originalOverflowRef = useRef2("");
+  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState2(0);
+  useEffect(() => {
+    if (tray === "auto") {
+      const mediaQuery = window.matchMedia(`(max-width: ${trayBreakpoint})`);
+      setIsMobileScreen(mediaQuery.matches);
+      const handleChange = (e) => setIsMobileScreen(e.matches);
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
+    }
+  }, [tray, trayBreakpoint]);
+  const shouldUseTray = tray === true || tray === "auto" && isMobileScreen;
+  const activeInputValue = getIsTrayOpen() ? trayInputValue : inputValue;
+  const inputTrimmed = activeInputValue.trim();
+  const computeEffectiveTrayLabel = useCallback2(() => {
+    if (trayLabelProp) return trayLabelProp;
+    if (typeof self === "undefined" || isServer || !inputRef.current) return "";
+    const inputElement = inputRef.current;
+    const inputId = inputElement.id;
+    const ariaLabelledBy = inputElement.getAttribute("aria-labelledby");
+    if (ariaLabelledBy) {
+      const labelElement = document.getElementById(ariaLabelledBy);
+      if (labelElement) {
+        return labelElement.textContent?.trim() || "";
+      }
+    }
+    const ariaLabel = inputElement.getAttribute("aria-label");
+    if (ariaLabel) {
+      return ariaLabel.trim();
+    }
+    if (inputId) {
+      const labelElement = document.querySelector(`label[for="${inputId}"]`);
+      if (labelElement) {
+        return labelElement.textContent?.trim() || "";
+      }
+    }
+    const wrappingLabel = inputElement.closest("label");
+    if (wrappingLabel) {
+      return wrappingLabel.textContent?.trim() || "";
+    }
+    const title = inputElement.getAttribute("title");
+    if (title) {
+      return title.trim();
+    }
+    return "";
+  }, [trayLabelProp, isServer]);
+  useLayoutEffect(() => {
+    setTrayLabel(computeEffectiveTrayLabel());
+  }, [setTrayLabel, computeEffectiveTrayLabel]);
   const updateCachedOptions = useCallback2(
     /** @param {Option[]} update */
     (update) => {
@@ -724,7 +811,7 @@ var PreactCombobox = ({
     [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues]
   );
   useEffect(() => {
-    if (getIsDropdownOpen() && rootElementRef.current && dropdownPopperRef.current) {
+    if (getIsDropdownOpen() && !shouldUseTray && rootElementRef.current && dropdownPopperRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
       const popperInstance = createPopper(rootElementRef.current, dropdownPopperRef.current, {
@@ -737,7 +824,10 @@ var PreactCombobox = ({
         popperInstance.destroy();
       };
     }
-  }, [getIsDropdownOpen]);
+    if (shouldUseTray && dropdownPopperRef.current) {
+      dropdownPopperRef.current.style.display = "none";
+    }
+  }, [getIsDropdownOpen, shouldUseTray]);
   const abortControllerRef = useRef2(
     /** @type {AbortController | null} */
     null
@@ -749,7 +839,8 @@ var PreactCombobox = ({
   const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
   const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
   useEffect(() => {
-    const shouldFetchOptions = getIsDropdownOpen() || typeof allowedOptions === "function";
+    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+    const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
     if (!shouldFetchOptions) return;
     const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
     abortControllerRef.current?.abort();
@@ -757,7 +848,7 @@ var PreactCombobox = ({
     let debounceTime = 0;
     if (typeof allowedOptions === "function" && !// don't debounce for initial render (when we have to resolve the labels for selected values).
     // don't debounce for first time the dropdown is opened as well.
-    (newUnknownValues.length > 0 || getIsDropdownOpen() && hasDropdownOpenChanged) && // Hack: We avoid debouncing to speed up playwright tests
+    (newUnknownValues.length > 0 || (isOpen && shouldUseTray ? hasTrayOpenChanged : hasDropdownOpenChanged)) && // Hack: We avoid debouncing to speed up playwright tests
     !isPlaywright) {
       debounceTime = 250;
     }
@@ -769,7 +860,7 @@ var PreactCombobox = ({
           abortController.signal
         );
         const [searchResults, selectedResults] = await Promise.all([
-          getIsDropdownOpen() ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
+          isOpen ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
             /** @type {Option[]} */
             []
           ),
@@ -802,8 +893,8 @@ var PreactCombobox = ({
         setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
       } else {
         const mergedOptions = arrayValues.filter((v) => !allOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
-        const options = inputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(inputValue, options, language, true));
+        const options = activeInputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
+        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
       }
     };
     if (typeof allowedOptions === "function") {
@@ -820,10 +911,19 @@ var PreactCombobox = ({
       abortController?.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [getIsDropdownOpen, inputTrimmed, language, newUnknownValuesAsKey, allowedOptionsAsKey]);
+  }, [
+    getIsDropdownOpen,
+    getIsTrayOpen,
+    shouldUseTray,
+    inputTrimmed,
+    language,
+    newUnknownValuesAsKey,
+    allowedOptionsAsKey
+  ]);
   const addNewOptionVisible = !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed) && !filteredOptions.find((o) => o.value === inputTrimmed);
   useEffect(() => {
-    if (!getIsDropdownOpen()) return;
+    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+    if (!isOpen) return;
     if (activeDescendant.current && filteredOptions.find((o) => o.value === activeDescendant.current)) {
       activateDescendant(activeDescendant.current);
     } else if (addNewOptionVisible && activeDescendant.current === inputTrimmed) {
@@ -831,7 +931,15 @@ var PreactCombobox = ({
     } else {
       activateDescendant("");
     }
-  }, [getIsDropdownOpen, filteredOptions, activateDescendant, addNewOptionVisible, inputTrimmed]);
+  }, [
+    shouldUseTray,
+    getIsDropdownOpen,
+    getIsTrayOpen,
+    filteredOptions,
+    activateDescendant,
+    addNewOptionVisible,
+    inputTrimmed
+  ]);
   useEffect(() => {
     if (invalidValues.length > 0 && warningIconHovered && warningIconRef.current && tooltipPopperRef.current && rootElementRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
@@ -853,6 +961,10 @@ var PreactCombobox = ({
      * @param {{ toggleSelected?: boolean }} [options]
      */
     (selectedValue, { toggleSelected = false } = {}) => {
+      const option = allOptionsLookup[selectedValue];
+      if (option?.disabled) {
+        return;
+      }
       if (values) {
         const isExistingOption = values.includes(selectedValue);
         let newValues;
@@ -887,23 +999,113 @@ var PreactCombobox = ({
         setInputValue("");
       }
     },
-    [onChange, singleSelectValue, values, updateSelectionAnnouncement, closeDropdown]
+    [
+      onChange,
+      singleSelectValue,
+      values,
+      updateSelectionAnnouncement,
+      closeDropdown,
+      allOptionsLookup
+    ]
   );
+  const focusInput = useCallback2(
+    (forceOpenKeyboard = false) => {
+      const input = inputRef.current;
+      if (input) {
+        const shouldTemporarilyDisableInput = getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
+        if (shouldTemporarilyDisableInput) {
+          input.setAttribute("readonly", "readonly");
+        }
+        input.focus();
+        if (shouldTemporarilyDisableInput) {
+          setTimeout(() => {
+            input.removeAttribute("readonly");
+          }, 10);
+        }
+      }
+    },
+    [getIsFocused]
+  );
+  const openTray = useCallback2(() => {
+    if (!shouldUseTray) return;
+    const scrollingElement = (
+      /** @type {HTMLElement} */
+      document.scrollingElement || document.documentElement
+    );
+    originalOverflowRef.current = scrollingElement.style.overflow;
+    scrollingElement.style.overflow = "hidden";
+    setIsTrayOpen(true);
+    setIsDropdownOpen(false);
+    trayClosedExplicitlyRef.current = false;
+    if (!virtualKeyboardHeightAdjustSubscription.current) {
+      if (wasVisualViewportInitialHeightAnApproximate && trayModalRef.current) {
+        trayModalRef.current.style.removeProperty("display");
+        const height = trayModalRef.current.offsetHeight;
+        if (height > 0) {
+          visualViewportInitialHeight = height;
+          wasVisualViewportInitialHeightAnApproximate = false;
+        }
+      }
+      virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
+        heightCallback(keyboardHeight, isVisible) {
+          setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+        }
+      });
+    }
+  }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
+  useEffect(() => {
+    if (shouldUseTray && getIsTrayOpen()) {
+      trayInputRef.current?.focus();
+    }
+  }, [shouldUseTray, getIsTrayOpen]);
+  const closeTray = useCallback2(() => {
+    setIsTrayOpen(false);
+    setTrayInputValue("");
+    setVirtualKeyboardHeight(0);
+    virtualKeyboardHeightAdjustSubscription.current?.();
+    virtualKeyboardHeightAdjustSubscription.current = null;
+    const scrollingElement = (
+      /** @type {HTMLElement} */
+      document.scrollingElement || document.documentElement
+    );
+    scrollingElement.style.overflow = originalOverflowRef.current;
+    trayClosedExplicitlyRef.current = true;
+    focusInput(true);
+  }, [setIsTrayOpen, focusInput]);
   const handleInputChange = useCallback2(
     /**
      * Handle input change
      * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
      */
     (e) => {
+      if (shouldUseTray) {
+        e.preventDefault();
+        openTray();
+        return;
+      }
       setInputValue(e.currentTarget.value);
       if (!dropdownClosedExplicitlyRef.current) {
         setIsDropdownOpen(true);
       }
     },
-    [setIsDropdownOpen]
+    [setIsDropdownOpen, shouldUseTray, openTray]
+  );
+  const handleTrayInputChange = useCallback2(
+    /**
+     * Handle tray input change
+     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     */
+    (e) => {
+      setTrayInputValue(e.currentTarget.value);
+    },
+    []
   );
   const virtualKeyboardExplicitlyClosedRef = useRef2(null);
-  const virtualKeyboardCheckSubscription = useRef2(
+  const virtualKeyboardDismissSubscription = useRef2(
+    /** @type {function | null} */
+    null
+  );
+  const virtualKeyboardHeightAdjustSubscription = useRef2(
     /** @type {function | null} */
     null
   );
@@ -911,15 +1113,31 @@ var PreactCombobox = ({
     setIsFocused(true);
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = void 0;
-    setIsDropdownOpen(true);
-    dropdownClosedExplicitlyRef.current = false;
-    updateSelectionAnnouncement(arrayValues);
-    if (!virtualKeyboardCheckSubscription.current) {
-      virtualKeyboardCheckSubscription.current = subscribeToVirtualKeyboard((isVisible) => {
-        virtualKeyboardExplicitlyClosedRef.current = !isVisible;
-      });
+    if (shouldUseTray) {
+      if (!trayClosedExplicitlyRef.current) {
+        openTray();
+      }
+      trayClosedExplicitlyRef.current = false;
+    } else {
+      setIsDropdownOpen(true);
+      dropdownClosedExplicitlyRef.current = false;
+      if (!virtualKeyboardDismissSubscription.current) {
+        virtualKeyboardDismissSubscription.current = subscribeToVirtualKeyboard({
+          visibleCallback(isVisible) {
+            virtualKeyboardExplicitlyClosedRef.current = !isVisible;
+          }
+        });
+      }
     }
-  }, [setIsFocused, setIsDropdownOpen, arrayValues, updateSelectionAnnouncement]);
+    updateSelectionAnnouncement(arrayValues);
+  }, [
+    setIsFocused,
+    setIsDropdownOpen,
+    openTray,
+    arrayValues,
+    updateSelectionAnnouncement,
+    shouldUseTray
+  ]);
   const handleInputBlur = useCallback2(() => {
     setIsFocused(false);
     clearTimeout(blurTimeoutRef.current);
@@ -933,9 +1151,11 @@ var PreactCombobox = ({
     }
     setInputValue("");
     setLastSelectionAnnouncement("");
-    virtualKeyboardCheckSubscription.current?.();
-    virtualKeyboardCheckSubscription.current = null;
-    virtualKeyboardExplicitlyClosedRef.current = null;
+    if (!shouldUseTray) {
+      virtualKeyboardDismissSubscription.current?.();
+      virtualKeyboardDismissSubscription.current = null;
+      virtualKeyboardExplicitlyClosedRef.current = null;
+    }
   }, [
     setIsFocused,
     allOptionsLookup,
@@ -943,7 +1163,8 @@ var PreactCombobox = ({
     handleOptionSelect,
     multiple,
     inputTrimmed,
-    closeDropdown
+    closeDropdown,
+    shouldUseTray
   ]);
   const handleAddNewOption = useCallback2(
     /**
@@ -1004,12 +1225,20 @@ var PreactCombobox = ({
         if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex < 0 || currentIndex === filteredOptions.length - 1)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[nextIndex]
-          );
-          activateDescendant(option.value);
+          let nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = (
+              /** @type {OptionMatch} */
+              filteredOptions[nextIndex]
+            );
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            nextIndex = nextIndex === filteredOptions.length - 1 ? 0 : nextIndex + 1;
+            attempts++;
+          }
         }
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
@@ -1020,34 +1249,40 @@ var PreactCombobox = ({
         if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex === 0 && currentActiveDescendant || !filteredOptions.length)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[prevIndex]
-          );
-          activateDescendant(option.value);
+          let prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = (
+              /** @type {OptionMatch} */
+              filteredOptions[prevIndex]
+            );
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            prevIndex = (prevIndex - 1 + filteredOptions.length) % filteredOptions.length;
+            attempts++;
+          }
         }
       } else if (e.key === "Escape") {
         closeDropdown(true);
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[0]
-          );
-          activateDescendant(option.value);
+          const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
+          if (firstNonDisabledOption) {
+            activateDescendant(firstNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[filteredOptions.length - 1]
-          );
-          activateDescendant(option.value);
+          const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
+          if (lastNonDisabledOption) {
+            activateDescendant(lastNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -1117,24 +1352,6 @@ var PreactCombobox = ({
     },
     [allOptions, onChange, values, updateSelectionAnnouncement]
   );
-  const focusInput = useCallback2(
-    (forceOpenKeyboard = false) => {
-      const input = inputRef.current;
-      if (input) {
-        const shouldTemporarilyDisableInput = getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
-        if (shouldTemporarilyDisableInput) {
-          input.setAttribute("readonly", "readonly");
-        }
-        input.focus();
-        if (shouldTemporarilyDisableInput) {
-          setTimeout(() => {
-            input.removeAttribute("readonly");
-          }, 1);
-        }
-      }
-    },
-    [getIsFocused]
-  );
   const handleClearValue = useCallback2(() => {
     setInputValue("");
     onChange(multiple ? [] : "");
@@ -1147,16 +1364,20 @@ var PreactCombobox = ({
   }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, getIsFocused, focusInput]);
   const handleRootElementClick = useCallback2(() => {
     if (!disabled) {
-      if (inputRef.current && document.activeElement !== inputRef.current) {
-        focusInput(true);
+      if (shouldUseTray) {
+        openTray();
+      } else {
+        if (inputRef.current && document.activeElement !== inputRef.current) {
+          focusInput(true);
+        }
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
       }
-      setIsDropdownOpen(true);
-      dropdownClosedExplicitlyRef.current = false;
     }
-  }, [disabled, focusInput, setIsDropdownOpen]);
+  }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
   const selectChildren = useMemo2(
-    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx("option", { value: val, children: allOptionsLookup[val]?.label || val }, val)).concat(
-      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, children: o.label }, o.value)) : []
+    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
     ) : null,
     [
       arrayValues,
@@ -1168,9 +1389,10 @@ var PreactCombobox = ({
     ]
   );
   useEffect(() => {
-    if (isLoading && getIsDropdownOpen()) {
+    const isOpen = getIsDropdownOpen() || getIsTrayOpen();
+    if (isLoading && isOpen) {
       setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
-    } else if (loadingAnnouncement && !isLoading && getIsDropdownOpen()) {
+    } else if (loadingAnnouncement && !isLoading && isOpen) {
       setLoadingAnnouncement(
         filteredOptions.length ? mergedTranslations.optionsLoadedAnnouncement : mergedTranslations.noOptionsFoundAnnouncement
       );
@@ -1178,19 +1400,151 @@ var PreactCombobox = ({
         setLoadingAnnouncement("");
       }, 1e3);
       return () => clearTimeout(timer);
-    } else if (loadingAnnouncement && !getIsDropdownOpen()) {
+    } else if (loadingAnnouncement && !isOpen) {
       setLoadingAnnouncement("");
     }
   }, [
     isLoading,
     loadingAnnouncement,
     getIsDropdownOpen,
+    getIsTrayOpen,
     filteredOptions.length,
     mergedTranslations.loadingOptionsAnnouncement,
     mergedTranslations.optionsLoadedAnnouncement,
     mergedTranslations.noOptionsFoundAnnouncement
   ]);
   const isServerSideForm = isServer && formSubmitCompatible;
+  let list = null;
+  if (!isServer) {
+    list = // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
+    /* @__PURE__ */ jsx(
+      "ul",
+      {
+        className: [
+          "PreactCombobox-options",
+          `PreactCombobox--${theme}`,
+          shouldUseTray ? "PreactCombobox-options--tray" : ""
+        ].filter(Boolean).join(" "),
+        role: "listbox",
+        id: `${id}-options-listbox`,
+        "aria-multiselectable": multiple ? "true" : void 0,
+        hidden: shouldUseTray ? !getIsTrayOpen() : !getIsDropdownOpen(),
+        ref: shouldUseTray ? null : dropdownPopperRef,
+        children: isLoading ? /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", "aria-disabled": true, children: loadingRenderer(mergedTranslations.loadingOptions) }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+          addNewOptionVisible && /* @__PURE__ */ jsx(
+            "li",
+            {
+              id: `${id}-option-${toHTMLId(inputTrimmed)}`,
+              className: "PreactCombobox-option",
+              role: "option",
+              tabIndex: -1,
+              "aria-selected": false,
+              onMouseEnter: () => activateDescendant(inputTrimmed, false),
+              onMouseDown: (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleAddNewOption(inputTrimmed);
+                if (shouldUseTray) {
+                  if (!multiple) {
+                    closeTray();
+                  } else {
+                    trayInputRef.current?.focus();
+                  }
+                } else {
+                  if (!multiple) {
+                    closeDropdown();
+                  }
+                  focusInput();
+                }
+              },
+              children: mergedTranslations.addOption.replace("{value}", inputTrimmed)
+            },
+            inputTrimmed
+          ),
+          filteredOptions.map((option) => {
+            const isActive = activeDescendant.current === option.value;
+            const isSelected = arrayValues.includes(option.value);
+            const isInvalid = invalidValues.includes(option.value);
+            const isDisabled = option.disabled;
+            const hasDivider = option.divider && !inputTrimmed;
+            const optionClasses = [
+              "PreactCombobox-option",
+              isActive ? "PreactCombobox-option--active" : "",
+              isSelected ? "PreactCombobox-option--selected" : "",
+              isInvalid ? "PreactCombobox-option--invalid" : "",
+              isDisabled ? "PreactCombobox-option--disabled" : "",
+              hasDivider ? "PreactCombobox-option--divider" : ""
+            ].filter(Boolean).join(" ");
+            return /* @__PURE__ */ jsxs(
+              "li",
+              {
+                id: `${id}-option-${toHTMLId(option.value)}`,
+                className: optionClasses,
+                role: "option",
+                tabIndex: -1,
+                "aria-selected": isSelected,
+                "aria-disabled": isDisabled,
+                onMouseEnter: () => !isDisabled && activateDescendant(option.value, false),
+                onMouseDown: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleOptionSelect(option.value, { toggleSelected: true });
+                  if (shouldUseTray) {
+                    if (!multiple) {
+                      closeTray();
+                    } else {
+                      trayInputRef.current?.focus();
+                    }
+                  } else {
+                    if (!multiple) {
+                      closeDropdown();
+                    }
+                    focusInput();
+                  }
+                },
+                children: [
+                  optionRenderer({
+                    option,
+                    language,
+                    isActive,
+                    isSelected,
+                    isInvalid,
+                    showValue,
+                    warningIcon,
+                    tickIcon,
+                    optionIconRenderer
+                  }),
+                  isSelected ? /* @__PURE__ */ jsx(
+                    "span",
+                    {
+                      className: "PreactCombobox-srOnly",
+                      "aria-atomic": "true",
+                      "data-reader": "selected",
+                      "aria-hidden": !isActive,
+                      children: mergedTranslations.selectedOption
+                    }
+                  ) : null,
+                  isInvalid ? /* @__PURE__ */ jsx(
+                    "span",
+                    {
+                      className: "PreactCombobox-srOnly",
+                      "aria-atomic": "true",
+                      "data-reader": "invalid",
+                      "aria-hidden": !isActive,
+                      children: mergedTranslations.invalidOption
+                    }
+                  ) : null
+                ]
+              },
+              option.value
+            );
+          }),
+          filteredOptions.length === 0 && !isLoading && (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.noOptionsFound }),
+          filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
+        ] })
+      }
+    );
+  }
   return /* @__PURE__ */ jsxs(
     "div",
     {
@@ -1198,7 +1552,8 @@ var PreactCombobox = ({
         className,
         "PreactCombobox",
         disabled ? "PreactCombobox--disabled" : "",
-        `PreactCombobox--${theme}`
+        `PreactCombobox--${theme}`,
+        tray === "auto" ? "PreactCombobox--trayAuto" : ""
       ].filter(Boolean).join(" "),
       "aria-disabled": disabled,
       onClick: handleRootElementClick,
@@ -1219,7 +1574,7 @@ var PreactCombobox = ({
                 ref: inputRef,
                 type: "text",
                 value: inputValue,
-                placeholder: getIsDropdownOpen() ? mergedTranslations.searchPlaceholder : arrayValues.length > 0 ? arrayValues.map((value2) => allOptionsLookup[value2]?.label || value2).join(", ") : placeholder,
+                placeholder: !shouldUseTray && getIsDropdownOpen() ? mergedTranslations.searchPlaceholder : arrayValues.length > 0 ? arrayValues.map((value2) => allOptionsLookup[value2]?.label || value2).join(", ") : placeholder,
                 onChange: handleInputChange,
                 onKeyDown: handleKeyDown,
                 onFocus: handleInputFocus,
@@ -1277,107 +1632,77 @@ var PreactCombobox = ({
             }
           ) : null
         ] }),
-        !isServer && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsx(
-          "ul",
-          {
-            className: `PreactCombobox-options ${`PreactCombobox--${theme}`}`,
-            role: "listbox",
-            id: `${id}-options-listbox`,
-            "aria-multiselectable": multiple ? "true" : void 0,
-            hidden: !getIsDropdownOpen(),
-            ref: dropdownPopperRef,
-            children: isLoading ? /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", "aria-disabled": true, children: loadingRenderer(mergedTranslations.loadingOptions) }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-              addNewOptionVisible && /* @__PURE__ */ jsx(
-                "li",
-                {
-                  id: `${id}-option-${toHTMLId(inputTrimmed)}`,
-                  className: "PreactCombobox-option",
-                  role: "option",
-                  tabIndex: -1,
-                  "aria-selected": false,
-                  onMouseEnter: () => activateDescendant(inputTrimmed, false),
-                  onMouseDown: (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleAddNewOption(inputTrimmed);
-                    if (!multiple) {
-                      closeDropdown();
+        list && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? (
+          // I couldn't use native <dialog> element because trying to focus input right
+          // after dialog.close() doesn't seem to work on Chrome (Android).
+          /* @__PURE__ */ jsx(
+            "div",
+            {
+              ref: trayModalRef,
+              className: `PreactCombobox-modal ${`PreactCombobox--${theme}`}`,
+              style: { display: getIsTrayOpen() ? null : "none" },
+              onClick: (e) => {
+                if (e.target === trayModalRef.current) {
+                  closeTray();
+                }
+              },
+              onKeyDown: (e) => {
+                if (e.key === "Escape") {
+                  closeTray();
+                }
+              },
+              role: "dialog",
+              "aria-modal": "true",
+              "aria-labelledby": getTrayLabel() ? `${id}-tray-label` : void 0,
+              tabIndex: -1,
+              children: /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-tray ${`PreactCombobox--${theme}`}`, children: [
+                /* @__PURE__ */ jsxs("div", { className: "PreactCombobox-trayHeader", children: [
+                  getTrayLabel() && /* @__PURE__ */ jsx(
+                    "label",
+                    {
+                      id: `${id}-tray-label`,
+                      className: "PreactCombobox-trayLabel",
+                      htmlFor: `${id}-tray-input`,
+                      children: getTrayLabel()
                     }
-                    focusInput();
-                  },
-                  children: mergedTranslations.addOption.replace("{value}", inputTrimmed)
-                },
-                inputTrimmed
-              ),
-              filteredOptions.map((option) => {
-                const isActive = activeDescendant.current === option.value;
-                const isSelected = arrayValues.includes(option.value);
-                const isInvalid = invalidValues.includes(option.value);
-                const optionClasses = [
-                  "PreactCombobox-option",
-                  isActive ? "PreactCombobox-option--active" : "",
-                  isSelected ? "PreactCombobox-option--selected" : "",
-                  isInvalid ? "PreactCombobox-option--invalid" : ""
-                ].filter(Boolean).join(" ");
-                return /* @__PURE__ */ jsxs(
-                  "li",
+                  ),
+                  /* @__PURE__ */ jsx(
+                    "input",
+                    {
+                      id: `${id}-tray-input`,
+                      ref: trayInputRef,
+                      type: "text",
+                      value: trayInputValue,
+                      placeholder: mergedTranslations.searchPlaceholder,
+                      onChange: handleTrayInputChange,
+                      onKeyDown: (e) => {
+                        if (e.key === "Escape") {
+                          closeTray();
+                        }
+                      },
+                      className: `PreactCombobox-trayInput ${!getTrayLabel() ? "PreactCombobox-trayInput--noLabel" : ""}`,
+                      role: "combobox",
+                      "aria-expanded": "true",
+                      "aria-haspopup": "listbox",
+                      "aria-controls": `${id}-options-listbox`,
+                      "aria-label": getTrayLabel() || mergedTranslations.searchPlaceholder,
+                      autoComplete: "off"
+                    }
+                  )
+                ] }),
+                list,
+                virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx(
+                  "div",
                   {
-                    id: `${id}-option-${toHTMLId(option.value)}`,
-                    className: optionClasses,
-                    role: "option",
-                    tabIndex: -1,
-                    "aria-selected": isSelected,
-                    onMouseEnter: () => activateDescendant(option.value, false),
-                    onMouseDown: (e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleOptionSelect(option.value, { toggleSelected: true });
-                      if (!multiple) {
-                        closeDropdown();
-                      }
-                      focusInput();
-                    },
-                    children: [
-                      optionRenderer({
-                        option,
-                        language,
-                        isActive,
-                        isSelected,
-                        isInvalid,
-                        showValue,
-                        warningIcon,
-                        optionIconRenderer
-                      }),
-                      isSelected ? /* @__PURE__ */ jsx(
-                        "span",
-                        {
-                          className: "PreactCombobox-srOnly",
-                          "aria-atomic": "true",
-                          "data-reader": "selected",
-                          "aria-hidden": !isActive,
-                          children: mergedTranslations.selectedOption
-                        }
-                      ) : null,
-                      isInvalid ? /* @__PURE__ */ jsx(
-                        "span",
-                        {
-                          className: "PreactCombobox-srOnly",
-                          "aria-atomic": "true",
-                          "data-reader": "invalid",
-                          "aria-hidden": !isActive,
-                          children: mergedTranslations.invalidOption
-                        }
-                      ) : null
-                    ]
-                  },
-                  option.value
-                );
-              }),
-              filteredOptions.length === 0 && !isLoading && (!allowFreeText || !inputValue || arrayValues.includes(inputValue)) && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.noOptionsFound }),
-              filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
-            ] })
-          }
-        ) }),
+                    className: "PreactCombobox-virtualKeyboardSpacer",
+                    style: { height: `${virtualKeyboardHeight}px` },
+                    "aria-hidden": "true"
+                  }
+                )
+              ] })
+            }
+          )
+        ) : list }),
         invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsxs(
           "div",
           {

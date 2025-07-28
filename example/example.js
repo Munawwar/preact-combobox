@@ -12,19 +12,9 @@ let allowedOptions = [
     icon: "🇺🇸",
   },
   {
-    label: "France",
-    value: "france",
-    icon: "🇫🇷",
-  },
-  {
-    label: "Japan",
-    value: "japan",
-    icon: "🇯🇵",
-  },
-  {
-    label: "Brazil",
-    value: "brazil",
-    icon: "🇧🇷",
+    label: "Argentina",
+    value: "argentina",
+    icon: "🇦🇷",
   },
   {
     label: "Australia",
@@ -32,9 +22,69 @@ let allowedOptions = [
     icon: "🇦🇺",
   },
   {
+    label: "Brazil",
+    value: "brazil",
+    icon: "🇧🇷",
+  },
+  {
+    label: "Canada",
+    value: "canada",
+    icon: "🇨🇦",
+  },
+  {
     label: "China",
     value: "china",
     icon: "🇨🇳",
+  },
+  {
+    label: "Fiji",
+    value: "fiji",
+    icon: "🇫🇯",
+  },
+  {
+    label: "France",
+    value: "france",
+    icon: "🇫🇷",
+  },
+  {
+    label: "Germany",
+    value: "germany",
+    icon: "🇩🇪",
+  },
+  {
+    label: "Indonesia",
+    value: "indonesia",
+    icon: "🇮🇩",
+  },
+  {
+    label: "Italy",
+    value: "italy",
+    icon: "🇮🇹",
+  },
+  {
+    label: "Japan",
+    value: "japan",
+    icon: "🇯🇵",
+  },
+  {
+    label: "Mexico",
+    value: "mexico",
+    icon: "🇲🇽",
+  },
+  {
+    label: "Netherlands",
+    value: "netherlands",
+    icon: "🇳🇱",
+  },
+  {
+    label: "Pakistan",
+    value: "pakistan",
+    icon: "🇵🇰",
+  },
+  {
+    label: "Poland",
+    value: "poland",
+    icon: "🇵🇱",
   },
   {
     label: "Russia",
@@ -42,16 +92,61 @@ let allowedOptions = [
     icon: "🇷🇺",
   },
   {
+    label: "Saudi Arabia",
+    value: "saudi-arabia",
+    icon: "🇸🇦",
+  },
+  {
+    label: "South Africa",
+    value: "south-africa",
+    icon: "🇿🇦",
+  },
+  {
     label: "South Korea",
     value: "korea",
     icon: "🇰🇷",
   },
   {
-    label: "Indonesia",
-    value: "indonesia",
-    icon: "🇮🇩",
+    label: "Spain",
+    value: "spain",
+    icon: "🇪🇸",
+  },
+  {
+    label: "Sweden",
+    value: "sweden",
+    icon: "🇸🇪",
+  },
+  {
+    label: "Switzerland",
+    value: "switzerland",
+    icon: "🇨🇭",
+  },
+  {
+    label: "Turkey",
+    value: "turkey",
+    icon: "🇹🇷",
+  },
+  {
+    label: "United Kingdom",
+    value: "uk",
+    icon: "🇬🇧",
   },
 ];
+
+const example1Options = allowedOptions.map((option) => {
+  if (option.value === "usa") {
+    return {
+      ...option,
+      divider: true,
+    };
+  } else if (option.value === "fiji") {
+    return {
+      ...option,
+      disabled: true,
+    };
+  }
+  return option;
+});
 
 // Arabic options for RTL example
 const arabicOptions = [
@@ -194,9 +289,10 @@ function App() {
   return html`
     <form>
         <label for="example-1">Multi-select, Free text allowed, Form Submit Compatible</label>
+        <p>With dividers, disabled options, and mobile tray</p>
         <${PreactCombobox}
           id="example-1"
-          allowedOptions=${allowedOptions}
+          allowedOptions=${example1Options}
           allowFreeText=${true}
           value=${valuesBasicExample}
           onChange=${setValuesBasicExample}
@@ -230,6 +326,7 @@ function App() {
         <br/>
 
         <label for="example-4">Single-select, No free text allowed</label>
+        <p>Mobile tray is disabled for this example but still provides reasonable UX on mobile devices</p>
         <${PreactCombobox}
           id="example-4"
           multiple=${false}
@@ -240,6 +337,7 @@ function App() {
           name="example-4"
           required=${true}
           theme=${appTheme}
+          tray=${false}
         />
         <br/>
         
@@ -290,12 +388,12 @@ function App() {
         </div>
         <br/>
 
-        <label for="example-8">Server-Side Rendering Example</label>
+        <label for="example-8">Progressive Enhancement Example</label>
         <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
         <${PreactCombobox}
           id="example-8"
           multiple=${false}
-          allowedOptions=${allowedOptions}
+          allowedOptions=${example1Options}
           value=${valueServerSideExample}
           onChange=${setValueServerSideExample}
           name="server-side-example"
@@ -304,8 +402,10 @@ function App() {
           theme=${appTheme}
         />
         <br/>
-
         <button type="submit">Test Form Submit</button>
+        <p>
+          Note on client-side, when JS loads, isServer is set to false and select will get replaced with the combobox experience.
+        </p>
     </form>
   `;
 }
