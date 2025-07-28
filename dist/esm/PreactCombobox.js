@@ -464,6 +464,17 @@ var defaultWarningIcon = /* @__PURE__ */ jsx(
     children: /* @__PURE__ */ jsx("path", { d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" })
   }
 );
+var defaultTickIcon = /* @__PURE__ */ jsx(
+  "svg",
+  {
+    className: "PreactCombobox-tickIcon",
+    viewBox: "0 0 24 24",
+    width: "14",
+    height: "14",
+    "aria-hidden": "true",
+    children: /* @__PURE__ */ jsx("path", { d: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z", fill: "currentColor" })
+  }
+);
 var defaultChevronIcon = /* @__PURE__ */ jsx(
   "svg",
   {
@@ -482,6 +493,7 @@ function defaultOptionRenderer({
   isInvalid,
   showValue,
   warningIcon,
+  tickIcon,
   optionIconRenderer
 }) {
   const isLabelSameAsValue = option.value === option.label;
@@ -512,7 +524,7 @@ function defaultOptionRenderer({
       "span",
       {
         className: `PreactCombobox-optionCheckbox ${isSelected ? "PreactCombobox-optionCheckbox--selected" : ""}`,
-        children: isSelected && /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2713" })
+        children: isSelected && tickIcon
       }
     ),
     labelElement,
@@ -561,6 +573,7 @@ var PreactCombobox = ({
   optionRenderer = defaultOptionRenderer,
   optionIconRenderer = defaultOptionIconRenderer,
   warningIcon = defaultWarningIcon,
+  tickIcon = defaultTickIcon,
   chevronIcon = defaultChevronIcon,
   loadingRenderer = defaultLoadingRenderer,
   theme = "system",
@@ -1498,6 +1511,7 @@ var PreactCombobox = ({
                     isInvalid,
                     showValue,
                     warningIcon,
+                    tickIcon,
                     optionIconRenderer
                   }),
                   isSelected ? /* @__PURE__ */ jsx(

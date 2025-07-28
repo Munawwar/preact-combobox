@@ -23,6 +23,7 @@ export function defaultOptionRenderer(params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    tickIcon?: import("preact").VNode<any> | undefined;
     optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }): VNode;
 export default PreactCombobox;
@@ -108,6 +109,7 @@ export type OptionTransformFunction = (params: {
     isActive: boolean;
     showValue: boolean;
     warningIcon?: import("preact").VNode<any> | undefined;
+    tickIcon?: import("preact").VNode<any> | undefined;
     optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }) => VNode;
 export type Translations = {
@@ -311,6 +313,10 @@ export type PreactComboboxProps = {
      */
     warningIcon?: import("preact").VNode<any> | undefined;
     /**
+     * Custom tick icon element or component for selected options
+     */
+    tickIcon?: import("preact").VNode<any> | undefined;
+    /**
      * Custom chevron icon element or component
      */
     chevronIcon?: import("preact").VNode<any> | undefined;
@@ -327,4 +333,4 @@ export type PreactComboboxProps = {
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, tickIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;

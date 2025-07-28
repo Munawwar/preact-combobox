@@ -56,6 +56,7 @@ import "./PreactCombobox.css";
  * @param {boolean} params.isActive Active does not mean selected. Active means the option is being hovered over / keyboard focused over.
  * @param {boolean} params.showValue
  * @param {VNode} [params.warningIcon]
+ * @param {VNode} [params.tickIcon]
  * @param {(option: Option, isInput?: boolean) => VNode|null} [params.optionIconRenderer] Read PreactComboboxProps
  * `optionIconRenderer` for more details.
  * @returns {VNode}
@@ -128,6 +129,7 @@ import "./PreactCombobox.css";
  * It's `undefined` or `false` when rendering the icon besides each option.
  * This function is also passed into `optionRenderer` as an argument instead of being used directly for option rendering.
  * @property {VNode} [warningIcon] Custom warning icon element or component
+ * @property {VNode} [tickIcon] Custom tick icon element or component for selected options
  * @property {VNode} [chevronIcon] Custom chevron icon element or component
  * @property {(text: string) => VNode|string} [loadingRenderer] Custom loading indicator element or text
  *
@@ -624,6 +626,18 @@ const defaultWarningIcon = (
   </svg>
 );
 
+const defaultTickIcon = (
+  <svg
+    className="PreactCombobox-tickIcon"
+    viewBox="0 0 24 24"
+    width="14"
+    height="14"
+    aria-hidden="true"
+  >
+    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor" />
+  </svg>
+);
+
 const defaultChevronIcon = (
   <svg
     className="PreactCombobox-chevron"
@@ -646,6 +660,7 @@ export function defaultOptionRenderer({
   isInvalid,
   showValue,
   warningIcon,
+  tickIcon,
   optionIconRenderer,
 }) {
   const isLabelSameAsValue = option.value === option.label;
@@ -688,7 +703,7 @@ export function defaultOptionRenderer({
           isSelected ? "PreactCombobox-optionCheckbox--selected" : ""
         }`}
       >
-        {isSelected && <span aria-hidden="true">✓</span>}
+        {isSelected && tickIcon}
       </span>
       {labelElement}
       {isInvalid && warningIcon}
@@ -772,6 +787,7 @@ const PreactCombobox = ({
   optionRenderer = defaultOptionRenderer,
   optionIconRenderer = defaultOptionIconRenderer,
   warningIcon = defaultWarningIcon,
+  tickIcon = defaultTickIcon,
   chevronIcon = defaultChevronIcon,
   loadingRenderer = defaultLoadingRenderer,
   theme = "system",
@@ -1934,6 +1950,7 @@ const PreactCombobox = ({
                     isInvalid,
                     showValue,
                     warningIcon,
+                    tickIcon,
                     optionIconRenderer,
                   })}
                   {isSelected ? (

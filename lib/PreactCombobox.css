@@ -429,6 +429,8 @@
 }
 
 .PreactCombobox-optionCheckbox {
+  width: 16px;
+  height: 16px;
   min-width: 16px;
   min-height: 16px;
   border: 1px solid var(--preact-combobox-checkbox-border);
@@ -446,6 +448,11 @@
   background: var(--preact-combobox-checkbox-selected-bg);
   border-color: var(--preact-combobox-checkbox-selected-border);
   color: var(--preact-combobox-checkbox-selected-text);
+}
+
+.PreactCombobox-tickIcon {
+  display: block;
+  pointer-events: none;
 }
 
 /* Mobile Tray Styles */

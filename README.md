@@ -311,6 +311,9 @@ const customIconRenderer = (option, isInput) => {
 // Here is how to customize the warning icon (static, not a function)
 const customWarningIcon = <img class="PreactCombobox-warningIcon" src="warning.svg" />;
 
+// Here is how to customize the tick icon for selected options (static, not a function)
+const customTickIcon = <img class="PreactCombobox-tickIcon" src="checkmark.svg" />;
+
 // Here is how to customize the dropdown chevron (static, not a function)
 const customChevronIcon = <img class="PreactCombobox-chevron" src="chevron" />
 
@@ -344,6 +347,7 @@ function CustomRenderingExample() {
       optionRenderer={defaultOptionRenderer}
       optionIconRenderer={customIconRenderer}
       warningIcon={customWarningIcon}
+      tickIcon={customTickIcon}
       chevronIcon={customChevronIcon}
       loadingRenderer={customLoadingRenderer}
     />
