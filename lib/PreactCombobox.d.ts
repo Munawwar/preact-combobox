@@ -39,6 +39,14 @@ export type Option = {
      * - Optional icon element or URL to display before the label
      */
     icon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * - Whether the option is disabled and cannot be selected
+     */
+    disabled?: boolean | undefined;
+    /**
+     * - Whether to show a divider line below this option (only when search is empty)
+     */
+    divider?: boolean | undefined;
 };
 export type OptionMatch = {
     /**
@@ -53,6 +61,14 @@ export type OptionMatch = {
      * - Optional icon element or URL to display before the label
      */
     icon?: string | import("preact").VNode<any> | undefined;
+    /**
+     * - Whether the option is disabled and cannot be selected
+     */
+    disabled?: boolean | undefined;
+    /**
+     * - Whether to show a divider line below this option (only when search is empty)
+     */
+    divider?: boolean | undefined;
     /**
      * - The match score
      */

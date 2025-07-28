@@ -12,19 +12,9 @@ let allowedOptions = [
     icon: "🇺🇸",
   },
   {
-    label: "France",
-    value: "france",
-    icon: "🇫🇷",
-  },
-  {
-    label: "Japan",
-    value: "japan",
-    icon: "🇯🇵",
-  },
-  {
-    label: "Brazil",
-    value: "brazil",
-    icon: "🇧🇷",
+    label: "Argentina",
+    value: "argentina",
+    icon: "🇦🇷",
   },
   {
     label: "Australia",
@@ -32,24 +22,9 @@ let allowedOptions = [
     icon: "🇦🇺",
   },
   {
-    label: "China",
-    value: "china",
-    icon: "🇨🇳",
-  },
-  {
-    label: "Russia",
-    value: "russia",
-    icon: "🇷🇺",
-  },
-  {
-    label: "South Korea",
-    value: "korea",
-    icon: "🇰🇷",
-  },
-  {
-    label: "Indonesia",
-    value: "indonesia",
-    icon: "🇮🇩",
+    label: "Brazil",
+    value: "brazil",
+    icon: "🇧🇷",
   },
   {
     label: "Canada",
@@ -57,14 +32,19 @@ let allowedOptions = [
     icon: "🇨🇦",
   },
   {
-    label: "Pakistan",
-    value: "pakistan",
-    icon: "🇵🇰",
+    label: "China",
+    value: "china",
+    icon: "🇨🇳",
   },
   {
-    label: "United Kingdom",
-    value: "uk",
-    icon: "🇬🇧",
+    label: "Fiji",
+    value: "fiji",
+    icon: "🇫🇯",
+  },
+  {
+    label: "France",
+    value: "france",
+    icon: "🇫🇷",
   },
   {
     label: "Germany",
@@ -72,14 +52,19 @@ let allowedOptions = [
     icon: "🇩🇪",
   },
   {
+    label: "Indonesia",
+    value: "indonesia",
+    icon: "🇮🇩",
+  },
+  {
     label: "Italy",
     value: "italy",
     icon: "🇮🇹",
   },
   {
-    label: "Spain",
-    value: "spain",
-    icon: "🇪🇸",
+    label: "Japan",
+    value: "japan",
+    icon: "🇯🇵",
   },
   {
     label: "Mexico",
@@ -87,34 +72,14 @@ let allowedOptions = [
     icon: "🇲🇽",
   },
   {
-    label: "South Africa",
-    value: "south-africa",
-    icon: "🇿🇦",
-  },
-  {
-    label: "Turkey",
-    value: "turkey",
-    icon: "🇹🇷",
-  },
-  {
-    label: "Argentina",
-    value: "argentina",
-    icon: "🇦🇷",
-  },
-  {
-    label: "Sweden",
-    value: "sweden",
-    icon: "🇸🇪",
-  },
-  {
     label: "Netherlands",
     value: "netherlands",
     icon: "🇳🇱",
   },
   {
-    label: "Switzerland",
-    value: "switzerland",
-    icon: "🇨🇭",
+    label: "Pakistan",
+    value: "pakistan",
+    icon: "🇵🇰",
   },
   {
     label: "Poland",
@@ -122,11 +87,66 @@ let allowedOptions = [
     icon: "🇵🇱",
   },
   {
+    label: "Russia",
+    value: "russia",
+    icon: "🇷🇺",
+  },
+  {
     label: "Saudi Arabia",
     value: "saudi-arabia",
     icon: "🇸🇦",
   },
+  {
+    label: "South Africa",
+    value: "south-africa",
+    icon: "🇿🇦",
+  },
+  {
+    label: "South Korea",
+    value: "korea",
+    icon: "🇰🇷",
+  },
+  {
+    label: "Spain",
+    value: "spain",
+    icon: "🇪🇸",
+  },
+  {
+    label: "Sweden",
+    value: "sweden",
+    icon: "🇸🇪",
+  },
+  {
+    label: "Switzerland",
+    value: "switzerland",
+    icon: "🇨🇭",
+  },
+  {
+    label: "Turkey",
+    value: "turkey",
+    icon: "🇹🇷",
+  },
+  {
+    label: "United Kingdom",
+    value: "uk",
+    icon: "🇬🇧",
+  },
 ];
+
+const example1Options = allowedOptions.map((option) => {
+  if (option.value === "usa") {
+    return {
+      ...option,
+      divider: true,
+    };
+  } else if (option.value === "fiji") {
+    return {
+      ...option,
+      disabled: true,
+    };
+  }
+  return option;
+});
 
 // Arabic options for RTL example
 const arabicOptions = [
@@ -269,9 +289,10 @@ function App() {
   return html`
     <form>
         <label for="example-1">Multi-select, Free text allowed, Form Submit Compatible</label>
+        <p>With dividers, disabled options, and mobile tray</p>
         <${PreactCombobox}
           id="example-1"
-          allowedOptions=${allowedOptions}
+          allowedOptions=${example1Options}
           allowFreeText=${true}
           value=${valuesBasicExample}
           onChange=${setValuesBasicExample}
@@ -305,6 +326,7 @@ function App() {
         <br/>
 
         <label for="example-4">Single-select, No free text allowed</label>
+        <p>Mobile tray is disabled for this example but still provides reasonable UX on mobile devices</p>
         <${PreactCombobox}
           id="example-4"
           multiple=${false}
@@ -315,6 +337,7 @@ function App() {
           name="example-4"
           required=${true}
           theme=${appTheme}
+          tray=${false}
         />
         <br/>
         
@@ -370,7 +393,7 @@ function App() {
         <${PreactCombobox}
           id="example-8"
           multiple=${false}
-          allowedOptions=${allowedOptions}
+          allowedOptions=${example1Options}
           value=${valueServerSideExample}
           onChange=${setValueServerSideExample}
           name="server-side-example"

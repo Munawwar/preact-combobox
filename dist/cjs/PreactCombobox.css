@@ -25,6 +25,9 @@
   --preact-combobox-light-shadow: rgba(0, 0, 0, 0.1);
   --preact-combobox-light-hover-clear-bg: rgba(0, 0, 0, 0.1);
   --preact-combobox-light-warning-icon-color: #f44336;
+  --preact-combobox-light-option-disabled-text: #999;
+  --preact-combobox-light-option-disabled-bg: #fafafa;
+  --preact-combobox-light-divider-border: #e0e0e0;
   --preact-combobox-dark-bg: #222;
   --preact-combobox-dark-text: #f7f7f7;
   --preact-combobox-dark-border: #555;
@@ -49,6 +52,9 @@
   --preact-combobox-dark-shadow: rgba(0, 0, 0, 0.3);
   --preact-combobox-dark-hover-clear-bg: rgba(255, 255, 255, 0.1);
   --preact-combobox-dark-warning-icon-color: #ffffff;
+  --preact-combobox-dark-option-disabled-text: #777;
+  --preact-combobox-dark-option-disabled-bg: #2a2a2a;
+  --preact-combobox-dark-divider-border: #444;
   --preact-combobox-bg: var(--preact-combobox-light-bg);
   --preact-combobox-text: var(--preact-combobox-light-text);
   --preact-combobox-border: var(--preact-combobox-light-border);
@@ -73,6 +79,9 @@
   --preact-combobox-shadow: var(--preact-combobox-light-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
 }
 @media (prefers-color-scheme: dark) {
   .PreactCombobox--system {
@@ -100,6 +109,9 @@
     --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
     --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
     --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+    --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+    --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+    --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
   }
 }
 .PreactCombobox--dark {
@@ -127,6 +139,9 @@
   --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
 }
 .PreactCombobox--light {
   --preact-combobox-bg: var(--preact-combobox-light-bg);
@@ -153,6 +168,9 @@
   --preact-combobox-shadow: var(--preact-combobox-light-shadow);
   --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
   --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
 }
 .PreactCombobox {
   position: relative;
@@ -332,6 +350,18 @@
 }
 .PreactCombobox-option--active {
   background-color: var(--preact-combobox-option-active-bg);
+}
+.PreactCombobox-option--disabled {
+  color: var(--preact-combobox-option-disabled-text);
+  background-color: var(--preact-combobox-option-disabled-bg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.PreactCombobox-option--disabled:hover {
+  background-color: var(--preact-combobox-option-disabled-bg);
+}
+.PreactCombobox-option--divider {
+  border-bottom: 1px solid var(--preact-combobox-divider-border);
 }
 .PreactCombobox-optionIcon {
   margin-inline-end: 8px;

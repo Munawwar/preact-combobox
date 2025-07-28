@@ -3045,6 +3045,10 @@ var PreactCombobox = ({
      * @param {{ toggleSelected?: boolean }} [options]
      */
     (selectedValue, { toggleSelected = false } = {}) => {
+      const option = allOptionsLookup[selectedValue];
+      if (option?.disabled) {
+        return;
+      }
       if (values) {
         const isExistingOption = values.includes(selectedValue);
         let newValues;
@@ -3079,7 +3083,14 @@ var PreactCombobox = ({
         setInputValue("");
       }
     },
-    [onChange, singleSelectValue, values, updateSelectionAnnouncement, closeDropdown]
+    [
+      onChange,
+      singleSelectValue,
+      values,
+      updateSelectionAnnouncement,
+      closeDropdown,
+      allOptionsLookup
+    ]
   );
   const focusInput = q2(
     (forceOpenKeyboard = false) => {
@@ -3298,12 +3309,20 @@ var PreactCombobox = ({
         if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex < 0 || currentIndex === filteredOptions.length - 1)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[nextIndex]
-          );
-          activateDescendant(option.value);
+          let nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = (
+              /** @type {OptionMatch} */
+              filteredOptions[nextIndex]
+            );
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            nextIndex = nextIndex === filteredOptions.length - 1 ? 0 : nextIndex + 1;
+            attempts++;
+          }
         }
       } else if (e3.key === "ArrowUp") {
         e3.preventDefault();
@@ -3314,34 +3333,40 @@ var PreactCombobox = ({
         if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex === 0 && currentActiveDescendant || !filteredOptions.length)) {
           activateDescendant(inputTrimmed);
         } else if (filteredOptions.length) {
-          const prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[prevIndex]
-          );
-          activateDescendant(option.value);
+          let prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
+          let attempts = 0;
+          while (attempts < filteredOptions.length) {
+            const option = (
+              /** @type {OptionMatch} */
+              filteredOptions[prevIndex]
+            );
+            if (!option.disabled) {
+              activateDescendant(option.value);
+              break;
+            }
+            prevIndex = (prevIndex - 1 + filteredOptions.length) % filteredOptions.length;
+            attempts++;
+          }
         }
       } else if (e3.key === "Escape") {
         closeDropdown(true);
       } else if (e3.key === "Home" && e3.ctrlKey && getIsDropdownOpen()) {
         e3.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[0]
-          );
-          activateDescendant(option.value);
+          const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
+          if (firstNonDisabledOption) {
+            activateDescendant(firstNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
       } else if (e3.key === "End" && e3.ctrlKey && getIsDropdownOpen()) {
         e3.preventDefault();
         if (filteredOptions.length > 0) {
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[filteredOptions.length - 1]
-          );
-          activateDescendant(option.value);
+          const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
+          if (lastNonDisabledOption) {
+            activateDescendant(lastNonDisabledOption.value);
+          }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
@@ -3435,8 +3460,8 @@ var PreactCombobox = ({
     }
   }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
   const selectChildren = T2(
-    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ u3("option", { value: val, children: allOptionsLookup[val]?.label || val }, val)).concat(
-      typeof allowedOptions !== "function" ? allowedOptions.filter((o3) => !arrayValuesLookup.has(o3.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o3) => /* @__PURE__ */ u3("option", { value: o3.value, children: o3.label }, o3.value)) : []
+    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ u3("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o3) => !arrayValuesLookup.has(o3.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o3) => /* @__PURE__ */ u3("option", { value: o3.value, disabled: o3.disabled, children: o3.label }, o3.value)) : []
     ) : null,
     [
       arrayValues,
@@ -3524,11 +3549,15 @@ var PreactCombobox = ({
             const isActive = activeDescendant.current === option.value;
             const isSelected = arrayValues.includes(option.value);
             const isInvalid = invalidValues.includes(option.value);
+            const isDisabled = option.disabled;
+            const hasDivider = option.divider && !inputTrimmed;
             const optionClasses = [
               "PreactCombobox-option",
               isActive ? "PreactCombobox-option--active" : "",
               isSelected ? "PreactCombobox-option--selected" : "",
-              isInvalid ? "PreactCombobox-option--invalid" : ""
+              isInvalid ? "PreactCombobox-option--invalid" : "",
+              isDisabled ? "PreactCombobox-option--disabled" : "",
+              hasDivider ? "PreactCombobox-option--divider" : ""
             ].filter(Boolean).join(" ");
             return /* @__PURE__ */ u3(
               "li",
@@ -3538,7 +3567,8 @@ var PreactCombobox = ({
                 role: "option",
                 tabIndex: -1,
                 "aria-selected": isSelected,
-                onMouseEnter: () => activateDescendant(option.value, false),
+                "aria-disabled": isDisabled,
+                onMouseEnter: () => !isDisabled && activateDescendant(option.value, false),
                 onMouseDown: (e3) => {
                   e3.preventDefault();
                   e3.stopPropagation();
