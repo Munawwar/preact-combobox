@@ -132,7 +132,11 @@ You can customize the component's appearance by overriding CSS variables. The co
 | `rootElementProps` | `Object` | `{}` | Props for root element |
 | `inputProps` | `Object` | `{}` | Props for input element |
 | `selectElementProps` | `Object` | `{}` | Props for hidden select element |
+| `tray` | `boolean \| "auto"` | `"auto"` | Enable mobile tray mode - true/false or 'auto' for media query detection |
+| `trayBreakpoint` | `string` | `"768px"` | CSS breakpoint for auto tray mode (e.g., '768px', '50rem') |
+| `trayLabel` | `string` | `undefined` | Label text for the tray header (auto-detects from associated label if not provided) |
 | `warningIcon` | `VNode` | (default icon) | Custom warning icon |
+| `tickIcon` | `VNode` | (default icon) | Custom tick icon for selected options |
 | `chevronIcon` | `VNode` | (default icon) | Custom dropdown icon |
 | `loadingRenderer` | `(text: string) => VNode\|string` | (default text) | Custom loading indicator |
 
@@ -361,7 +365,9 @@ function CustomRenderingExample() {
 {
   label: "Display Text", // Required: text shown in dropdown
   value: "option-value", // Required: unique identifier
-  icon: "🔍" // Optional: icon (string or VNode)
+  icon: "🔍", // Optional: icon (string or VNode)
+  disabled: true, // Optional: whether option is disabled and cannot be selected
+  divider: true // Optional: show divider line below option (only when search is empty)
 }
 ```
 
