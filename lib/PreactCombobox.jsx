@@ -9,7 +9,8 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { useDeepMemo, useLive } from "./hooks.js";
+import { useDeepMemo, useLive, subscribeToVirtualKeyboard } from "./hooks.js";
+import TraySearchList from "./TraySearchList.jsx";
 import "./PreactCombobox.css";
 
 // --- types ---
@@ -284,38 +285,6 @@ const tooltipPopperModifiers = [
   },
 ];
 
-const isTouchDevice =
-  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-// Since page hasn't potentially fully loaded yet we get only an approximate height
-let visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-let wasVisualViewportInitialHeightAnApproximate = true;
-
-/**
- * Subscribe to virtual keyboard visibility changes (touch devices only)
- * @param {Object} params - Parameters for subscribing to virtual keyboard
- * @param {function(boolean): void} [params.visibleCallback] - Called with boolean when keyboard visibility changes
- * @param {function(number, boolean): void} [params.heightCallback] - Called with keyboard height when keyboard height changes
- * @returns {function | null} - Unsubscribe function
- */
-export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
-  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
-
-  let isVisible = false;
-  const handleViewportResize = () => {
-    if (!window.visualViewport) return;
-    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
-    const isVisibleNow = heightDiff > 150;
-    if (isVisible !== isVisibleNow) {
-      isVisible = isVisibleNow;
-      visibleCallback?.(isVisible);
-    }
-    heightCallback?.(heightDiff, isVisible);
-  };
-  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
-  return () => {
-    window.visualViewport?.removeEventListener("resize", handleViewportResize);
-  };
-}
 
 /** @type {Record<string, LanguageCache>} */
 const languageCache = {};
@@ -848,13 +817,9 @@ const PreactCombobox = ({
 
   // Tray-related state
   const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
-  const [trayInputValue, setTrayInputValue] = useState("");
-  const trayInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
-  const trayModalRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const trayClosedExplicitlyRef = useRef(false);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
-  const originalOverflowRef = useRef("");
-  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState(0);
+  const [trayActiveInputValue, setTrayActiveInputValue] = useState("");
 
   // Media query detection for auto tray mode
   useEffect(() => {
@@ -871,7 +836,7 @@ const PreactCombobox = ({
   const shouldUseTray = tray === true || (tray === "auto" && isMobileScreen);
 
   // Use appropriate input value based on mode
-  const activeInputValue = getIsTrayOpen() ? trayInputValue : inputValue;
+  const activeInputValue = getIsTrayOpen() ? trayActiveInputValue : inputValue;
   const inputTrimmed = activeInputValue.trim();
 
   /**
@@ -1402,64 +1367,15 @@ const PreactCombobox = ({
 
   const openTray = useCallback(() => {
     if (!shouldUseTray) return;
-    // Get the scrolling element (body or html)
-    const scrollingElement = /** @type {HTMLElement} */ (
-      document.scrollingElement || document.documentElement
-    );
-
-    // Save original overflow and apply hidden
-    originalOverflowRef.current = scrollingElement.style.overflow;
-    scrollingElement.style.overflow = "hidden";
-
     setIsTrayOpen(true);
     setIsDropdownOpen(false);
     trayClosedExplicitlyRef.current = false;
-
-    // Subscribe to virtual keyboard for tray
-    if (!virtualKeyboardHeightAdjustSubscription.current) {
-      if (wasVisualViewportInitialHeightAnApproximate && trayModalRef.current) {
-        trayModalRef.current.style.removeProperty("display");
-        const height = trayModalRef.current.offsetHeight;
-        if (height > 0) {
-          visualViewportInitialHeight = height;
-          wasVisualViewportInitialHeightAnApproximate = false;
-        }
-      }
-      virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
-        heightCallback(keyboardHeight, isVisible) {
-          setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
-          virtualKeyboardExplicitlyClosedRef.current = !isVisible;
-        },
-      });
-    }
   }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
 
-  // focus the input when the tray is opened first time
-  useEffect(() => {
-    if (shouldUseTray && getIsTrayOpen()) {
-      focusTrayInput(true);
-    }
-  }, [shouldUseTray, getIsTrayOpen, focusTrayInput]);
 
   const closeTray = useCallback(() => {
     setIsTrayOpen(false);
-    setTrayInputValue("");
-    setVirtualKeyboardHeight(0);
-    virtualKeyboardExplicitlyClosedRef.current = null;
-    virtualKeyboardHeightAdjustSubscription.current?.();
-    virtualKeyboardHeightAdjustSubscription.current = null;
-    if (trayReadonlyResetTimeoutRef.current) {
-      clearTimeout(trayReadonlyResetTimeoutRef.current);
-      trayReadonlyResetTimeoutRef.current = null;
-    }
-    trayInputRef.current?.removeAttribute("readonly");
-
-    // Restore original overflow
-    const scrollingElement = /** @type {HTMLElement} */ (
-      document.scrollingElement || document.documentElement
-    );
-    scrollingElement.style.overflow = originalOverflowRef.current;
-
+    setTrayActiveInputValue("");
     trayClosedExplicitlyRef.current = true;
     focusInput(true);
   }, [setIsTrayOpen, focusInput]);
@@ -1486,10 +1402,10 @@ const PreactCombobox = ({
   const handleTrayInputChange = useCallback(
     /**
      * Handle tray input change
-     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     * @param {string} value - Input value
      */
-    (e) => {
-      setTrayInputValue(e.currentTarget.value);
+    (value) => {
+      setTrayActiveInputValue(value);
     },
     [],
   );
@@ -2230,71 +2146,34 @@ const PreactCombobox = ({
       {list && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
-            // I couldn't use native <dialog> element because trying to focus input right
-            // after dialog.close() doesn't seem to work on Chrome (Android).
-            <div
-              ref={trayModalRef}
-              className={`PreactCombobox-modal ${`PreactCombobox--${theme}`}`}
-              style={{ display: getIsTrayOpen() ? null : "none" }}
-              onClick={(e) => {
-                // Close modal when clicking backdrop
-                if (e.target === trayModalRef.current) {
-                  closeTray();
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  closeTray();
-                }
-              }}
-              // biome-ignore lint/a11y/useSemanticElements: Custom modal implementation instead of dialog element
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={getTrayLabel() ? `${id}-tray-label` : undefined}
-              tabIndex={-1}
-            >
-              <div className={`PreactCombobox-tray ${`PreactCombobox--${theme}`}`}>
-                <div className="PreactCombobox-trayHeader">
-                  {getTrayLabel() && (
-                    <label
-                      id={`${id}-tray-label`}
-                      className="PreactCombobox-trayLabel"
-                      htmlFor={`${id}-tray-input`}
-                    >
-                      {getTrayLabel()}
-                    </label>
-                  )}
-                  <input
-                    id={`${id}-tray-input`}
-                    ref={trayInputRef}
-                    type="text"
-                    value={trayInputValue}
-                    placeholder={mergedTranslations.searchPlaceholder}
-                    onChange={handleTrayInputChange}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        closeTray();
-                      }
-                    }}
-                    className={`PreactCombobox-trayInput ${!getTrayLabel() ? "PreactCombobox-trayInput--noLabel" : ""}`}
-                    role="combobox"
-                    aria-expanded="true"
-                    aria-haspopup="listbox"
-                    aria-controls={`${id}-options-listbox`}
-                    aria-label={getTrayLabel() || mergedTranslations.searchPlaceholder}
-                    autoComplete="off"
-                  />
-                </div>
-                {list}
-                {virtualKeyboardHeight > 0 && (
-                  <div
-                    className="PreactCombobox-virtualKeyboardSpacer"
-                    style={{ height: `${virtualKeyboardHeight}px` }}
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-            </div>
+            <TraySearchList
+              id={id}
+              isOpen={getIsTrayOpen()}
+              onClose={closeTray}
+              trayLabel={getTrayLabel()}
+              theme={theme}
+              translations={mergedTranslations}
+              multiple={multiple}
+              isLoading={isLoading}
+              filteredOptions={filteredOptions}
+              addNewOptionVisible={addNewOptionVisible}
+              inputTrimmed={inputTrimmed}
+              arrayValues={arrayValues}
+              invalidValues={invalidValues}
+              activeDescendant={activeDescendant.current}
+              onActivateDescendant={activateDescendant}
+              onOptionSelect={handleOptionSelect}
+              onAddNewOption={handleAddNewOption}
+              optionRenderer={optionRenderer}
+              warningIcon={warningIcon}
+              tickIcon={tickIcon}
+              optionIconRenderer={optionIconRenderer}
+              showValue={showValue}
+              language={language}
+              loadingRenderer={loadingRenderer}
+              onInputChange={handleTrayInputChange}
+              dropdownPopperRef={dropdownPopperRef}
+            />
           ) : (
             list
           )}
