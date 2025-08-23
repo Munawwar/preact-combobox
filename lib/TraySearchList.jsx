@@ -17,26 +17,8 @@ import { subscribeToVirtualKeyboard } from "./hooks.js";
  * @property {string} trayLabel - Label for the tray header
  * @property {string} theme - Theme ('light' | 'dark' | 'system')
  * @property {Translations} translations - Translation strings
- * @property {boolean} multiple - Whether multi-select is enabled
- * @property {boolean} isLoading - Whether options are loading
- * @property {OptionMatch[]} filteredOptions - Available options to display
- * @property {boolean} addNewOptionVisible - Whether "add new option" is visible
- * @property {string} inputTrimmed - Current trimmed input value
- * @property {string[]} arrayValues - Currently selected values
- * @property {string[]} invalidValues - Invalid selected values
- * @property {string} activeDescendant - Currently active descendant ID
- * @property {(optionValue: string, scroll?: boolean) => void} onActivateDescendant - Activate an option
- * @property {(selectedValue: string, options?: {toggleSelected?: boolean}) => void} onOptionSelect - Handle option selection
- * @property {(newValue: string) => void} onAddNewOption - Handle adding new option
- * @property {OptionTransformFunction} optionRenderer - Function to render options
- * @property {VNode} warningIcon - Warning icon element
- * @property {VNode} tickIcon - Tick icon element
- * @property {(option: Option, isInput?: boolean) => VNode|null} optionIconRenderer - Option icon renderer
- * @property {boolean} showValue - Whether to show option values
- * @property {string} language - Language code
- * @property {(text: string) => VNode|string} loadingRenderer - Loading renderer
  * @property {(value: string) => void} onInputChange - Handle input change
- * @property {HTMLUListElement | null} dropdownPopperRef - Ref to the dropdown list element
+ * @property {import("preact").ComponentChildren} children - The SearchableList component
  */
 
 /**
@@ -50,26 +32,8 @@ const TraySearchList = ({
   trayLabel,
   theme,
   translations,
-  multiple,
-  isLoading,
-  filteredOptions,
-  addNewOptionVisible,
-  inputTrimmed,
-  arrayValues,
-  invalidValues,
-  activeDescendant,
-  onActivateDescendant,
-  onOptionSelect,
-  onAddNewOption,
-  optionRenderer,
-  warningIcon,
-  tickIcon,
-  optionIconRenderer,
-  showValue,
-  language,
-  loadingRenderer,
   onInputChange,
-  dropdownPopperRef,
+  children,
 }) => {
   // Tray-specific state
   const [trayInputValue, setTrayInputValue] = useState("");
@@ -144,141 +108,7 @@ const TraySearchList = ({
     };
   }, []);
 
-  // Helper function to get option ID
-  const toHTMLId = (text) => {
-    return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
-  };
-
-  const optionsList = (
-    // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
-    <ul
-      className={[
-        "PreactCombobox-options",
-        `PreactCombobox--${theme}`,
-        "PreactCombobox-options--tray",
-      ]
-        .filter(Boolean)
-        .join(" ")}
-      // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
-      role="listbox"
-      id={`${id}-options-listbox`}
-      aria-multiselectable={multiple ? "true" : undefined}
-      hidden={!isOpen}
-      ref={dropdownPopperRef}
-    >
-      {isLoading ? (
-        <li className="PreactCombobox-option" aria-disabled>
-          {loadingRenderer(translations.loadingOptions)}
-        </li>
-      ) : (
-        <>
-          {addNewOptionVisible && (
-            <li
-              key={inputTrimmed}
-              id={`${id}-option-${toHTMLId(inputTrimmed)}`}
-              className="PreactCombobox-option"
-              // biome-ignore lint/a11y/useSemanticElements: parent is <ul> so want to keep equivalent semantics
-              role="option"
-              tabIndex={-1}
-              aria-selected={false}
-              onMouseEnter={() => onActivateDescendant(inputTrimmed, false)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onAddNewOption(inputTrimmed);
-                if (!multiple) {
-                  handleClose();
-                } else {
-                  trayInputRef.current?.focus();
-                }
-              }}
-            >
-              {translations.addOption.replace("{value}", inputTrimmed)}
-            </li>
-          )}
-          {filteredOptions.map((option) => {
-            // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
-            // aria-activedescendant is used to tell screen readers the active option.
-            const isActive = activeDescendant === option.value;
-            const isSelected = arrayValues.includes(option.value);
-            const isInvalid = invalidValues.includes(option.value);
-            const isDisabled = option.disabled;
-            const hasDivider = option.divider && !inputTrimmed; // Only show divider when search is empty
-            const optionClasses = [
-              "PreactCombobox-option",
-              isActive ? "PreactCombobox-option--active" : "",
-              isSelected ? "PreactCombobox-option--selected" : "",
-              isInvalid ? "PreactCombobox-option--invalid" : "",
-              isDisabled ? "PreactCombobox-option--disabled" : "",
-              hasDivider ? "PreactCombobox-option--divider" : "",
-            ]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <li
-                key={option.value}
-                id={`${id}-option-${toHTMLId(option.value)}`}
-                className={optionClasses}
-                // biome-ignore lint/a11y/useSemanticElements: <explanation>
-                role="option"
-                tabIndex={-1}
-                aria-selected={isSelected}
-                aria-disabled={isDisabled}
-                onMouseEnter={() => !isDisabled && onActivateDescendant(option.value, false)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onOptionSelect(option.value, { toggleSelected: true });
-                  if (!multiple) {
-                    handleClose();
-                  } else {
-                    trayInputRef.current?.focus();
-                  }
-                }}
-              >
-                {optionRenderer({
-                  option,
-                  language,
-                  isActive,
-                  isSelected,
-                  isInvalid,
-                  showValue,
-                  warningIcon,
-                  tickIcon,
-                  optionIconRenderer,
-                })}
-                {isSelected ? (
-                  <span
-                    className="PreactCombobox-srOnly"
-                    aria-atomic="true"
-                    data-reader="selected"
-                    aria-hidden={!isActive}
-                  >
-                    {translations.selectedOption}
-                  </span>
-                ) : null}
-                {isInvalid ? (
-                  <span
-                    className="PreactCombobox-srOnly"
-                    aria-atomic="true"
-                    data-reader="invalid"
-                    aria-hidden={!isActive}
-                  >
-                    {translations.invalidOption}
-                  </span>
-                ) : null}
-              </li>
-            );
-          })}
-          {filteredOptions.length === 0 &&
-            !isLoading &&
-            (!addNewOptionVisible || arrayValues.includes(trayInputValue)) && (
-              <li className="PreactCombobox-option">{translations.noOptionsFound}</li>
-            )}
-        </>
-      )}
-    </ul>
-  );
+  // Children contains the SearchableList component
 
   if (!isOpen) {
     return null;
@@ -340,7 +170,7 @@ const TraySearchList = ({
             autoComplete="off"
           />
         </div>
-        {optionsList}
+        {children}
         {virtualKeyboardHeight > 0 && (
           <div
             className="PreactCombobox-virtualKeyboardSpacer"
