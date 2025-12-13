@@ -16,4 +16,7 @@ export function useLive<T>(initialValue: T): [() => T, (value: T) => void, boole
 /**
  * Subscribe to virtual keyboard visibility changes (touch devices only)
  */
-export function subscribeToVirtualKeyboard(callback: (isVisible: boolean) => void): () => void;
+export function subscribeToVirtualKeyboard(params: {
+  visibleCallback?: (isVisible: boolean) => void;
+  heightCallback?: (height: number, isVisible: boolean) => void;
+}): (() => void) | null;
