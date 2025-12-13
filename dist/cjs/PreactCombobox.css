@@ -1,0 +1,475 @@
+/* lib/PreactCombobox.css */
+:root {
+  --preact-combobox-font-size: 0.875rem;
+  --preact-combobox-light-bg: #fff;
+  --preact-combobox-light-text: #222;
+  --preact-combobox-light-border: #c7c7c7;
+  --preact-combobox-light-field-bg: #fff;
+  --preact-combobox-light-field-disabled-bg: #f0f0f0;
+  --preact-combobox-light-badge-bg: #e5e5e5;
+  --preact-combobox-light-badge-text: #4a4a4a;
+  --preact-combobox-light-placeholder: #222;
+  --preact-combobox-light-options-bg: #fff;
+  --preact-combobox-light-options-border: #ccc;
+  --preact-combobox-light-option-hover-bg: #f0f0f0;
+  --preact-combobox-light-option-active-bg: #e0e0e0;
+  --preact-combobox-light-value-text: #4a4a4a;
+  --preact-combobox-light-tooltip-bg: #000;
+  --preact-combobox-light-tooltip-text: #fff;
+  --preact-combobox-light-clear-button-color: #4a4a4a;
+  --preact-combobox-light-chevron-fill: #666;
+  --preact-combobox-light-checkbox-border: #ccc;
+  --preact-combobox-light-checkbox-selected-bg: #222;
+  --preact-combobox-light-checkbox-selected-border: #222;
+  --preact-combobox-light-checkbox-selected-text: #fff;
+  --preact-combobox-light-shadow: rgba(0, 0, 0, 0.1);
+  --preact-combobox-light-hover-clear-bg: rgba(0, 0, 0, 0.1);
+  --preact-combobox-light-warning-icon-color: #f44336;
+  --preact-combobox-light-option-disabled-text: #999;
+  --preact-combobox-light-option-disabled-bg: #fafafa;
+  --preact-combobox-light-divider-border: #e0e0e0;
+  --preact-combobox-dark-bg: #222;
+  --preact-combobox-dark-text: #f7f7f7;
+  --preact-combobox-dark-border: #555;
+  --preact-combobox-dark-field-bg: #222;
+  --preact-combobox-dark-field-disabled-bg: #282828;
+  --preact-combobox-dark-badge-bg: #555;
+  --preact-combobox-dark-badge-text: #f0f0f0;
+  --preact-combobox-dark-placeholder: #f7f7f7;
+  --preact-combobox-dark-options-bg: #222;
+  --preact-combobox-dark-options-border: #555;
+  --preact-combobox-dark-option-hover-bg: #444;
+  --preact-combobox-dark-option-active-bg: #555;
+  --preact-combobox-dark-value-text: #c9c9c9;
+  --preact-combobox-dark-tooltip-bg: #383838;
+  --preact-combobox-dark-tooltip-text: #ffffff;
+  --preact-combobox-dark-clear-button-color: #aaa;
+  --preact-combobox-dark-chevron-fill: #aaa;
+  --preact-combobox-dark-checkbox-border: #555;
+  --preact-combobox-dark-checkbox-selected-bg: #555;
+  --preact-combobox-dark-checkbox-selected-border: #777;
+  --preact-combobox-dark-checkbox-selected-text: white;
+  --preact-combobox-dark-shadow: rgba(0, 0, 0, 0.3);
+  --preact-combobox-dark-hover-clear-bg: rgba(255, 255, 255, 0.1);
+  --preact-combobox-dark-warning-icon-color: #ffffff;
+  --preact-combobox-dark-option-disabled-text: #777;
+  --preact-combobox-dark-option-disabled-bg: #2a2a2a;
+  --preact-combobox-dark-divider-border: #444;
+  --preact-combobox-bg: var(--preact-combobox-light-bg);
+  --preact-combobox-text: var(--preact-combobox-light-text);
+  --preact-combobox-border: var(--preact-combobox-light-border);
+  --preact-combobox-field-bg: var(--preact-combobox-light-field-bg);
+  --preact-combobox-field-disabled-bg: var(--preact-combobox-light-field-disabled-bg);
+  --preact-combobox-badge-bg: var(--preact-combobox-light-badge-bg);
+  --preact-combobox-badge-text: var(--preact-combobox-light-badge-text);
+  --preact-combobox-placeholder: var(--preact-combobox-light-placeholder);
+  --preact-combobox-options-bg: var(--preact-combobox-light-options-bg);
+  --preact-combobox-options-border: var(--preact-combobox-light-options-border);
+  --preact-combobox-option-hover-bg: var(--preact-combobox-light-option-hover-bg);
+  --preact-combobox-option-active-bg: var(--preact-combobox-light-option-active-bg);
+  --preact-combobox-value-text: var(--preact-combobox-light-value-text);
+  --preact-combobox-tooltip-bg: var(--preact-combobox-light-tooltip-bg);
+  --preact-combobox-tooltip-text: var(--preact-combobox-light-tooltip-text);
+  --preact-combobox-clear-button-color: var(--preact-combobox-light-clear-button-color);
+  --preact-combobox-chevron-fill: var(--preact-combobox-light-chevron-fill);
+  --preact-combobox-checkbox-border: var(--preact-combobox-light-checkbox-border);
+  --preact-combobox-checkbox-selected-bg: var(--preact-combobox-light-checkbox-selected-bg);
+  --preact-combobox-checkbox-selected-border: var(--preact-combobox-light-checkbox-selected-border);
+  --preact-combobox-checkbox-selected-text: var(--preact-combobox-light-checkbox-selected-text);
+  --preact-combobox-shadow: var(--preact-combobox-light-shadow);
+  --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
+  --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
+}
+@media (prefers-color-scheme: dark) {
+  .PreactCombobox--system {
+    --preact-combobox-bg: var(--preact-combobox-dark-bg);
+    --preact-combobox-text: var(--preact-combobox-dark-text);
+    --preact-combobox-border: var(--preact-combobox-dark-border);
+    --preact-combobox-field-bg: var(--preact-combobox-dark-field-bg);
+    --preact-combobox-field-disabled-bg: var(--preact-combobox-dark-field-disabled-bg);
+    --preact-combobox-badge-bg: var(--preact-combobox-dark-badge-bg);
+    --preact-combobox-badge-text: var(--preact-combobox-dark-badge-text);
+    --preact-combobox-placeholder: var(--preact-combobox-dark-placeholder);
+    --preact-combobox-options-bg: var(--preact-combobox-dark-options-bg);
+    --preact-combobox-options-border: var(--preact-combobox-dark-options-border);
+    --preact-combobox-option-hover-bg: var(--preact-combobox-dark-option-hover-bg);
+    --preact-combobox-option-active-bg: var(--preact-combobox-dark-option-active-bg);
+    --preact-combobox-value-text: var(--preact-combobox-dark-value-text);
+    --preact-combobox-tooltip-bg: var(--preact-combobox-dark-tooltip-bg);
+    --preact-combobox-tooltip-text: var(--preact-combobox-dark-tooltip-text);
+    --preact-combobox-clear-button-color: var(--preact-combobox-dark-clear-button-color);
+    --preact-combobox-chevron-fill: var(--preact-combobox-dark-chevron-fill);
+    --preact-combobox-checkbox-border: var(--preact-combobox-dark-checkbox-border);
+    --preact-combobox-checkbox-selected-bg: var(--preact-combobox-dark-checkbox-selected-bg);
+    --preact-combobox-checkbox-selected-border: var(--preact-combobox-dark-checkbox-selected-border);
+    --preact-combobox-checkbox-selected-text: var(--preact-combobox-dark-checkbox-selected-text);
+    --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
+    --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
+    --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+    --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+    --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+    --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
+  }
+}
+.PreactCombobox--dark {
+  --preact-combobox-bg: var(--preact-combobox-dark-bg);
+  --preact-combobox-text: var(--preact-combobox-dark-text);
+  --preact-combobox-border: var(--preact-combobox-dark-border);
+  --preact-combobox-field-bg: var(--preact-combobox-dark-field-bg);
+  --preact-combobox-field-disabled-bg: var(--preact-combobox-dark-field-disabled-bg);
+  --preact-combobox-badge-bg: var(--preact-combobox-dark-badge-bg);
+  --preact-combobox-badge-text: var(--preact-combobox-dark-badge-text);
+  --preact-combobox-placeholder: var(--preact-combobox-dark-placeholder);
+  --preact-combobox-options-bg: var(--preact-combobox-dark-options-bg);
+  --preact-combobox-options-border: var(--preact-combobox-dark-options-border);
+  --preact-combobox-option-hover-bg: var(--preact-combobox-dark-option-hover-bg);
+  --preact-combobox-option-active-bg: var(--preact-combobox-dark-option-active-bg);
+  --preact-combobox-value-text: var(--preact-combobox-dark-value-text);
+  --preact-combobox-tooltip-bg: var(--preact-combobox-dark-tooltip-bg);
+  --preact-combobox-tooltip-text: var(--preact-combobox-dark-tooltip-text);
+  --preact-combobox-clear-button-color: var(--preact-combobox-dark-clear-button-color);
+  --preact-combobox-chevron-fill: var(--preact-combobox-dark-chevron-fill);
+  --preact-combobox-checkbox-border: var(--preact-combobox-dark-checkbox-border);
+  --preact-combobox-checkbox-selected-bg: var(--preact-combobox-dark-checkbox-selected-bg);
+  --preact-combobox-checkbox-selected-border: var(--preact-combobox-dark-checkbox-selected-border);
+  --preact-combobox-checkbox-selected-text: var(--preact-combobox-dark-checkbox-selected-text);
+  --preact-combobox-shadow: var(--preact-combobox-dark-shadow);
+  --preact-combobox-hover-clear-bg: var(--preact-combobox-dark-hover-clear-bg);
+  --preact-combobox-warning-icon-color: var(--preact-combobox-dark-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-dark-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-dark-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-dark-divider-border);
+}
+.PreactCombobox--light {
+  --preact-combobox-bg: var(--preact-combobox-light-bg);
+  --preact-combobox-text: var(--preact-combobox-light-text);
+  --preact-combobox-border: var(--preact-combobox-light-border);
+  --preact-combobox-field-bg: var(--preact-combobox-light-field-bg);
+  --preact-combobox-field-disabled-bg: var(--preact-combobox-light-field-disabled-bg);
+  --preact-combobox-badge-bg: var(--preact-combobox-light-badge-bg);
+  --preact-combobox-badge-text: var(--preact-combobox-light-badge-text);
+  --preact-combobox-placeholder: var(--preact-combobox-light-placeholder);
+  --preact-combobox-options-bg: var(--preact-combobox-light-options-bg);
+  --preact-combobox-options-border: var(--preact-combobox-light-options-border);
+  --preact-combobox-option-hover-bg: var(--preact-combobox-light-option-hover-bg);
+  --preact-combobox-option-active-bg: var(--preact-combobox-light-option-active-bg);
+  --preact-combobox-value-text: var(--preact-combobox-light-value-text);
+  --preact-combobox-tooltip-bg: var(--preact-combobox-light-tooltip-bg);
+  --preact-combobox-tooltip-text: var(--preact-combobox-light-tooltip-text);
+  --preact-combobox-clear-button-color: var(--preact-combobox-light-clear-button-color);
+  --preact-combobox-chevron-fill: var(--preact-combobox-light-chevron-fill);
+  --preact-combobox-checkbox-border: var(--preact-combobox-light-checkbox-border);
+  --preact-combobox-checkbox-selected-bg: var(--preact-combobox-light-checkbox-selected-bg);
+  --preact-combobox-checkbox-selected-border: var(--preact-combobox-light-checkbox-selected-border);
+  --preact-combobox-checkbox-selected-text: var(--preact-combobox-light-checkbox-selected-text);
+  --preact-combobox-shadow: var(--preact-combobox-light-shadow);
+  --preact-combobox-hover-clear-bg: var(--preact-combobox-light-hover-clear-bg);
+  --preact-combobox-warning-icon-color: var(--preact-combobox-light-warning-icon-color);
+  --preact-combobox-option-disabled-text: var(--preact-combobox-light-option-disabled-text);
+  --preact-combobox-option-disabled-bg: var(--preact-combobox-light-option-disabled-bg);
+  --preact-combobox-divider-border: var(--preact-combobox-light-divider-border);
+}
+.PreactCombobox {
+  position: relative;
+  width: 100%;
+  font-family: "Roboto", sans-serif;
+  cursor: pointer;
+  color: var(--preact-combobox-text);
+}
+.PreactCombobox-field {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 2px 8px;
+  border: 1px solid var(--preact-combobox-border);
+  border-radius: 4px;
+  background: var(--preact-combobox-field-bg);
+  position: relative;
+}
+.PreactCombobox-field--disabled {
+  background-color: var(--preact-combobox-field-disabled-bg);
+  cursor: not-allowed;
+}
+.PreactCombobox-badge {
+  background: var(--preact-combobox-badge-bg);
+  border-radius: 12px;
+  padding: 2px 8px;
+  color: var(--preact-combobox-badge-text);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  margin: 0 3px;
+}
+.PreactCombobox-input {
+  font-size: var(--preact-combobox-font-size);
+  flex: 1;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  padding: 4px;
+  background: transparent;
+  text-overflow: ellipsis;
+  color: var(--preact-combobox-text);
+}
+.PreactCombobox-input:not(:focus)::placeholder {
+  color: var(--preact-combobox-placeholder);
+  font-weight: 500;
+}
+.PreactCombobox-input--disabled {
+  cursor: not-allowed;
+}
+.PreactCombobox-valueTooltip {
+  background-color: var(--preact-combobox-tooltip-bg);
+  color: var(--preact-combobox-tooltip-text);
+  padding: 4px 8px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+  z-index: 110;
+}
+.PreactCombobox-srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+.PreactCombobox-warningIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  padding: 0 3px;
+}
+.PreactCombobox-warningIcon {
+  width: 18px;
+  height: 18px;
+  fill: #f44336;
+  fill: var(--preact-combobox-warning-icon-color);
+}
+.PreactCombobox-clearButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--preact-combobox-clear-button-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  padding: 0 8px;
+  margin-inline-start: 3px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  position: relative;
+}
+.PreactCombobox-clearButton:hover {
+  background-color: var(--preact-combobox-hover-clear-bg);
+}
+.PreactCombobox-clearButton:focus {
+  background-color: var(--preact-combobox-hover-clear-bg);
+  color: var(--preact-combobox-text);
+  outline: none;
+}
+.PreactCombobox-clearButton:focus-visible {
+  background-color: var(--preact-combobox-hover-clear-bg);
+  color: var(--preact-combobox-text);
+}
+.PreactCombobox-chevron {
+  width: 18px;
+  height: 18px;
+  fill: var(--preact-combobox-chevron-fill);
+  transition: transform 0.3s;
+  margin-inline-start: 2px;
+}
+.PreactCombobox-tooltipValue {
+  padding: 2px 0;
+}
+.PreactCombobox-tooltipValue:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.PreactCombobox-formSelect:not([hidden]) {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--preact-combobox-font-size);
+  color: var(--preact-combobox-text);
+}
+.PreactCombobox-options {
+  inset-block-start: 2px;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  min-width: 50px;
+  max-height: 200px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--preact-combobox-options-bg);
+  border: 1px solid var(--preact-combobox-options-border);
+  box-sizing: border-box;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px var(--preact-combobox-shadow);
+  z-index: 100;
+  scrollbar-width: thin;
+}
+.PreactCombobox-options[hidden] {
+  display: none;
+}
+.PreactCombobox-option {
+  font-size: var(--preact-combobox-font-size);
+  box-sizing: border-box;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+  color: var(--preact-combobox-text);
+  content-visibility: auto;
+  contain-intrinsic-height: auto 35px;
+}
+.PreactCombobox-option:hover {
+  background-color: var(--preact-combobox-option-hover-bg);
+}
+.PreactCombobox-option--active {
+  background-color: var(--preact-combobox-option-active-bg);
+}
+.PreactCombobox-option--disabled {
+  color: var(--preact-combobox-option-disabled-text);
+  background-color: var(--preact-combobox-option-disabled-bg);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.PreactCombobox-option--disabled:hover {
+  background-color: var(--preact-combobox-option-disabled-bg);
+}
+.PreactCombobox-option--divider {
+  border-bottom: 1px solid var(--preact-combobox-divider-border);
+}
+.PreactCombobox-optionIcon {
+  margin-inline-end: 8px;
+}
+.PreactCombobox-optionLabelFlex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+.PreactCombobox-optionValue {
+  font-size: 0.75rem;
+  color: var(--preact-combobox-value-text);
+  margin-inline-start: 8px;
+}
+.PreactCombobox-optionCheckbox {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  border: 1px solid var(--preact-combobox-checkbox-border);
+  border-radius: 3px;
+  margin-inline-end: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+}
+.PreactCombobox-optionCheckbox--selected {
+  background: var(--preact-combobox-checkbox-selected-bg);
+  border-color: var(--preact-combobox-checkbox-selected-border);
+  color: var(--preact-combobox-checkbox-selected-text);
+}
+.PreactCombobox-tickIcon {
+  display: block;
+  pointer-events: none;
+}
+.PreactCombobox-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+.PreactCombobox-tray {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(100vh - 60px);
+  height: calc(100dvh - 60px);
+  background: var(--preact-combobox-options-bg);
+  box-shadow: 0 -4px 20px var(--preact-combobox-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.PreactCombobox-trayLabel {
+  margin: 15px 12px 8px 12px;
+  font-size: var(--preact-combobox-font-size);
+  font-weight: 600;
+  color: var(--preact-combobox-text);
+  margin-bottom: 8px;
+}
+.PreactCombobox-trayHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.PreactCombobox-trayInput {
+  margin: 0 12px 8px 12px;
+  font-size: var(--preact-combobox-font-size);
+  padding: 8px 0;
+  border: none;
+  border-bottom: 1px solid var(--preact-combobox-border);
+  background: var(--preact-combobox-field-bg);
+  color: var(--preact-combobox-text);
+  outline: none;
+}
+.PreactCombobox-trayInput--noLabel {
+  margin-top: 15px;
+}
+.PreactCombobox-virtualKeyboardSpacer {
+  flex-shrink: 0;
+}
+.PreactCombobox-trayInput:focus {
+  border-color: var(--preact-combobox-text);
+}
+.PreactCombobox-options--tray {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y pinch-zoom;
+}
+@media (max-width: 768px) {
+  .PreactCombobox--trayAuto .PreactCombobox-options:not(.PreactCombobox-options--tray) {
+    display: none !important;
+  }
+}
+/*# sourceMappingURL=PreactCombobox.css.map */

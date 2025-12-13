@@ -10,7 +10,8 @@ import {
   useState,
 } from "preact/hooks";
 import { useDeepMemo, useLive, subscribeToVirtualKeyboard } from "./hooks.js";
-import SearchableList from "./SearchableList.jsx";
+import { toHTMLId, matchSlicesToNodes } from "./utils.jsx";
+import AutocompleteList from "./AutocompleteList.jsx";
 import TraySearchList from "./TraySearchList.jsx";
 import "./PreactCombobox.css";
 
@@ -179,34 +180,6 @@ function unique(arr) {
 }
 
 /**
- * Converts any text into a valid HTML ID attribute value.
- * Returns empty string if text becomes empty after removing invalid characters.
- *
- * @param {string} text - The text to convert into an HTML ID
- * @returns {string} A valid HTML ID or empty string
- */
-export function toHTMLId(text) {
-  // Remove any characters that are not letters, numbers, hyphens, underscores, colons, or periods
-  return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
-}
-
-/**
- * @template {OptionMatch|Option} T
- * @param {T[]} options
- * @param {string[]} values
- * @returns {T[]}
- */
-export function sortValuesToTop(options, values) {
-  const selectedSet = new Set(values);
-  return options.sort((a, b) => {
-    const aSelected = selectedSet.has(a.value);
-    const bSelected = selectedSet.has(b.value);
-    if (aSelected === bSelected) return 0;
-    return aSelected ? -1 : 1;
-  });
-}
-
-/**
  * @param {Object} props - Props for the PopperContent component
  * @param {HTMLElement} [props.parent=document.body] The parent element to render the PopperContent component
  * @param {VNode} props.children The children to render
@@ -285,303 +258,6 @@ const tooltipPopperModifiers = [
     },
   },
 ];
-
-
-/** @type {Record<string, LanguageCache>} */
-const languageCache = {};
-
-/**
- * @param {string} query
- * @param {Option} option
- * @param {string} language
- * @returns {OptionMatch|null}
- */
-function getExactMatchScore(query, option, language) {
-  const { label, value, ...rest } = option;
-  if (value === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
-    };
-  }
-  if (label === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
-    };
-  }
-
-  const { caseMatcher } = /** @type {LanguageCache} */ (languageCache[language]);
-  if (caseMatcher.compare(value, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
-    };
-  }
-  if (caseMatcher.compare(label, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
-    };
-  }
-
-  return null;
-}
-
-/**
- * Calculates the match score between a query text and a list of option labels.
- * It returns scores for each option sorted in descending order.
- *
- * It takes the `query` string, evaluates the following rules in order and assigns the one with highest score:
- * - Score 7: If whole query matches a label on an option (Case insensitive match)
- * - Score 5: Same as previous check but this time case and accent insensitive matching
- * - Score 3: Phrase matching (e.g. "word1 partialWord2*")
- * - Score 0-1: Number of words matched / total number of words in query (e.g. "word1")
- *
- * @param {string} query - The query text to match against options.
- * @param {Option[]} options
- * @param {string} [language='en'] Language to use for word splitting and matching
- * @param {boolean} [filterAndSort=true] Whether to filter and sort the results. If false, returns all options but with attempted matches.
- * @returns {Array<OptionMatch>}
- */
-export function getMatchScore(query, options, language = "en", filterAndSort = true) {
-  // biome-ignore lint/style/noParameterAssign: ignore
-  query = query.trim();
-
-  if (!query) {
-    const matchSlices = /** @type {Array<[number, number]>} */ ([]);
-    return options.map((option) => ({
-      ...option,
-      label: option.label,
-      value: option.value,
-      score: 0,
-      matched: "none",
-      matchSlices,
-    }));
-  }
-
-  if (!languageCache[language]) {
-    languageCache[language] = {
-      baseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "base",
-      }),
-      caseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "accent",
-      }),
-      wordSegmenter: new Intl.Segmenter(language, {
-        granularity: "word",
-      }),
-    };
-  }
-  const { baseMatcher, caseMatcher, wordSegmenter } = languageCache[language];
-
-  const isCommaSeparated = query.includes(",");
-
-  let matches = options.map((option) => {
-    const { label, value, ...rest } = option;
-    if (isCommaSeparated) {
-      const querySegments = query.split(",");
-      const matches = querySegments
-        .map((querySegment) => getExactMatchScore(querySegment.trim(), option, language))
-        .filter((match) => match !== null)
-        .sort((a, b) => b.score - a.score);
-      return /** @type {OptionMatch} */ (
-        matches[0] || {
-          ...rest,
-          label,
-          value,
-          score: 0,
-          matched: "none",
-        }
-      );
-    }
-
-    // Rule 1: Exact match (case sensitive)
-    // Rule 2: Exact match (case insensitive)
-    const exactMatch = getExactMatchScore(query, option, language);
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    // Rule 3: Exact match with accents normalized (case insensitive)
-    if (baseMatcher.compare(label, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
-    }
-    if (baseMatcher.compare(value, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
-
-    // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
-    // This match needs to be case and accent insensitive
-    const querySegments = Array.from(wordSegmenter.segment(query));
-    const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
-    let len = 0;
-    let firstIndex = -1;
-    for (let i = 0; i < labelWordSegments.length; i++) {
-      const labelWordSegment = /** @type {Intl.SegmentData} */ (labelWordSegments[i]);
-      const querySegment = querySegments[len];
-      if (!querySegment) break;
-      if (len === querySegments.length - 1) {
-        // check for partial word match
-        // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
-        const lastQueryWord = querySegment.segment;
-        if (
-          baseMatcher.compare(
-            labelWordSegment.segment.slice(0, lastQueryWord.length),
-            lastQueryWord,
-          ) === 0
-        ) {
-          return {
-            ...rest,
-            label,
-            value,
-            score: 3,
-            /** @type {'label'} */
-            matched: "label",
-            /** @type {Array<[number, number]>} */
-            // @ts-ignore
-            matchSlices: [
-              [
-                firstIndex > -1 ? firstIndex : labelWordSegment.index,
-                labelWordSegment.index + lastQueryWord.length,
-              ],
-            ],
-          };
-        }
-      } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
-        len++;
-        if (len === 1) {
-          firstIndex = labelWordSegment.index;
-        }
-        continue;
-      }
-      len = 0;
-      firstIndex = -1;
-    }
-    // Also check for partial value match (this doesn't need accent check)
-    if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 3,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, query.length]],
-      };
-    }
-
-    // Rule 5: Word matches
-    const queryWords = querySegments.filter((s) => s.isWordLike);
-    const labelWords = labelWordSegments.filter((s) => s.isWordLike);
-    /** @type {Array<[number, number]|undefined>} */
-    const slices = queryWords.map((word) => {
-      const match = labelWords.find(
-        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
-      );
-      if (match) {
-        return [match.index, match.index + match.segment.length];
-      }
-    });
-    // TODO: Do we need a deep equal de-duplication here?
-    const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
-    const wordScoring = matchSlices.length / queryWords.length;
-    return {
-      ...rest,
-      label,
-      value,
-      score: wordScoring,
-      /** @type {'label'|'none'} */
-      matched: wordScoring ? "label" : "none",
-      matchSlices,
-    };
-  });
-
-  if (filterAndSort) {
-    matches = matches.filter((match) => match.score > 0);
-    matches.sort((a, b) => {
-      if (a.score === b.score) {
-        const val = a.label.localeCompare(b.label, undefined, {
-          sensitivity: "base",
-        });
-        return val === 0 ? a.value.localeCompare(b.value, undefined, { sensitivity: "base" }) : val;
-      }
-      return b.score - a.score;
-    });
-  }
-  return matches;
-}
-
-/**
- * @param {OptionMatch['matchSlices']} matchSlices
- * @param {string} text
- * @returns {VNode[]}
- */
-export function matchSlicesToNodes(matchSlices, text) {
-  const nodes = /** @type {VNode[]} */ ([]);
-  let index = 0;
-  matchSlices.map((slice) => {
-    const [start, end] = slice;
-    // console.log(slice);
-    if (index < start) {
-      // console.log(label.slice(index, start));
-      nodes.push(<span key={`${index}-${start}`}>{text.slice(index, start)}</span>);
-    }
-    // console.log(label.slice(start, end));
-    nodes.push(<u key={`${start}-${end}`}>{text.slice(start, end)}</u>);
-    index = end;
-  });
-  if (index < text.length) {
-    // console.log(label.slice(index));
-    nodes.push(<span key={`${index}-${text.length}`}>{text.slice(index)}</span>);
-  }
-  return nodes;
-}
 
 // Default icons
 const defaultWarningIcon = (
@@ -794,14 +470,16 @@ const PreactCombobox = ({
   const id = idProp || autoId;
   const [inputValue, setInputValue] = useState("");
   const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
-  // Note: filtering logic moved to SearchableList component
+  // Note: filtering logic moved to AutocompleteList component
   const [getIsFocused, setIsFocused] = useLive(false);
   // For screen reader announcement
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState("");
   // For loading status announcements
   const [loadingAnnouncement, setLoadingAnnouncement] = useState("");
-  // NOTE: Using ref for performance. Setting few attributes by re-rendering a large list is too expensive.
-  const activeDescendant = useRef("");
+  // Ref for AutocompleteList component to call navigation methods
+  const autocompleteListRef = useRef(/** @type {import("./AutocompleteList.jsx").AutocompleteListRef | null} */ (null));
+  // Track active descendant for aria-activedescendant on input (synced from AutocompleteList)
+  const [activeDescendantValue, setActiveDescendantValue] = useState("");
   const [warningIconHovered, setWarningIconHovered] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
@@ -897,9 +575,9 @@ const PreactCombobox = ({
     setTrayLabel(computeEffectiveTrayLabel());
   }, [setTrayLabel, computeEffectiveTrayLabel]);
 
-  // Note: updateCachedOptions moved to SearchableList component
+  // Note: updateCachedOptions moved to AutocompleteList component
 
-  // Note: allOptions and invalidValues logic moved to SearchableList component
+  // Note: allOptions and invalidValues logic moved to AutocompleteList component
   const allOptionsLookup = useMemo(() => {
     if (Array.isArray(allowedOptions)) {
       return allowedOptions.reduce((acc, o) => {
@@ -934,55 +612,15 @@ const PreactCombobox = ({
   );
 
   /**
-   * Note that aria-activedescendant only works with HTML id attributes.
-   * @param {string} optionValue - The value of the option to activate
-   * @param {boolean} [scroll=true] Scroll to the option if it's not already in view
+   * Callback for when AutocompleteList's active descendant changes
+   * @param {string} value - The new active descendant value
    */
-  const activateDescendant = useCallback(
-    /**
-     * @param {string} optionValue
-     * @param {boolean} [scroll=true]
-     */
-    (optionValue, scroll = true) => {
-      // NOTE: Using direct DOM API for performance
-      // Remove current active element CSS
-      if (activeDescendant.current && dropdownPopperRef.current) {
-        const el = dropdownPopperRef.current.querySelector(".PreactCombobox-option--active");
-        el?.classList.remove("PreactCombobox-option--active");
-        // Remove non-active options from screen reader announcement
-        el?.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "true");
-        el?.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "true");
-      }
-
-      activeDescendant.current = optionValue;
-
-      // Set the places in DOM where aria-activedescendant and aria-selected are set
-      const elementId = optionValue ? `${id}-option-${toHTMLId(optionValue)}` : "";
-      inputRef.current?.setAttribute("aria-activedescendant", elementId);
-      if (elementId && dropdownPopperRef.current) {
-        const activeDescendantElement = dropdownPopperRef.current.querySelector(`#${elementId}`);
-        if (activeDescendantElement) {
-          activeDescendantElement.classList.add("PreactCombobox-option--active");
-          activeDescendantElement
-            .querySelector('span[data-reader="selected"]')
-            ?.setAttribute("aria-hidden", "false");
-          activeDescendantElement
-            .querySelector('span[data-reader="invalid"]')
-            ?.setAttribute("aria-hidden", "false");
-          if (scroll) {
-            const dropdownRect = dropdownPopperRef.current.getBoundingClientRect();
-            const itemRect = activeDescendantElement.getBoundingClientRect();
-
-            if (itemRect.top < dropdownRect.top) {
-              dropdownPopperRef.current.scrollTop += itemRect.top - dropdownRect.top;
-            } else if (itemRect.bottom > dropdownRect.bottom) {
-              dropdownPopperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
-            }
-          }
-        }
-      }
+  const handleActiveDescendantChange = useCallback(
+    /** @param {string} value */
+    (value) => {
+      setActiveDescendantValue(value);
     },
-    [id],
+    [],
   );
 
   const closeDropdown = useCallback(
@@ -1000,9 +638,10 @@ const PreactCombobox = ({
       // Announce current selections when dropdown is closed
       updateSelectionAnnouncement(arrayValues);
 
-      activateDescendant("");
+      // Clear active descendant via ref (will also trigger state update via callback)
+      autocompleteListRef.current?.clearActiveDescendant();
     },
-    [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues],
+    [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues],
   );
 
   // Setup popper when dropdown is opened
@@ -1033,12 +672,12 @@ const PreactCombobox = ({
     }
   }, [getIsDropdownOpen, shouldUseTray]);
 
-  // Note: filtering state moved to SearchableList component
-  // Note: All filtering and fetching logic moved to SearchableList component
+  // Note: filtering state moved to AutocompleteList component
+  // Note: All filtering and fetching logic moved to AutocompleteList component
 
-  // Note: addNewOptionVisible now handled in SearchableList component
+  // Note: addNewOptionVisible now handled in AutocompleteList component
 
-  // Note: activeDescendant management moved to SearchableList component callbacks
+  // Note: activeDescendant state now lives in AutocompleteList, synced via onActiveDescendantChange callback
 
   // Setup warning tooltip popper when hovering over warning icon
   useEffect(() => {
@@ -1310,10 +949,10 @@ const PreactCombobox = ({
      */
     (newValue) => {
       handleOptionSelect(newValue);
-      // Note: SearchableList handles option state management
-      activateDescendant(newValue);
+      // Set active descendant via ref
+      autocompleteListRef.current?.setActiveDescendant(newValue);
     },
-    [handleOptionSelect, activateDescendant],
+    [handleOptionSelect],
   );
 
   /**
@@ -1326,23 +965,32 @@ const PreactCombobox = ({
     (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
-        // Note: Enter key handling moved to SearchableList component
-        if (allowFreeText && inputTrimmed !== "") {
+        // Try to select the active option first
+        const selected = autocompleteListRef.current?.selectActive();
+        // If nothing was selected and free text is allowed, add new option
+        if (!selected && allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
         }
-        // ArrowDown and ArrowUp - open dropdown and let SearchableList handle navigation
-      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        // Note: Option navigation handled by SearchableList component
-        // Escape blurs input
+        // Navigate to next option
+        autocompleteListRef.current?.navigateDown();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        // Navigate to previous option
+        autocompleteListRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
-        // Home and End keys - let SearchableList handle navigation
-      } else if ((e.key === "Home" || e.key === "End") && e.ctrlKey && getIsDropdownOpen()) {
+      } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        // Note: Home/End navigation handled by SearchableList component
+        autocompleteListRef.current?.navigateToFirst();
+      } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
+        e.preventDefault();
+        autocompleteListRef.current?.navigateToLast();
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
@@ -1388,6 +1036,8 @@ const PreactCombobox = ({
       if (!values) return;
 
       // e.preventDefault();
+      // Get options array from lookup
+      const allOptions = Object.values(allOptionsLookup);
       // Case 1 : Exact matches
       const valuesLookup = {
         ...Object.fromEntries(values.map((v) => [v, v])),
@@ -1421,9 +1071,9 @@ const PreactCombobox = ({
       updateSelectionAnnouncement(newValues, "added");
       undoStack.current.push(values);
       redoStack.current = [];
-      // Note: Option re-rendering handled by SearchableList component
+      // Note: Option re-rendering handled by AutocompleteList component
     },
-    [allOptions, onChange, values, updateSelectionAnnouncement],
+    [allOptionsLookup, onChange, values, updateSelectionAnnouncement],
   );
 
   const handleClearValue = useCallback(() => {
@@ -1489,13 +1139,23 @@ const PreactCombobox = ({
     ],
   );
 
-  // Note: Loading announcement logic moved to SearchableList component
+  // Note: Loading announcement logic moved to AutocompleteList component
 
   // Determine if we should render interactive elements
   const isServerSideForm = isServer && formSubmitCompatible;
 
-  const searchableList = !isServer ? (
-    <SearchableList
+  // Callback to set dropdown ref for popper positioning
+  const setDropdownRef = useCallback(
+    /** @param {HTMLUListElement | null} el */
+    (el) => {
+      dropdownPopperRef.current = el;
+    },
+    [],
+  );
+
+  const autocompleteList = !isServer ? (
+    <AutocompleteList
+      ref={autocompleteListRef}
       id={id}
       searchText={activeInputValue}
       allowedOptions={allowedOptions}
@@ -1505,10 +1165,8 @@ const PreactCombobox = ({
       allowFreeText={allowFreeText}
       language={language}
       maxNumberOfPresentedOptions={maxNumberOfPresentedOptions}
-      activeDescendant={activeDescendant.current}
-      onActivateDescendant={activateDescendant}
       onOptionSelect={handleOptionSelect}
-      onAddNewOption={handleAddNewOption}
+      onActiveDescendantChange={handleActiveDescendantChange}
       onClose={shouldUseTray ? closeTray : closeDropdown}
       optionRenderer={optionRenderer}
       warningIcon={warningIcon}
@@ -1520,7 +1178,7 @@ const PreactCombobox = ({
       theme={theme}
       isOpen={shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen()}
       shouldUseTray={shouldUseTray}
-      dropdownPopperRef={dropdownPopperRef}
+      setDropdownRef={setDropdownRef}
     />
   ) : null;
 
@@ -1594,8 +1252,8 @@ const PreactCombobox = ({
               aria-haspopup="listbox"
               aria-controls={`${id}-options-listbox`}
               aria-activedescendant={
-                activeDescendant.current
-                  ? `${id}-option-${toHTMLId(activeDescendant.current)}`
+                activeDescendantValue
+                  ? `${id}-option-${toHTMLId(activeDescendantValue)}`
                   : undefined
               }
               disabled={disabled}
@@ -1650,22 +1308,22 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {searchableList && (
+      {autocompleteList && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
             <TraySearchList
               id={id}
               isOpen={getIsTrayOpen()}
               onClose={closeTray}
-              trayLabel={getTrayLabel()}
+              trayLabel={getTrayLabel() || ""}
               theme={theme}
               translations={mergedTranslations}
               onInputChange={handleTrayInputChange}
             >
-              {searchableList}
+              {autocompleteList}
             </TraySearchList>
           ) : (
-            searchableList
+            autocompleteList
           )}
         </Portal>
       )}

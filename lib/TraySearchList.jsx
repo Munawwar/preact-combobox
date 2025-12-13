@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { subscribeToVirtualKeyboard } from "./hooks.js";
 
 /**
- * @typedef {import("./PreactCombobox.jsx").Option} Option
- * @typedef {import("./PreactCombobox.jsx").OptionMatch} OptionMatch
- * @typedef {import("./PreactCombobox.jsx").Translations} Translations
- * @typedef {import("./PreactCombobox.jsx").OptionTransformFunction} OptionTransformFunction
+ * @typedef {import("./PreactCombobox-old.js").Option} Option
+ * @typedef {import("./PreactCombobox-old.js").OptionMatch} OptionMatch
+ * @typedef {import("./PreactCombobox-old.js").Translations} Translations
+ * @typedef {import("./PreactCombobox-old.js").OptionTransformFunction} OptionTransformFunction
  * @typedef {import("preact").VNode} VNode
  */
 
@@ -14,11 +14,11 @@ import { subscribeToVirtualKeyboard } from "./hooks.js";
  * @property {string} id - Component ID for ARIA attributes
  * @property {boolean} isOpen - Whether the tray is open
  * @property {() => void} onClose - Callback to close the tray
- * @property {string} trayLabel - Label for the tray header
+ * @property {string} [trayLabel] - Label for the tray header
  * @property {string} theme - Theme ('light' | 'dark' | 'system')
  * @property {Translations} translations - Translation strings
  * @property {(value: string) => void} onInputChange - Handle input change
- * @property {import("preact").ComponentChildren} children - The SearchableList component
+ * @property {import("preact").ComponentChildren} children - The AutocompleteList component
  */
 
 /**
