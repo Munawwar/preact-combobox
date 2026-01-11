@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { useDeepMemo, useLive, subscribeToVirtualKeyboard } from "./hooks.js";
+import { useDeepMemo, useLive, subscribeToVirtualKeyboard, useAsyncOptions } from "./hooks.js";
 import { toHTMLId, matchSlicesToNodes } from "./utils.jsx";
 import AutocompleteList from "./AutocompleteList.jsx";
 import TraySearchList from "./TraySearchList.jsx";
@@ -575,23 +575,26 @@ const PreactCombobox = ({
     setTrayLabel(computeEffectiveTrayLabel());
   }, [setTrayLabel, computeEffectiveTrayLabel]);
 
-  // Note: updateCachedOptions moved to AutocompleteList component
+  // Determine if options should be fetched/filtered (dropdown or tray is open)
+  const isListOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
 
-  // Note: allOptions and invalidValues logic moved to AutocompleteList component
-  const allOptionsLookup = useMemo(() => {
-    if (Array.isArray(allowedOptions)) {
-      return allowedOptions.reduce((acc, o) => {
-        acc[o.value] = o;
-        return acc;
-      }, /** @type {{ [value: string]: Option }} */ ({}));
-    }
-    return {};
-  }, [allowedOptions]);
-  
+  // Use the async options hook for fetching, caching, and filtering
+  const { filteredOptions, resolvedOptionsLookup, isLoading } = useAsyncOptions({
+    allowedOptions,
+    selectedValues: arrayValues,
+    searchText: activeInputValue,
+    isOpen: isListOpen,
+    language,
+    maxNumberOfPresentedOptions,
+  });
+
+  // Alias for backward compatibility with existing code
+  const allOptionsLookup = resolvedOptionsLookup;
+
   const invalidValues = useMemo(() => {
     if (allowFreeText) return [];
-    return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
-  }, [allowFreeText, arrayValues, allOptionsLookup]);
+    return arrayValues?.filter((v) => !resolvedOptionsLookup[v]) || [];
+  }, [allowFreeText, arrayValues, resolvedOptionsLookup]);
 
   const updateSelectionAnnouncement = useCallback(
     /**
@@ -1158,13 +1161,12 @@ const PreactCombobox = ({
       ref={autocompleteListRef}
       id={id}
       searchText={activeInputValue}
-      allowedOptions={allowedOptions}
+      filteredOptions={filteredOptions}
+      isLoading={isLoading}
       arrayValues={arrayValues}
       invalidValues={invalidValues}
       multiple={multiple}
       allowFreeText={allowFreeText}
-      language={language}
-      maxNumberOfPresentedOptions={maxNumberOfPresentedOptions}
       onOptionSelect={handleOptionSelect}
       onActiveDescendantChange={handleActiveDescendantChange}
       onClose={shouldUseTray ? closeTray : closeDropdown}
@@ -1173,10 +1175,11 @@ const PreactCombobox = ({
       tickIcon={tickIcon}
       optionIconRenderer={optionIconRenderer}
       showValue={showValue}
+      language={language}
       loadingRenderer={loadingRenderer}
       translations={mergedTranslations}
       theme={theme}
-      isOpen={shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen()}
+      isOpen={isListOpen}
       shouldUseTray={shouldUseTray}
       setDropdownRef={setDropdownRef}
     />
@@ -1308,7 +1311,7 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {autocompleteList && (
+      {autocompleteList ? (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
             <TraySearchList
@@ -1326,7 +1329,7 @@ const PreactCombobox = ({
             autocompleteList
           )}
         </Portal>
-      )}
+      ) : null}
       {invalidValues.length > 0 && warningIconHovered && !isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           <div

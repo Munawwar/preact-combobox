@@ -2,10 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { subscribeToVirtualKeyboard } from "./hooks.js";
 
 /**
- * @typedef {import("./PreactCombobox-old.js").Option} Option
- * @typedef {import("./PreactCombobox-old.js").OptionMatch} OptionMatch
- * @typedef {import("./PreactCombobox-old.js").Translations} Translations
- * @typedef {import("./PreactCombobox-old.js").OptionTransformFunction} OptionTransformFunction
+ * @typedef {import("./PreactCombobox.jsx").Translations} Translations
  * @typedef {import("preact").VNode} VNode
  */
 

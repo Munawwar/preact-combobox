@@ -36,8 +36,8 @@ export function getMatchScore(query: string, options: Option[], language?: strin
  * @returns {VNode[]}
  */
 export function matchSlicesToNodes(matchSlices: OptionMatch["matchSlices"], text: string): VNode[];
-export type Option = import("./PreactCombobox-old.js").Option;
-export type OptionMatch = import("./PreactCombobox-old.js").OptionMatch;
+export type Option = import("./PreactCombobox.jsx").Option;
+export type OptionMatch = import("./PreactCombobox.jsx").OptionMatch;
 export type VNode = import("preact").VNode;
 /**
  * Cache for language-specific word segmenters
