@@ -1,7 +1,6 @@
 import { forwardRef } from "preact/compat";
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "preact/hooks";
-import { useDeepMemo } from "./hooks.js";
-import { getMatchScore, sortValuesToTop, toHTMLId } from "./utils.jsx";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "preact/hooks";
+import { toHTMLId } from "./utils.jsx";
 
 /**
  * @typedef {import("./PreactCombobox.jsx").Option} Option
@@ -15,13 +14,12 @@ import { getMatchScore, sortValuesToTop, toHTMLId } from "./utils.jsx";
  * @typedef {Object} AutocompleteListProps
  * @property {string} id - Component ID for ARIA attributes
  * @property {string} searchText - Current search/input text
- * @property {Option[] | ((queryOrValues: string[] | string, limit: number, currentSelections: string[], abortControllerSignal: AbortSignal) => Promise<Option[]>)} allowedOptions - Options data or fetcher function
+ * @property {OptionMatch[]} filteredOptions - Pre-filtered options to display
+ * @property {boolean} isLoading - Whether options are currently loading
  * @property {string[]} arrayValues - Currently selected values
  * @property {string[]} invalidValues - Invalid selected values
  * @property {boolean} multiple - Whether multi-select is enabled
  * @property {boolean} allowFreeText - Allow adding custom options
- * @property {string} language - Language code for matching
- * @property {number} maxNumberOfPresentedOptions - Maximum options to show
  * @property {(selectedValue: string, options?: {toggleSelected?: boolean}) => void} onOptionSelect - Handle option selection
  * @property {(value: string) => void} [onActiveDescendantChange] - Callback when active descendant changes (for aria-activedescendant)
  * @property {() => void} [onClose] - Handle close (for single-select)
@@ -30,6 +28,7 @@ import { getMatchScore, sortValuesToTop, toHTMLId } from "./utils.jsx";
  * @property {VNode} tickIcon - Tick icon element
  * @property {(option: Option, isInput?: boolean) => VNode|null} optionIconRenderer - Option icon renderer
  * @property {boolean} showValue - Whether to show option values
+ * @property {string} language - Language code for rendering
  * @property {(text: string) => VNode|string} loadingRenderer - Loading renderer
  * @property {Translations} translations - Translation strings
  * @property {string} theme - Theme for styling
@@ -50,25 +49,23 @@ import { getMatchScore, sortValuesToTop, toHTMLId } from "./utils.jsx";
  * @property {() => void} clearActiveDescendant - Clear the active descendant
  */
 
-// @ts-ignore
-const isPlaywright = navigator.webdriver === true;
-
 /**
- * AutocompleteList component - handles filtering, fetching, and rendering options list
+ * AutocompleteList component - presentational component for rendering options list
+ * Receives pre-filtered options and handles navigation/selection
  * @type {import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>}
  */
 const AutocompleteList = forwardRef(
   (
+    /** @type {AutocompleteListProps} */
     {
       id,
       searchText,
-      allowedOptions,
+      filteredOptions,
+      isLoading,
       arrayValues,
       invalidValues,
       multiple,
       allowFreeText,
-      language,
-      maxNumberOfPresentedOptions,
       onOptionSelect,
       onActiveDescendantChange,
       onClose,
@@ -77,6 +74,7 @@ const AutocompleteList = forwardRef(
       tickIcon,
       optionIconRenderer,
       showValue,
+      language,
       loadingRenderer,
       translations,
       theme,
@@ -86,62 +84,24 @@ const AutocompleteList = forwardRef(
     },
     ref,
   ) => {
-    // Internal state for filtering/fetching
-    const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
-    const [isLoading, setIsLoading] = useState(false);
     const [activeDescendant, setActiveDescendant] = useState("");
-    const cachedOptions = useRef(/** @type {{ [value: string]: Option }} */ ({}));
-    const abortControllerRef = useRef(/** @type {AbortController | null} */ (null));
-    const inputTypingDebounceTimer = useRef(/** @type {any} */ (null));
     const listRef = useRef(/** @type {HTMLUListElement | null} */ (null));
 
     const searchTextTrimmed = searchText.trim();
-    const allowedOptionsAsKey = useDeepMemo(
-      typeof allowedOptions === "function" ? null : allowedOptions,
-    );
-
-    const updateCachedOptions = useCallback(
-      /** @param {Option[]} update */
-      (update) => {
-        for (const item of update) {
-          cachedOptions.current[item.value] = item;
-        }
-      },
-      [],
-    );
-
-    const allOptions = useDeepMemo(
-      Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current),
-    );
-    const allOptionsLookup = useMemo(
-      () =>
-        allOptions.reduce(
-          (acc, o) => {
-            acc[o.value] = o;
-            return acc;
-          },
-          /** @type {{ [value: string]: Option }} */ ({}),
-        ),
-      [allOptions],
-    );
-
-    const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
-    const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
 
     const addNewOptionVisible =
       !isLoading &&
       allowFreeText &&
       searchTextTrimmed &&
       !arrayValues.includes(searchTextTrimmed) &&
-      !filteredOptions.find((o) => o.value === searchTextTrimmed);
+      !filteredOptions.find((/** @type {OptionMatch} */ o) => o.value === searchTextTrimmed);
 
-    // Helper to scroll an option into view
     const scrollOptionIntoView = useCallback(
       /** @param {string} optionValue */
       (optionValue) => {
         if (!listRef.current || !optionValue) return;
         const elementId = `${id}-option-${toHTMLId(optionValue)}`;
-        const element = listRef.current.querySelector(`#${elementId}`);
+        const element = listRef.current.querySelector(`#${CSS.escape(elementId)}`);
         if (element) {
           const listRect = listRef.current.getBoundingClientRect();
           const itemRect = element.getBoundingClientRect();
@@ -155,17 +115,16 @@ const AutocompleteList = forwardRef(
       [id],
     );
 
-    // Build list of navigable options (including "add new" option if visible)
     const getNavigableOptions = useCallback(() => {
-      const options = filteredOptions.filter((o) => !o.disabled).map((o) => o.value);
+      const options = filteredOptions
+        .filter((/** @type {OptionMatch} */ o) => !o.disabled)
+        .map((/** @type {OptionMatch} */ o) => o.value);
       if (addNewOptionVisible) {
-        // "Add new" option appears at the top
         return [searchTextTrimmed, ...options];
       }
       return options;
     }, [filteredOptions, addNewOptionVisible, searchTextTrimmed]);
 
-    // Expose navigation methods via ref
     useImperativeHandle(
       ref,
       () => ({
@@ -214,7 +173,6 @@ const AutocompleteList = forwardRef(
         selectActive: () => {
           if (!activeDescendant) return false;
 
-          // Check if it's the "add new" option
           if (addNewOptionVisible && activeDescendant === searchTextTrimmed) {
             onOptionSelect(searchTextTrimmed);
             if (!multiple && onClose) {
@@ -223,8 +181,7 @@ const AutocompleteList = forwardRef(
             return true;
           }
 
-          // Check if it's a regular option
-          const option = filteredOptions.find((o) => o.value === activeDescendant);
+          const option = filteredOptions.find((/** @type {OptionMatch} */ o) => o.value === activeDescendant);
           if (option && !option.disabled) {
             onOptionSelect(option.value, { toggleSelected: true });
             if (!multiple && onClose) {
@@ -255,134 +212,16 @@ const AutocompleteList = forwardRef(
       ],
     );
 
-    // Clear active descendant when dropdown closes
     useEffect(() => {
       if (!isOpen) {
         setActiveDescendant("");
       }
     }, [isOpen]);
 
-    // Notify parent when active descendant changes (for aria-activedescendant on input)
     useEffect(() => {
       onActiveDescendantChange?.(activeDescendant);
     }, [activeDescendant, onActiveDescendantChange]);
 
-    // Main filtering/fetching effect
-    useEffect(() => {
-      const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
-      if (!shouldFetchOptions) return;
-
-      const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = abortController;
-
-      let debounceTime = 0; // for local data
-      if (
-        typeof allowedOptions === "function" &&
-        !(
-          // don't debounce for initial render (when we have to resolve the labels for selected values).
-          // don't debounce for first time the dropdown is opened as well.
-          (newUnknownValues.length > 0 || isOpen)
-        ) &&
-        // Hack: We avoid debouncing to speed up playwright tests
-        !isPlaywright
-      ) {
-        // a typical user types 4 characters per second, so 250ms is a good debounce time
-        debounceTime = 250;
-      }
-      clearTimeout(inputTypingDebounceTimer.current);
-
-      const callback = async () => {
-        if (typeof allowedOptions === "function") {
-          // @ts-ignore
-          const signal = /** @type {AbortSignal} */ (abortController.signal);
-          const [searchResults, selectedResults] = await Promise.all([
-            isOpen
-              ? allowedOptions(searchTextTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
-              : /** @type {Option[]} */ ([]),
-            // We need to fetch unknown options's labels regardless of whether the dropdown
-            // is open or not, because we want to show it in the placeholder.
-            newUnknownValues.length > 0
-              ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal)
-              : null,
-          ]).catch((error) => {
-            if (signal.aborted) {
-              return [null, null];
-            }
-            setIsLoading(false);
-            throw error;
-          });
-
-          setIsLoading(false);
-          if (searchResults?.length) {
-            updateCachedOptions(searchResults);
-          }
-          if (selectedResults?.length) {
-            updateCachedOptions(selectedResults);
-          }
-          let updatedOptions = searchResults || [];
-          // Handle case where backend doesn't return labels for all the sent selections
-          if (!searchTextTrimmed) {
-            const unreturnedValues = newUnknownValues
-              .filter((v) => !cachedOptions.current[v])
-              .map((v) => ({ label: v, value: v }));
-            if (unreturnedValues.length > 0) {
-              updateCachedOptions(unreturnedValues);
-              updatedOptions = unreturnedValues.concat(searchResults || []);
-            }
-          }
-          // when search is applied don't sort the selected values to the top
-          const options = searchTextTrimmed
-            ? updatedOptions
-            : sortValuesToTop(updatedOptions, arrayValues);
-          // we don't need to re-sort what the backend returns, so pass filterAndSort=false to getMatchScore()
-          setFilteredOptions(getMatchScore(searchTextTrimmed, options, language, false));
-        } else {
-          const mergedOptions = arrayValues
-            .filter((v) => !allOptionsLookup[v])
-            .map((v) => ({ label: v, value: v }))
-            .concat(allowedOptions);
-          // when search is applied don't sort the selected values to the top
-          const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-          setFilteredOptions(getMatchScore(searchText, options, language, true));
-        }
-      };
-
-      // We need to set isLoading immediately to show "loading" state without waiting
-      // for the debounce to complete so that playwright tests don't need an arbitrary
-      // wait delay for the options to load.
-      if (typeof allowedOptions === "function") {
-        setIsLoading(true);
-      }
-
-      let timer = null;
-      if (debounceTime > 0) {
-        timer = setTimeout(callback, debounceTime);
-      } else {
-        callback();
-      }
-      inputTypingDebounceTimer.current = timer;
-
-      // Clean up function
-      return () => {
-        abortController?.abort();
-        if (timer) clearTimeout(timer);
-      };
-    }, [
-      isOpen,
-      searchTextTrimmed,
-      language,
-      newUnknownValuesAsKey,
-      allowedOptionsAsKey,
-      arrayValues,
-      maxNumberOfPresentedOptions,
-      updateCachedOptions,
-      allOptionsLookup,
-      searchText,
-      allowedOptions,
-    ]);
-
-    // Set ref callback for parent's popper
     const handleListRef = useCallback(
       /** @param {HTMLUListElement | null} el */
       (el) => {
@@ -443,14 +282,12 @@ const AutocompleteList = forwardRef(
                 {translations.addOption.replace("{value}", searchTextTrimmed)}
               </li>
             )}
-            {filteredOptions.map((option) => {
-              // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
-              // aria-activedescendant is used to tell screen readers the active option.
+            {filteredOptions.map((/** @type {OptionMatch} */ option) => {
               const isActive = activeDescendant === option.value;
               const isSelected = arrayValues.includes(option.value);
               const isInvalid = invalidValues.includes(option.value);
               const isDisabled = option.disabled;
-              const hasDivider = option.divider && !searchTextTrimmed; // Only show divider when search is empty
+              const hasDivider = option.divider && !searchTextTrimmed;
               const optionClasses = [
                 "PreactCombobox-option",
                 isActive ? "PreactCombobox-option--active" : "",
@@ -520,9 +357,6 @@ const AutocompleteList = forwardRef(
               (!allowFreeText || !searchText || arrayValues.includes(searchText)) && (
                 <li className="PreactCombobox-option">{translations.noOptionsFound}</li>
               )}
-            {filteredOptions.length === maxNumberOfPresentedOptions && (
-              <li className="PreactCombobox-option">{translations.typeToLoadMore}</li>
-            )}
           </>
         )}
       </ul>

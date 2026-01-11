@@ -618,58 +618,6 @@ l.diffed = function(n2) {
   null != e3 && "textarea" === n2.type && "value" in t3 && t3.value !== e3.value && (e3.value = null == t3.value ? "" : t3.value), cn = null;
 };
 
-// lib/hooks.js
-function isEqual(value1, value2) {
-  const seenA = /* @__PURE__ */ new WeakMap();
-  const seenB = /* @__PURE__ */ new WeakMap();
-  function deepCompare(a3, b2) {
-    if (Object.is(a3, b2)) return true;
-    if (a3 === null || b2 === null || typeof a3 !== "object" || typeof b2 !== "object") {
-      return a3 === b2;
-    }
-    if (a3.$$typeof === Symbol.for("react.element") || b2.$$typeof === Symbol.for("react.element")) {
-      return a3 === b2;
-    }
-    if (Object.getPrototypeOf(a3) !== Object.getPrototypeOf(b2)) {
-      return false;
-    }
-    if (seenA.has(a3)) return seenA.get(a3) === b2;
-    if (seenB.has(b2)) return seenB.get(b2) === a3;
-    if (seenA.has(b2) || seenB.has(a3)) return false;
-    seenA.set(a3, b2);
-    seenB.set(b2, a3);
-    if (Array.isArray(a3)) {
-      if (a3.length !== b2.length) {
-        return false;
-      }
-      return a3.every((item, index) => deepCompare(item, b2[index]));
-    }
-    if (a3 instanceof Date) {
-      return a3.getTime() === b2.getTime();
-    }
-    if (a3 instanceof RegExp) {
-      return a3.toString() === b2.toString();
-    }
-    const keysA = Object.keys(a3);
-    const keysB = Object.keys(b2);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every((key) => keysB.includes(key) && deepCompare(a3[key], b2[key]));
-  }
-  return deepCompare(value1, value2);
-}
-function useDeepMemo(newState) {
-  const state = A2(
-    /** @type {T} */
-    null
-  );
-  if (!isEqual(newState, state.current)) {
-    state.current = newState;
-  }
-  return state.current;
-}
-var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-
 // node_modules/preact/jsx-runtime/dist/jsxRuntime.module.js
 var f3 = 0;
 var i3 = Array.isArray;
@@ -683,258 +631,21 @@ function u3(e3, t3, n2, o3, i4, u4) {
 }
 
 // lib/utils.jsx
-var languageCache = {};
 function toHTMLId(text) {
   return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
 }
-function sortValuesToTop(options, values) {
-  const selectedSet = new Set(values);
-  return options.sort((a3, b2) => {
-    const aSelected = selectedSet.has(a3.value);
-    const bSelected = selectedSet.has(b2.value);
-    if (aSelected === bSelected) return 0;
-    return aSelected ? -1 : 1;
-  });
-}
-function getExactMatchScore(query, option, language) {
-  const { label, value, ...rest } = option;
-  if (value === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]]
-    };
-  }
-  if (label === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]]
-    };
-  }
-  const { caseMatcher } = (
-    /** @type {LanguageCache} */
-    languageCache[language]
-  );
-  if (caseMatcher.compare(value, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]]
-    };
-  }
-  if (caseMatcher.compare(label, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]]
-    };
-  }
-  return null;
-}
-function getMatchScore(query, options, language = "en", filterAndSort = true) {
-  query = query.trim();
-  if (!query) {
-    const matchSlices = (
-      /** @type {Array<[number, number]>} */
-      []
-    );
-    return options.map((option) => ({
-      ...option,
-      label: option.label,
-      value: option.value,
-      score: 0,
-      matched: "none",
-      matchSlices
-    }));
-  }
-  if (!languageCache[language]) {
-    languageCache[language] = {
-      baseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "base"
-      }),
-      caseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "accent"
-      }),
-      wordSegmenter: new Intl.Segmenter(language, {
-        granularity: "word"
-      })
-    };
-  }
-  const { baseMatcher, caseMatcher, wordSegmenter } = languageCache[language];
-  const isCommaSeparated = query.includes(",");
-  let matches = options.map((option) => {
-    const { label, value, ...rest } = option;
-    if (isCommaSeparated) {
-      const querySegments2 = query.split(",");
-      const matches2 = querySegments2.map((querySegment) => getExactMatchScore(querySegment.trim(), option, language)).filter((match) => match !== null).sort((a3, b2) => b2.score - a3.score);
-      return (
-        /** @type {OptionMatch} */
-        matches2[0] || {
-          ...rest,
-          label,
-          value,
-          score: 0,
-          matched: "none"
-        }
-      );
-    }
-    const exactMatch = getExactMatchScore(query, option, language);
-    if (exactMatch) {
-      return exactMatch;
-    }
-    if (baseMatcher.compare(label, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]]
-      };
-    }
-    if (baseMatcher.compare(value, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]]
-      };
-    }
-    const querySegments = Array.from(wordSegmenter.segment(query));
-    const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
-    let len = 0;
-    let firstIndex = -1;
-    for (let i4 = 0; i4 < labelWordSegments.length; i4++) {
-      const labelWordSegment = (
-        /** @type {Intl.SegmentData} */
-        labelWordSegments[i4]
-      );
-      const querySegment = querySegments[len];
-      if (!querySegment) break;
-      if (len === querySegments.length - 1) {
-        const lastQueryWord = querySegment.segment;
-        if (baseMatcher.compare(
-          labelWordSegment.segment.slice(0, lastQueryWord.length),
-          lastQueryWord
-        ) === 0) {
-          return {
-            ...rest,
-            label,
-            value,
-            score: 3,
-            /** @type {'label'} */
-            matched: "label",
-            /** @type {Array<[number, number]>} */
-            // @ts-ignore
-            matchSlices: [
-              [
-                firstIndex > -1 ? firstIndex : labelWordSegment.index,
-                labelWordSegment.index + lastQueryWord.length
-              ]
-            ]
-          };
-        }
-      } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
-        len++;
-        if (len === 1) {
-          firstIndex = labelWordSegment.index;
-        }
-        continue;
-      }
-      len = 0;
-      firstIndex = -1;
-    }
-    if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 3,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, query.length]]
-      };
-    }
-    const queryWords = querySegments.filter((s3) => s3.isWordLike);
-    const labelWords = labelWordSegments.filter((s3) => s3.isWordLike);
-    const slices = queryWords.map((word) => {
-      const match = labelWords.find(
-        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0
-      );
-      if (match) {
-        return [match.index, match.index + match.segment.length];
-      }
-    });
-    const matchSlices = slices.filter((s3) => s3 !== void 0).sort((a3, b2) => a3[0] - b2[0]);
-    const wordScoring = matchSlices.length / queryWords.length;
-    return {
-      ...rest,
-      label,
-      value,
-      score: wordScoring,
-      /** @type {'label'|'none'} */
-      matched: wordScoring ? "label" : "none",
-      matchSlices
-    };
-  });
-  if (filterAndSort) {
-    matches = matches.filter((match) => match.score > 0);
-    matches.sort((a3, b2) => {
-      if (a3.score === b2.score) {
-        const val = a3.label.localeCompare(b2.label, void 0, {
-          sensitivity: "base"
-        });
-        return val === 0 ? a3.value.localeCompare(b2.value, void 0, { sensitivity: "base" }) : val;
-      }
-      return b2.score - a3.score;
-    });
-  }
-  return matches;
-}
 
 // lib/AutocompleteList.jsx
-var isPlaywright = navigator.webdriver === true;
 var AutocompleteList = D3(
   ({
     id,
     searchText,
-    allowedOptions,
+    filteredOptions,
+    isLoading,
     arrayValues,
     invalidValues,
     multiple,
     allowFreeText,
-    language,
-    maxNumberOfPresentedOptions,
     onOptionSelect,
     onActiveDescendantChange,
     onClose,
@@ -943,6 +654,7 @@ var AutocompleteList = D3(
     tickIcon,
     optionIconRenderer,
     showValue,
+    language,
     loadingRenderer,
     translations,
     theme,
@@ -950,64 +662,19 @@ var AutocompleteList = D3(
     shouldUseTray,
     setDropdownRef
   }, ref) => {
-    const [filteredOptions, setFilteredOptions] = h2(
-      /** @type {OptionMatch[]} */
-      []
-    );
-    const [isLoading, setIsLoading] = h2(false);
     const [activeDescendant, setActiveDescendant] = h2("");
-    const cachedOptions = A2(
-      /** @type {{ [value: string]: Option }} */
-      {}
-    );
-    const abortControllerRef = A2(
-      /** @type {AbortController | null} */
-      null
-    );
-    const inputTypingDebounceTimer = A2(
-      /** @type {any} */
-      null
-    );
     const listRef = A2(
       /** @type {HTMLUListElement | null} */
       null
     );
     const searchTextTrimmed = searchText.trim();
-    const allowedOptionsAsKey = useDeepMemo(
-      typeof allowedOptions === "function" ? null : allowedOptions
-    );
-    const updateCachedOptions = q2(
-      /** @param {Option[]} update */
-      (update) => {
-        for (const item of update) {
-          cachedOptions.current[item.value] = item;
-        }
-      },
-      []
-    );
-    const allOptions = useDeepMemo(
-      Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current)
-    );
-    const allOptionsLookup = T2(
-      () => allOptions.reduce(
-        (acc, o3) => {
-          acc[o3.value] = o3;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */
-        {}
-      ),
-      [allOptions]
-    );
-    const newUnknownValues = arrayValues.filter((v3) => !allOptionsLookup[v3]);
-    const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
     const addNewOptionVisible = !isLoading && allowFreeText && searchTextTrimmed && !arrayValues.includes(searchTextTrimmed) && !filteredOptions.find((o3) => o3.value === searchTextTrimmed);
     const scrollOptionIntoView = q2(
       /** @param {string} optionValue */
       (optionValue) => {
         if (!listRef.current || !optionValue) return;
         const elementId = `${id}-option-${toHTMLId(optionValue)}`;
-        const element = listRef.current.querySelector(`#${elementId}`);
+        const element = listRef.current.querySelector(`#${CSS.escape(elementId)}`);
         if (element) {
           const listRect = listRef.current.getBoundingClientRect();
           const itemRect = element.getBoundingClientRect();
@@ -1116,91 +783,6 @@ var AutocompleteList = D3(
     y2(() => {
       onActiveDescendantChange?.(activeDescendant);
     }, [activeDescendant, onActiveDescendantChange]);
-    y2(() => {
-      const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
-      if (!shouldFetchOptions) return;
-      const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = abortController;
-      let debounceTime = 0;
-      if (typeof allowedOptions === "function" && !// don't debounce for initial render (when we have to resolve the labels for selected values).
-      // don't debounce for first time the dropdown is opened as well.
-      (newUnknownValues.length > 0 || isOpen) && // Hack: We avoid debouncing to speed up playwright tests
-      !isPlaywright) {
-        debounceTime = 250;
-      }
-      clearTimeout(inputTypingDebounceTimer.current);
-      const callback = async () => {
-        if (typeof allowedOptions === "function") {
-          const signal = (
-            /** @type {AbortSignal} */
-            abortController.signal
-          );
-          const [searchResults, selectedResults] = await Promise.all([
-            isOpen ? allowedOptions(searchTextTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
-              /** @type {Option[]} */
-              []
-            ),
-            // We need to fetch unknown options's labels regardless of whether the dropdown
-            // is open or not, because we want to show it in the placeholder.
-            newUnknownValues.length > 0 ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal) : null
-          ]).catch((error) => {
-            if (signal.aborted) {
-              return [null, null];
-            }
-            setIsLoading(false);
-            throw error;
-          });
-          setIsLoading(false);
-          if (searchResults?.length) {
-            updateCachedOptions(searchResults);
-          }
-          if (selectedResults?.length) {
-            updateCachedOptions(selectedResults);
-          }
-          let updatedOptions = searchResults || [];
-          if (!searchTextTrimmed) {
-            const unreturnedValues = newUnknownValues.filter((v3) => !cachedOptions.current[v3]).map((v3) => ({ label: v3, value: v3 }));
-            if (unreturnedValues.length > 0) {
-              updateCachedOptions(unreturnedValues);
-              updatedOptions = unreturnedValues.concat(searchResults || []);
-            }
-          }
-          const options = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, arrayValues);
-          setFilteredOptions(getMatchScore(searchTextTrimmed, options, language, false));
-        } else {
-          const mergedOptions = arrayValues.filter((v3) => !allOptionsLookup[v3]).map((v3) => ({ label: v3, value: v3 })).concat(allowedOptions);
-          const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-          setFilteredOptions(getMatchScore(searchText, options, language, true));
-        }
-      };
-      if (typeof allowedOptions === "function") {
-        setIsLoading(true);
-      }
-      let timer = null;
-      if (debounceTime > 0) {
-        timer = setTimeout(callback, debounceTime);
-      } else {
-        callback();
-      }
-      inputTypingDebounceTimer.current = timer;
-      return () => {
-        abortController?.abort();
-        if (timer) clearTimeout(timer);
-      };
-    }, [
-      isOpen,
-      searchTextTrimmed,
-      language,
-      newUnknownValuesAsKey,
-      allowedOptionsAsKey,
-      arrayValues,
-      maxNumberOfPresentedOptions,
-      updateCachedOptions,
-      allOptionsLookup,
-      searchText,
-      allowedOptions
-    ]);
     const handleListRef = q2(
       /** @param {HTMLUListElement | null} el */
       (el) => {
@@ -1320,8 +902,7 @@ var AutocompleteList = D3(
                 option.value
               );
             }),
-            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound }),
-            filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.typeToLoadMore })
+            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound })
           ] })
         }
       )

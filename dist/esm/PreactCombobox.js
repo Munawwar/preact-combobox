@@ -3,100 +3,16 @@ import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
 import {
   useCallback as useCallback4,
-  useEffect as useEffect3,
+  useEffect as useEffect4,
   useId,
   useLayoutEffect,
-  useMemo as useMemo3,
+  useMemo as useMemo2,
   useRef as useRef4,
   useState as useState4
 } from "preact/hooks";
 
 // lib/hooks.js
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
-function isEqual(value1, value2) {
-  const seenA = /* @__PURE__ */ new WeakMap();
-  const seenB = /* @__PURE__ */ new WeakMap();
-  function deepCompare(a, b) {
-    if (Object.is(a, b)) return true;
-    if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
-      return a === b;
-    }
-    if (a.$$typeof === Symbol.for("react.element") || b.$$typeof === Symbol.for("react.element")) {
-      return a === b;
-    }
-    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
-      return false;
-    }
-    if (seenA.has(a)) return seenA.get(a) === b;
-    if (seenB.has(b)) return seenB.get(b) === a;
-    if (seenA.has(b) || seenB.has(a)) return false;
-    seenA.set(a, b);
-    seenB.set(b, a);
-    if (Array.isArray(a)) {
-      if (a.length !== b.length) {
-        return false;
-      }
-      return a.every((item, index) => deepCompare(item, b[index]));
-    }
-    if (a instanceof Date) {
-      return a.getTime() === b.getTime();
-    }
-    if (a instanceof RegExp) {
-      return a.toString() === b.toString();
-    }
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every((key) => keysB.includes(key) && deepCompare(a[key], b[key]));
-  }
-  return deepCompare(value1, value2);
-}
-function useDeepMemo(newState) {
-  const state = useRef(
-    /** @type {T} */
-    null
-  );
-  if (!isEqual(newState, state.current)) {
-    state.current = newState;
-  }
-  return state.current;
-}
-function useLive(initialValue) {
-  const [refreshValue, forceRefresh] = useState(0);
-  const ref = useRef(initialValue);
-  let hasValueChanged = false;
-  const getValue = useMemo(() => {
-    hasValueChanged = true;
-    return () => ref.current;
-  }, [refreshValue]);
-  const setValue = useCallback((value) => {
-    if (value !== ref.current) {
-      ref.current = value;
-      forceRefresh((x) => x + 1);
-    }
-  }, []);
-  return [getValue, setValue, hasValueChanged];
-}
-var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
-  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
-  let isVisible = false;
-  const handleViewportResize = () => {
-    if (!window.visualViewport) return;
-    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
-    const isVisibleNow = heightDiff > 150;
-    if (isVisible !== isVisibleNow) {
-      isVisible = isVisibleNow;
-      visibleCallback?.(isVisible);
-    }
-    heightCallback?.(heightDiff, isVisible);
-  };
-  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
-  return () => {
-    window.visualViewport?.removeEventListener("resize", handleViewportResize);
-  };
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 // lib/utils.jsx
 import { h } from "preact";
@@ -359,22 +275,285 @@ function matchSlicesToNodes(matchSlices, text) {
   return nodes;
 }
 
+// lib/hooks.js
+function isEqual(value1, value2) {
+  const seenA = /* @__PURE__ */ new WeakMap();
+  const seenB = /* @__PURE__ */ new WeakMap();
+  function deepCompare(a, b) {
+    if (Object.is(a, b)) return true;
+    if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+      return a === b;
+    }
+    if (a.$$typeof === Symbol.for("react.element") || b.$$typeof === Symbol.for("react.element")) {
+      return a === b;
+    }
+    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+      return false;
+    }
+    if (seenA.has(a)) return seenA.get(a) === b;
+    if (seenB.has(b)) return seenB.get(b) === a;
+    if (seenA.has(b) || seenB.has(a)) return false;
+    seenA.set(a, b);
+    seenB.set(b, a);
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      return a.every((item, index) => deepCompare(item, b[index]));
+    }
+    if (a instanceof Date) {
+      return a.getTime() === b.getTime();
+    }
+    if (a instanceof RegExp) {
+      return a.toString() === b.toString();
+    }
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every((key) => keysB.includes(key) && deepCompare(a[key], b[key]));
+  }
+  return deepCompare(value1, value2);
+}
+function useDeepMemo(newState) {
+  const state = useRef(
+    /** @type {T} */
+    null
+  );
+  if (!isEqual(newState, state.current)) {
+    state.current = newState;
+  }
+  return state.current;
+}
+function useLive(initialValue) {
+  const [refreshValue, forceRefresh] = useState(0);
+  const ref = useRef(initialValue);
+  let hasValueChanged = false;
+  const getValue = useMemo(() => {
+    hasValueChanged = true;
+    return () => ref.current;
+  }, [refreshValue]);
+  const setValue = useCallback(
+    /** @param {T} value */
+    (value) => {
+      if (value !== ref.current) {
+        ref.current = value;
+        forceRefresh((x) => x + 1);
+      }
+    },
+    []
+  );
+  return [getValue, setValue, hasValueChanged];
+}
+var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
+  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
+  let isVisible = false;
+  const handleViewportResize = () => {
+    if (!window.visualViewport) return;
+    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
+    const isVisibleNow = heightDiff > 150;
+    if (isVisible !== isVisibleNow) {
+      isVisible = isVisibleNow;
+      visibleCallback?.(isVisible);
+    }
+    heightCallback?.(heightDiff, isVisible);
+  };
+  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
+  return () => {
+    window.visualViewport?.removeEventListener("resize", handleViewportResize);
+  };
+}
+var isPlaywright = typeof navigator !== "undefined" && navigator.webdriver === true;
+function useAsyncOptions({
+  allowedOptions,
+  selectedValues,
+  searchText,
+  isOpen,
+  language,
+  maxNumberOfPresentedOptions
+}) {
+  const [filteredOptions, setFilteredOptions] = useState(
+    /** @type {OptionMatch[]} */
+    []
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [cacheVersion, setCacheVersion] = useState(0);
+  const cachedOptions = useRef(
+    /** @type {{ [value: string]: Option }} */
+    {}
+  );
+  const abortControllerRef = useRef(
+    /** @type {AbortController | null} */
+    null
+  );
+  const debounceTimerRef = useRef(
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    null
+  );
+  const searchTextTrimmed = searchText.trim();
+  const allowedOptionsAsKey = useDeepMemo(
+    typeof allowedOptions === "function" ? null : allowedOptions
+  );
+  const selectedValuesAsKey = useDeepMemo(selectedValues);
+  const updateCachedOptions = useCallback(
+    /** @param {Option[]} update */
+    (update) => {
+      let hasNewOptions = false;
+      for (const item of update) {
+        if (!cachedOptions.current[item.value]) {
+          hasNewOptions = true;
+        }
+        cachedOptions.current[item.value] = item;
+      }
+      if (hasNewOptions) {
+        setCacheVersion((v) => v + 1);
+      }
+    },
+    []
+  );
+  const resolvedOptionsLookup = useMemo(() => {
+    if (Array.isArray(allowedOptions)) {
+      return allowedOptions.reduce(
+        (acc, o) => {
+          acc[o.value] = o;
+          return acc;
+        },
+        /** @type {{ [value: string]: Option }} */
+        {}
+      );
+    }
+    return { ...cachedOptions.current };
+  }, [allowedOptionsAsKey, cacheVersion]);
+  const unresolvedValues = useMemo(
+    () => selectedValues.filter((v) => !resolvedOptionsLookup[v]),
+    [selectedValues, resolvedOptionsLookup]
+  );
+  const unresolvedValuesAsKey = useDeepMemo(unresolvedValues);
+  useEffect(() => {
+    if (typeof allowedOptions !== "function") return;
+    if (unresolvedValues.length === 0) return;
+    const abortController = new AbortController();
+    allowedOptions(
+      unresolvedValues,
+      unresolvedValues.length,
+      selectedValues,
+      abortController.signal
+    ).then((results) => {
+      if (abortController.signal.aborted) return;
+      if (results?.length) {
+        updateCachedOptions(results);
+      }
+      const stillUnresolved = unresolvedValues.filter(
+        (v) => !results?.find((r) => r.value === v)
+      );
+      if (stillUnresolved.length > 0) {
+        updateCachedOptions(stillUnresolved.map((v) => ({ label: v, value: v })));
+      }
+    }).catch((error) => {
+      if (abortController.signal.aborted) return;
+      console.error("Failed to resolve option labels:", error);
+      updateCachedOptions(unresolvedValues.map((v) => ({ label: v, value: v })));
+    });
+    return () => abortController.abort();
+  }, [unresolvedValuesAsKey, allowedOptions, selectedValuesAsKey, updateCachedOptions]);
+  useEffect(() => {
+    abortControllerRef.current?.abort();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (!isOpen) {
+      setFilteredOptions([]);
+      setIsLoading(false);
+      return;
+    }
+    if (typeof allowedOptions === "function") {
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      let debounceTime = 0;
+      if (searchTextTrimmed && !isPlaywright) {
+        debounceTime = 250;
+      }
+      setIsLoading(true);
+      const fetchOptions = async () => {
+        try {
+          const results = await allowedOptions(
+            searchTextTrimmed,
+            maxNumberOfPresentedOptions,
+            selectedValues,
+            abortController.signal
+          );
+          if (abortController.signal.aborted) return;
+          if (results?.length) {
+            updateCachedOptions(results);
+          }
+          let updatedOptions = results || [];
+          if (!searchTextTrimmed) {
+            const unreturnedSelectedValues = selectedValues.filter((v) => !results?.find((r) => r.value === v)).filter((v) => !cachedOptions.current[v]).map((v) => ({ label: v, value: v }));
+            if (unreturnedSelectedValues.length > 0) {
+              updateCachedOptions(unreturnedSelectedValues);
+              updatedOptions = unreturnedSelectedValues.concat(results || []);
+            }
+          }
+          const options2 = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, selectedValues);
+          setFilteredOptions(getMatchScore(searchTextTrimmed, options2, language, false));
+          setIsLoading(false);
+        } catch (error) {
+          if (abortController.signal.aborted) return;
+          setIsLoading(false);
+          throw error;
+        }
+      };
+      if (debounceTime > 0) {
+        debounceTimerRef.current = setTimeout(fetchOptions, debounceTime);
+      } else {
+        fetchOptions();
+      }
+      return () => {
+        abortController.abort();
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    }
+    const mergedOptions = selectedValues.filter((v) => !resolvedOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
+    const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, selectedValues);
+    setFilteredOptions(getMatchScore(searchText, options, language, true));
+  }, [
+    isOpen,
+    searchTextTrimmed,
+    searchText,
+    language,
+    selectedValuesAsKey,
+    allowedOptionsAsKey,
+    maxNumberOfPresentedOptions,
+    updateCachedOptions,
+    resolvedOptionsLookup,
+    allowedOptions,
+    selectedValues
+  ]);
+  return {
+    filteredOptions,
+    resolvedOptionsLookup,
+    isLoading
+  };
+}
+
 // lib/AutocompleteList.jsx
 import { forwardRef } from "preact/compat";
-import { useCallback as useCallback2, useEffect, useImperativeHandle, useMemo as useMemo2, useRef as useRef2, useState as useState2 } from "preact/hooks";
+import { useCallback as useCallback2, useEffect as useEffect2, useImperativeHandle, useRef as useRef2, useState as useState2 } from "preact/hooks";
 import { Fragment, jsx as jsx2, jsxs } from "preact/jsx-runtime";
-var isPlaywright = navigator.webdriver === true;
 var AutocompleteList = forwardRef(
   ({
     id,
     searchText,
-    allowedOptions,
+    filteredOptions,
+    isLoading,
     arrayValues,
     invalidValues,
     multiple,
     allowFreeText,
-    language,
-    maxNumberOfPresentedOptions,
     onOptionSelect,
     onActiveDescendantChange,
     onClose,
@@ -383,6 +562,7 @@ var AutocompleteList = forwardRef(
     tickIcon,
     optionIconRenderer,
     showValue,
+    language,
     loadingRenderer,
     translations,
     theme,
@@ -390,64 +570,19 @@ var AutocompleteList = forwardRef(
     shouldUseTray,
     setDropdownRef
   }, ref) => {
-    const [filteredOptions, setFilteredOptions] = useState2(
-      /** @type {OptionMatch[]} */
-      []
-    );
-    const [isLoading, setIsLoading] = useState2(false);
     const [activeDescendant, setActiveDescendant] = useState2("");
-    const cachedOptions = useRef2(
-      /** @type {{ [value: string]: Option }} */
-      {}
-    );
-    const abortControllerRef = useRef2(
-      /** @type {AbortController | null} */
-      null
-    );
-    const inputTypingDebounceTimer = useRef2(
-      /** @type {any} */
-      null
-    );
     const listRef = useRef2(
       /** @type {HTMLUListElement | null} */
       null
     );
     const searchTextTrimmed = searchText.trim();
-    const allowedOptionsAsKey = useDeepMemo(
-      typeof allowedOptions === "function" ? null : allowedOptions
-    );
-    const updateCachedOptions = useCallback2(
-      /** @param {Option[]} update */
-      (update) => {
-        for (const item of update) {
-          cachedOptions.current[item.value] = item;
-        }
-      },
-      []
-    );
-    const allOptions = useDeepMemo(
-      Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current)
-    );
-    const allOptionsLookup = useMemo2(
-      () => allOptions.reduce(
-        (acc, o) => {
-          acc[o.value] = o;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */
-        {}
-      ),
-      [allOptions]
-    );
-    const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
-    const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
     const addNewOptionVisible = !isLoading && allowFreeText && searchTextTrimmed && !arrayValues.includes(searchTextTrimmed) && !filteredOptions.find((o) => o.value === searchTextTrimmed);
     const scrollOptionIntoView = useCallback2(
       /** @param {string} optionValue */
       (optionValue) => {
         if (!listRef.current || !optionValue) return;
         const elementId = `${id}-option-${toHTMLId(optionValue)}`;
-        const element = listRef.current.querySelector(`#${elementId}`);
+        const element = listRef.current.querySelector(`#${CSS.escape(elementId)}`);
         if (element) {
           const listRect = listRef.current.getBoundingClientRect();
           const itemRect = element.getBoundingClientRect();
@@ -548,99 +683,14 @@ var AutocompleteList = forwardRef(
         onClose
       ]
     );
-    useEffect(() => {
+    useEffect2(() => {
       if (!isOpen) {
         setActiveDescendant("");
       }
     }, [isOpen]);
-    useEffect(() => {
+    useEffect2(() => {
       onActiveDescendantChange?.(activeDescendant);
     }, [activeDescendant, onActiveDescendantChange]);
-    useEffect(() => {
-      const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
-      if (!shouldFetchOptions) return;
-      const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = abortController;
-      let debounceTime = 0;
-      if (typeof allowedOptions === "function" && !// don't debounce for initial render (when we have to resolve the labels for selected values).
-      // don't debounce for first time the dropdown is opened as well.
-      (newUnknownValues.length > 0 || isOpen) && // Hack: We avoid debouncing to speed up playwright tests
-      !isPlaywright) {
-        debounceTime = 250;
-      }
-      clearTimeout(inputTypingDebounceTimer.current);
-      const callback = async () => {
-        if (typeof allowedOptions === "function") {
-          const signal = (
-            /** @type {AbortSignal} */
-            abortController.signal
-          );
-          const [searchResults, selectedResults] = await Promise.all([
-            isOpen ? allowedOptions(searchTextTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
-              /** @type {Option[]} */
-              []
-            ),
-            // We need to fetch unknown options's labels regardless of whether the dropdown
-            // is open or not, because we want to show it in the placeholder.
-            newUnknownValues.length > 0 ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal) : null
-          ]).catch((error) => {
-            if (signal.aborted) {
-              return [null, null];
-            }
-            setIsLoading(false);
-            throw error;
-          });
-          setIsLoading(false);
-          if (searchResults?.length) {
-            updateCachedOptions(searchResults);
-          }
-          if (selectedResults?.length) {
-            updateCachedOptions(selectedResults);
-          }
-          let updatedOptions = searchResults || [];
-          if (!searchTextTrimmed) {
-            const unreturnedValues = newUnknownValues.filter((v) => !cachedOptions.current[v]).map((v) => ({ label: v, value: v }));
-            if (unreturnedValues.length > 0) {
-              updateCachedOptions(unreturnedValues);
-              updatedOptions = unreturnedValues.concat(searchResults || []);
-            }
-          }
-          const options = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, arrayValues);
-          setFilteredOptions(getMatchScore(searchTextTrimmed, options, language, false));
-        } else {
-          const mergedOptions = arrayValues.filter((v) => !allOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
-          const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-          setFilteredOptions(getMatchScore(searchText, options, language, true));
-        }
-      };
-      if (typeof allowedOptions === "function") {
-        setIsLoading(true);
-      }
-      let timer = null;
-      if (debounceTime > 0) {
-        timer = setTimeout(callback, debounceTime);
-      } else {
-        callback();
-      }
-      inputTypingDebounceTimer.current = timer;
-      return () => {
-        abortController?.abort();
-        if (timer) clearTimeout(timer);
-      };
-    }, [
-      isOpen,
-      searchTextTrimmed,
-      language,
-      newUnknownValuesAsKey,
-      allowedOptionsAsKey,
-      arrayValues,
-      maxNumberOfPresentedOptions,
-      updateCachedOptions,
-      allOptionsLookup,
-      searchText,
-      allowedOptions
-    ]);
     const handleListRef = useCallback2(
       /** @param {HTMLUListElement | null} el */
       (el) => {
@@ -760,8 +810,7 @@ var AutocompleteList = forwardRef(
                 option.value
               );
             }),
-            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ jsx2("li", { className: "PreactCombobox-option", children: translations.noOptionsFound }),
-            filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx2("li", { className: "PreactCombobox-option", children: translations.typeToLoadMore })
+            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ jsx2("li", { className: "PreactCombobox-option", children: translations.noOptionsFound })
           ] })
         }
       )
@@ -771,7 +820,7 @@ var AutocompleteList = forwardRef(
 var AutocompleteList_default = AutocompleteList;
 
 // lib/TraySearchList.jsx
-import { useCallback as useCallback3, useEffect as useEffect2, useRef as useRef3, useState as useState3 } from "preact/hooks";
+import { useCallback as useCallback3, useEffect as useEffect3, useRef as useRef3, useState as useState3 } from "preact/hooks";
 import { jsx as jsx3, jsxs as jsxs2 } from "preact/jsx-runtime";
 var TraySearchList = ({
   id,
@@ -821,7 +870,7 @@ var TraySearchList = ({
     scrollingElement.style.overflow = originalOverflowRef.current;
     onClose();
   }, [onClose]);
-  useEffect2(() => {
+  useEffect3(() => {
     if (isOpen) {
       const scrollingElement = (
         /** @type {HTMLElement} */
@@ -839,7 +888,7 @@ var TraySearchList = ({
       trayInputRef.current?.focus();
     }
   }, [isOpen]);
-  useEffect2(() => {
+  useEffect3(() => {
     return () => {
       if (virtualKeyboardHeightAdjustSubscription.current) {
         virtualKeyboardHeightAdjustSubscription.current();
@@ -959,7 +1008,7 @@ var Portal = ({ parent = document.body, children, rootElementRef }) => {
     /** @type {string|null} */
     null
   );
-  useEffect3(() => {
+  useEffect4(() => {
     if (rootElementRef?.current) {
       const rootDir = window.getComputedStyle(rootElementRef.current).direction;
       const parentDir = window.getComputedStyle(parent).direction;
@@ -1174,7 +1223,7 @@ var PreactCombobox = ({
     ] : [];
   }
   const arrayValues = useDeepMemo(tempArrayValue);
-  const arrayValuesLookup = useMemo3(() => new Set(arrayValues), [arrayValues]);
+  const arrayValuesLookup = useMemo2(() => new Set(arrayValues), [arrayValues]);
   const allowedOptionsAsKey = useDeepMemo(
     typeof allowedOptions === "function" ? null : allowedOptions
   );
@@ -1223,7 +1272,7 @@ var PreactCombobox = ({
   const trayClosedExplicitlyRef = useRef4(false);
   const [isMobileScreen, setIsMobileScreen] = useState4(false);
   const [trayActiveInputValue, setTrayActiveInputValue] = useState4("");
-  useEffect3(() => {
+  useEffect4(() => {
     if (tray === "auto") {
       const mediaQuery = window.matchMedia(`(max-width: ${trayBreakpoint})`);
       setIsMobileScreen(mediaQuery.matches);
@@ -1270,23 +1319,20 @@ var PreactCombobox = ({
   useLayoutEffect(() => {
     setTrayLabel(computeEffectiveTrayLabel());
   }, [setTrayLabel, computeEffectiveTrayLabel]);
-  const allOptionsLookup = useMemo3(() => {
-    if (Array.isArray(allowedOptions)) {
-      return allowedOptions.reduce(
-        (acc, o) => {
-          acc[o.value] = o;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */
-        {}
-      );
-    }
-    return {};
-  }, [allowedOptions]);
-  const invalidValues = useMemo3(() => {
+  const isListOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+  const { filteredOptions, resolvedOptionsLookup, isLoading } = useAsyncOptions({
+    allowedOptions,
+    selectedValues: arrayValues,
+    searchText: activeInputValue,
+    isOpen: isListOpen,
+    language,
+    maxNumberOfPresentedOptions
+  });
+  const allOptionsLookup = resolvedOptionsLookup;
+  const invalidValues = useMemo2(() => {
     if (allowFreeText) return [];
-    return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
-  }, [allowFreeText, arrayValues, allOptionsLookup]);
+    return arrayValues?.filter((v) => !resolvedOptionsLookup[v]) || [];
+  }, [allowFreeText, arrayValues, resolvedOptionsLookup]);
   const updateSelectionAnnouncement = useCallback4(
     /**
      * @param {string[]} selectedValues
@@ -1325,7 +1371,7 @@ var PreactCombobox = ({
     },
     [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues]
   );
-  useEffect3(() => {
+  useEffect4(() => {
     if (getIsDropdownOpen() && !shouldUseTray && rootElementRef.current && dropdownPopperRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
@@ -1343,7 +1389,7 @@ var PreactCombobox = ({
       dropdownPopperRef.current.style.display = "none";
     }
   }, [getIsDropdownOpen, shouldUseTray]);
-  useEffect3(() => {
+  useEffect4(() => {
     if (invalidValues.length > 0 && warningIconHovered && warningIconRef.current && tooltipPopperRef.current && rootElementRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
@@ -1659,7 +1705,7 @@ var PreactCombobox = ({
       }
     }
   }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
-  const selectChildren = useMemo3(
+  const selectChildren = useMemo2(
     () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx4("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
       typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx4("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
     ) : null,
@@ -1686,13 +1732,12 @@ var PreactCombobox = ({
       ref: autocompleteListRef,
       id,
       searchText: activeInputValue,
-      allowedOptions,
+      filteredOptions,
+      isLoading,
       arrayValues,
       invalidValues,
       multiple,
       allowFreeText,
-      language,
-      maxNumberOfPresentedOptions,
       onOptionSelect: handleOptionSelect,
       onActiveDescendantChange: handleActiveDescendantChange,
       onClose: shouldUseTray ? closeTray : closeDropdown,
@@ -1701,10 +1746,11 @@ var PreactCombobox = ({
       tickIcon,
       optionIconRenderer,
       showValue,
+      language,
       loadingRenderer,
       translations: mergedTranslations,
       theme,
-      isOpen: shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen(),
+      isOpen: isListOpen,
       shouldUseTray,
       setDropdownRef
     }

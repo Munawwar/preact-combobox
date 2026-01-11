@@ -1,8 +1,14 @@
 // lib/TraySearchList.jsx
-import { useCallback as useCallback2, useEffect, useRef as useRef2, useState as useState2 } from "preact/hooks";
+import { useCallback as useCallback2, useEffect as useEffect2, useRef as useRef2, useState as useState2 } from "preact/hooks";
 
 // lib/hooks.js
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
+
+// lib/utils.jsx
+import { h } from "preact";
+import { jsx } from "preact/jsx-runtime";
+
+// lib/hooks.js
 var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
 var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
 function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
@@ -23,9 +29,10 @@ function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
     window.visualViewport?.removeEventListener("resize", handleViewportResize);
   };
 }
+var isPlaywright = typeof navigator !== "undefined" && navigator.webdriver === true;
 
 // lib/TraySearchList.jsx
-import { jsx, jsxs } from "preact/jsx-runtime";
+import { jsx as jsx2, jsxs } from "preact/jsx-runtime";
 var TraySearchList = ({
   id,
   isOpen,
@@ -74,7 +81,7 @@ var TraySearchList = ({
     scrollingElement.style.overflow = originalOverflowRef.current;
     onClose();
   }, [onClose]);
-  useEffect(() => {
+  useEffect2(() => {
     if (isOpen) {
       const scrollingElement = (
         /** @type {HTMLElement} */
@@ -92,7 +99,7 @@ var TraySearchList = ({
       trayInputRef.current?.focus();
     }
   }, [isOpen]);
-  useEffect(() => {
+  useEffect2(() => {
     return () => {
       if (virtualKeyboardHeightAdjustSubscription.current) {
         virtualKeyboardHeightAdjustSubscription.current();
@@ -106,7 +113,7 @@ var TraySearchList = ({
   return (
     // I couldn't use native <dialog> element because trying to focus input right
     // after dialog.close() doesn't seem to work on Chrome (Android).
-    /* @__PURE__ */ jsx(
+    /* @__PURE__ */ jsx2(
       "div",
       {
         ref: trayModalRef,
@@ -128,7 +135,7 @@ var TraySearchList = ({
         tabIndex: -1,
         children: /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-tray ${`PreactCombobox--${theme}`}`, children: [
           /* @__PURE__ */ jsxs("div", { className: "PreactCombobox-trayHeader", children: [
-            trayLabel && /* @__PURE__ */ jsx(
+            trayLabel && /* @__PURE__ */ jsx2(
               "label",
               {
                 id: `${id}-tray-label`,
@@ -137,7 +144,7 @@ var TraySearchList = ({
                 children: trayLabel
               }
             ),
-            /* @__PURE__ */ jsx(
+            /* @__PURE__ */ jsx2(
               "input",
               {
                 id: `${id}-tray-input`,
@@ -162,7 +169,7 @@ var TraySearchList = ({
             )
           ] }),
           children,
-          virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx(
+          virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx2(
             "div",
             {
               className: "PreactCombobox-virtualKeyboardSpacer",

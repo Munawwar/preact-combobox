@@ -14,9 +14,13 @@ export type AutocompleteListProps = {
      */
     searchText: string;
     /**
-     * - Options data or fetcher function
+     * - Pre-filtered options to display
      */
-    allowedOptions: Option[] | ((queryOrValues: string[] | string, limit: number, currentSelections: string[], abortControllerSignal: AbortSignal) => Promise<Option[]>);
+    filteredOptions: OptionMatch[];
+    /**
+     * - Whether options are currently loading
+     */
+    isLoading: boolean;
     /**
      * - Currently selected values
      */
@@ -33,14 +37,6 @@ export type AutocompleteListProps = {
      * - Allow adding custom options
      */
     allowFreeText: boolean;
-    /**
-     * - Language code for matching
-     */
-    language: string;
-    /**
-     * - Maximum options to show
-     */
-    maxNumberOfPresentedOptions: number;
     /**
      * - Handle option selection
      */
@@ -75,6 +71,10 @@ export type AutocompleteListProps = {
      * - Whether to show option values
      */
     showValue: boolean;
+    /**
+     * - Language code for rendering
+     */
+    language: string;
     /**
      * - Loading renderer
      */
@@ -135,7 +135,52 @@ export type AutocompleteListRef = {
     clearActiveDescendant: () => void;
 };
 /**
- * AutocompleteList component - handles filtering, fetching, and rendering options list
+ * @typedef {import("./PreactCombobox.jsx").Option} Option
+ * @typedef {import("./PreactCombobox.jsx").OptionMatch} OptionMatch
+ * @typedef {import("./PreactCombobox.jsx").Translations} Translations
+ * @typedef {import("./PreactCombobox.jsx").OptionTransformFunction} OptionTransformFunction
+ * @typedef {import("preact").VNode} VNode
+ */
+/**
+ * @typedef {Object} AutocompleteListProps
+ * @property {string} id - Component ID for ARIA attributes
+ * @property {string} searchText - Current search/input text
+ * @property {OptionMatch[]} filteredOptions - Pre-filtered options to display
+ * @property {boolean} isLoading - Whether options are currently loading
+ * @property {string[]} arrayValues - Currently selected values
+ * @property {string[]} invalidValues - Invalid selected values
+ * @property {boolean} multiple - Whether multi-select is enabled
+ * @property {boolean} allowFreeText - Allow adding custom options
+ * @property {(selectedValue: string, options?: {toggleSelected?: boolean}) => void} onOptionSelect - Handle option selection
+ * @property {(value: string) => void} [onActiveDescendantChange] - Callback when active descendant changes (for aria-activedescendant)
+ * @property {() => void} [onClose] - Handle close (for single-select)
+ * @property {OptionTransformFunction} optionRenderer - Function to render options
+ * @property {VNode} warningIcon - Warning icon element
+ * @property {VNode} tickIcon - Tick icon element
+ * @property {(option: Option, isInput?: boolean) => VNode|null} optionIconRenderer - Option icon renderer
+ * @property {boolean} showValue - Whether to show option values
+ * @property {string} language - Language code for rendering
+ * @property {(text: string) => VNode|string} loadingRenderer - Loading renderer
+ * @property {Translations} translations - Translation strings
+ * @property {string} theme - Theme for styling
+ * @property {boolean} isOpen - Whether the list should be visible
+ * @property {boolean} shouldUseTray - Whether this is used in tray mode
+ * @property {(ref: HTMLUListElement | null) => void} [setDropdownRef] - Callback to set dropdown ref for popper
+ */
+/**
+ * @typedef {Object} AutocompleteListRef
+ * @property {() => void} navigateUp - Navigate to previous option
+ * @property {() => void} navigateDown - Navigate to next option
+ * @property {() => void} navigateToFirst - Navigate to first option
+ * @property {() => void} navigateToLast - Navigate to last option
+ * @property {() => boolean} selectActive - Select the currently active option, returns true if selection was made
+ * @property {() => string} getActiveDescendant - Get the currently active descendant value
+ * @property {(value: string) => void} setActiveDescendant - Set the active descendant value
+ * @property {() => void} clearActiveDescendant - Clear the active descendant
+ */
+/**
+ * AutocompleteList component - presentational component for rendering options list
+ * Receives pre-filtered options and handles navigation/selection
  * @type {import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>}
  */
 declare const AutocompleteList: import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>;
