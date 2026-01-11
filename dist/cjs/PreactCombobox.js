@@ -2637,7 +2637,6 @@ function useAsyncOptions({
     allowedOptionsAsKey,
     maxNumberOfPresentedOptions,
     updateCachedOptions,
-    resolvedOptionsLookup,
     allowedOptions,
     selectedValues
   ]);

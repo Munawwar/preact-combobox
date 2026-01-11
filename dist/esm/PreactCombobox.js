@@ -525,13 +525,15 @@ function useAsyncOptions({
     searchTextTrimmed,
     searchText,
     language,
-    selectedValuesAsKey,
-    allowedOptionsAsKey,
+    typeof allowedOptions === "function" ? selectedValues : selectedValuesAsKey,
+    // selectedValues,
+    // selectedValuesAsKey,
+    typeof allowedOptions === "function" ? allowedOptions : allowedOptionsAsKey,
+    // allowedOptions,
+    // allowedOptionsAsKey,
     maxNumberOfPresentedOptions,
     updateCachedOptions,
-    resolvedOptionsLookup,
-    allowedOptions,
-    selectedValues
+    typeof allowedOptions === "function" ? null : resolvedOptionsLookup
   ]);
   return {
     filteredOptions,

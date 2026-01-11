@@ -341,7 +341,7 @@ function App() {
           tray=${false}
         />
         <br/>
-        
+
         <label for="example-5">Remote data fetching</label>
         <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <${PreactCombobox}
