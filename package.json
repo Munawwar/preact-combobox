@@ -20,7 +20,7 @@
     "tsc": "tsc",
     "example": "browser-sync start --port 3050 --server --files 'example' --files 'dist' --startPath '/example/example.html'",
     "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core --watch",
-    "build": "rm -fr dist && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:react && tsc && cp lib/PreactCombobox.d.ts dist/esm/  && cp lib/PreactCombobox.d.ts dist/cjs/",
+    "build": "rm -fr dist && rm -fr lib/*.d.ts && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:react && tsc && cp lib/PreactCombobox.d.ts dist/esm/  && cp lib/PreactCombobox.d.ts dist/cjs/",
     "prepare": "husky",
     "pretest": "npm run build"
   },

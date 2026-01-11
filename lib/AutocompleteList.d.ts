@@ -1,8 +1,8 @@
 export default AutocompleteList;
-export type Option = import("./PreactCombobox-old.js").Option;
-export type OptionMatch = import("./PreactCombobox-old.js").OptionMatch;
-export type Translations = import("./PreactCombobox-old.js").Translations;
-export type OptionTransformFunction = import("./PreactCombobox-old.js").OptionTransformFunction;
+export type Option = import("./PreactCombobox.jsx").Option;
+export type OptionMatch = import("./PreactCombobox.jsx").OptionMatch;
+export type Translations = import("./PreactCombobox.jsx").Translations;
+export type OptionTransformFunction = import("./PreactCombobox.jsx").OptionTransformFunction;
 export type VNode = import("preact").VNode;
 export type AutocompleteListProps = {
     /**

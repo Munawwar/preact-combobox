@@ -1796,7 +1796,7 @@ var PreactCombobox = ({
             }
           ) : null
         ] }),
-        autocompleteList && /* @__PURE__ */ jsx4(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? /* @__PURE__ */ jsx4(
+        autocompleteList ? /* @__PURE__ */ jsx4(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? /* @__PURE__ */ jsx4(
           TraySearchList_default,
           {
             id,
@@ -1808,7 +1808,7 @@ var PreactCombobox = ({
             onInputChange: handleTrayInputChange,
             children: autocompleteList
           }
-        ) : autocompleteList }),
+        ) : autocompleteList }) : null,
         invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ jsx4(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsxs3(
           "div",
           {

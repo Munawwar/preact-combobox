@@ -1278,7 +1278,7 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {autocompleteList && (
+      {autocompleteList ? (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
             <TraySearchList
@@ -1296,7 +1296,7 @@ const PreactCombobox = ({
             autocompleteList
           )}
         </Portal>
-      )}
+      ) : null}
       {invalidValues.length > 0 && warningIconHovered && !isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           <div

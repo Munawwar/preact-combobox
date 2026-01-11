@@ -1,8 +1,8 @@
 export default TraySearchList;
-export type Option = import("./PreactCombobox.jsx").Option;
-export type OptionMatch = import("./PreactCombobox.jsx").OptionMatch;
-export type Translations = import("./PreactCombobox.jsx").Translations;
-export type OptionTransformFunction = import("./PreactCombobox.jsx").OptionTransformFunction;
+export type Option = any;
+export type OptionMatch = any;
+export type Translations = any;
+export type OptionTransformFunction = any;
 export type VNode = import("preact").VNode;
 export type TraySearchListProps = {
     /**
@@ -39,10 +39,10 @@ export type TraySearchListProps = {
     children: import("preact").ComponentChildren;
 };
 /**
- * @typedef {import("./PreactCombobox.jsx").Option} Option
- * @typedef {import("./PreactCombobox.jsx").OptionMatch} OptionMatch
- * @typedef {import("./PreactCombobox.jsx").Translations} Translations
- * @typedef {import("./PreactCombobox.jsx").OptionTransformFunction} OptionTransformFunction
+ * @typedef {import("./PreactCombobox-old.js").Option} Option
+ * @typedef {import("./PreactCombobox-old.js").OptionMatch} OptionMatch
+ * @typedef {import("./PreactCombobox-old.js").Translations} Translations
+ * @typedef {import("./PreactCombobox-old.js").OptionTransformFunction} OptionTransformFunction
  * @typedef {import("preact").VNode} VNode
  */
 /**
