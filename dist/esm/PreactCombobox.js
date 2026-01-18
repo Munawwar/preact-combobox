@@ -674,6 +674,7 @@ function useAsyncOptions({
     /** @type {ReturnType<typeof setTimeout> | null} */
     null
   );
+  const wasOpenRef = useRef2(false);
   const searchTextTrimmed = searchText.trim();
   const isFunction = typeof allowedOptionsOriginal === "function";
   const allowedOptions = useDeepMemo(allowedOptionsOriginal);
@@ -764,8 +765,11 @@ function useAsyncOptions({
     if (!isOpen) {
       setFilteredOptions([]);
       setIsLoading(false);
+      wasOpenRef.current = false;
       return;
     }
+    const isFirstOpen = !wasOpenRef.current;
+    wasOpenRef.current = true;
     if (isFunction) {
       const fetchFn = (
         /** @type {(queryOrValues: string[] | string, limit: number, currentSelections: string[], signal: AbortSignal) => Promise<Option[]>} */
@@ -774,7 +778,8 @@ function useAsyncOptions({
       const currentSelectedValues = selectedValues;
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
-      const debounceTime = searchTextTrimmed && !isPlaywright ? 250 : 0;
+      let debounceTime = isPlaywright ? 5 : 250;
+      if (isFirstOpen) debounceTime = 0;
       setIsLoading(true);
       const fetchOptions = async () => {
         try {
@@ -1024,7 +1029,6 @@ var defaultEnglishTranslations = {
   // Function to format the count in badge, receives count and language as parameters
   selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count)
 };
-var isPlaywright2 = navigator.webdriver === true;
 var isServerDefault = typeof self === "undefined";
 function unique(arr) {
   return Array.from(new Set(arr));
@@ -1250,13 +1254,10 @@ var PreactCombobox = ({
   }
   const arrayValues = useDeepMemo(tempArrayValue);
   const arrayValuesLookup = useMemo2(() => new Set(arrayValues), [arrayValues]);
-  const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions
-  );
   const autoId = useId();
   const id = idProp || autoId;
   const [inputValue, setInputValue] = useState4("");
-  const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
+  const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const [getIsFocused, setIsFocused] = useLive(false);
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState4("");
   const [loadingAnnouncement, setLoadingAnnouncement] = useState4("");
@@ -1294,7 +1295,7 @@ var PreactCombobox = ({
     []
   );
   const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
-  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
+  const [getIsTrayOpen, setIsTrayOpen] = useLive(false);
   const trayClosedExplicitlyRef = useRef4(false);
   const [isMobileScreen, setIsMobileScreen] = useState4(false);
   const [trayActiveInputValue, setTrayActiveInputValue] = useState4("");
@@ -1546,10 +1547,6 @@ var PreactCombobox = ({
     /** @type {function | null} */
     null
   );
-  const virtualKeyboardHeightAdjustSubscription = useRef4(
-    /** @type {function | null} */
-    null
-  );
   const handleInputFocus = useCallback4(() => {
     setIsFocused(true);
     clearTimeout(blurTimeoutRef.current);
@@ -1744,6 +1741,29 @@ var PreactCombobox = ({
       maxNumberOfPresentedOptions
     ]
   );
+  useEffect4(() => {
+    if (isLoading && isListOpen) {
+      setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
+    } else if (loadingAnnouncement && !isLoading && isListOpen) {
+      setLoadingAnnouncement(
+        filteredOptions.length ? mergedTranslations.optionsLoadedAnnouncement : mergedTranslations.noOptionsFoundAnnouncement
+      );
+      const timer = setTimeout(() => {
+        setLoadingAnnouncement("");
+      }, 1e3);
+      return () => clearTimeout(timer);
+    } else if (loadingAnnouncement && !isListOpen) {
+      setLoadingAnnouncement("");
+    }
+  }, [
+    isLoading,
+    loadingAnnouncement,
+    isListOpen,
+    filteredOptions.length,
+    mergedTranslations.loadingOptionsAnnouncement,
+    mergedTranslations.optionsLoadedAnnouncement,
+    mergedTranslations.noOptionsFoundAnnouncement
+  ]);
   const isServerSideForm = isServer && formSubmitCompatible;
   const setDropdownRef = useCallback4(
     /** @param {HTMLUListElement | null} el */
