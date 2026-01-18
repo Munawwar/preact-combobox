@@ -9,10 +9,10 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { useDeepMemo, useLive, subscribeToVirtualKeyboard, useAsyncOptions } from "./hooks.js";
-import { toHTMLId, matchSlicesToNodes } from "./utils.jsx";
-import AutocompleteList from "./AutocompleteList.jsx";
+import OptionsListbox from "./OptionsListbox.jsx";
 import TraySearchList from "./TraySearchList.jsx";
+import { subscribeToVirtualKeyboard, useAsyncOptions, useDeepMemo, useLive } from "./hooks.js";
+import { matchSlicesToNodes, toHTMLId } from "./utils.jsx";
 import "./PreactCombobox.css";
 
 // --- types ---
@@ -476,8 +476,10 @@ const PreactCombobox = ({
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState("");
   // For loading status announcements
   const [loadingAnnouncement, setLoadingAnnouncement] = useState("");
-  // Ref for AutocompleteList component to call navigation methods
-  const autocompleteListRef = useRef(/** @type {import("./AutocompleteList.jsx").AutocompleteListRef | null} */ (null));
+  // Ref for OptionsListbox component to call navigation methods
+  const optionsListboxRef = useRef(
+    /** @type {import("./OptionsListbox.jsx").OptionsListboxRef | null} */ (null),
+  );
   // Track active descendant for aria-activedescendant on input (synced from AutocompleteList)
   const [activeDescendantValue, setActiveDescendantValue] = useState("");
   const [warningIconHovered, setWarningIconHovered] = useState(false);
@@ -593,8 +595,8 @@ const PreactCombobox = ({
 
   const invalidValues = useMemo(() => {
     if (allowFreeText) return [];
-    return arrayValues?.filter((v) => !resolvedOptionsLookup[v]) || [];
-  }, [allowFreeText, arrayValues, resolvedOptionsLookup]);
+    return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
+  }, [allowFreeText, arrayValues, allOptionsLookup]);
 
   const updateSelectionAnnouncement = useCallback(
     /**
@@ -642,7 +644,7 @@ const PreactCombobox = ({
       updateSelectionAnnouncement(arrayValues);
 
       // Clear active descendant via ref (will also trigger state update via callback)
-      autocompleteListRef.current?.clearActiveDescendant();
+      optionsListboxRef.current?.clearActiveDescendant();
     },
     [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues],
   );
@@ -838,7 +840,6 @@ const PreactCombobox = ({
     trayClosedExplicitlyRef.current = false;
   }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
 
-
   const closeTray = useCallback(() => {
     setIsTrayOpen(false);
     setTrayActiveInputValue("");
@@ -953,7 +954,7 @@ const PreactCombobox = ({
     (newValue) => {
       handleOptionSelect(newValue);
       // Set active descendant via ref
-      autocompleteListRef.current?.setActiveDescendant(newValue);
+      optionsListboxRef.current?.setActiveDescendant(newValue);
     },
     [handleOptionSelect],
   );
@@ -969,7 +970,7 @@ const PreactCombobox = ({
       if (e.key === "Enter") {
         e.preventDefault();
         // Try to select the active option first
-        const selected = autocompleteListRef.current?.selectActive();
+        const selected = optionsListboxRef.current?.selectActive();
         // If nothing was selected and free text is allowed, add new option
         if (!selected && allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
@@ -979,21 +980,21 @@ const PreactCombobox = ({
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
         // Navigate to next option
-        autocompleteListRef.current?.navigateDown();
+        optionsListboxRef.current?.navigateDown();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
         // Navigate to previous option
-        autocompleteListRef.current?.navigateUp();
+        optionsListboxRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        autocompleteListRef.current?.navigateToFirst();
+        optionsListboxRef.current?.navigateToFirst();
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        autocompleteListRef.current?.navigateToLast();
+        optionsListboxRef.current?.navigateToLast();
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
@@ -1156,9 +1157,9 @@ const PreactCombobox = ({
     [],
   );
 
-  const autocompleteList = !isServer ? (
-    <AutocompleteList
-      ref={autocompleteListRef}
+  const optionsListbox = !isServer ? (
+    <OptionsListbox
+      ref={optionsListboxRef}
       id={id}
       searchText={activeInputValue}
       filteredOptions={filteredOptions}
@@ -1311,7 +1312,7 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {autocompleteList ? (
+      {optionsListbox ? (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
             <TraySearchList
@@ -1323,10 +1324,10 @@ const PreactCombobox = ({
               translations={mergedTranslations}
               onInputChange={handleTrayInputChange}
             >
-              {autocompleteList}
+              {optionsListbox}
             </TraySearchList>
           ) : (
-            autocompleteList
+            optionsListbox
           )}
         </Portal>
       ) : null}

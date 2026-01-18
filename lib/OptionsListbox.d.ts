@@ -1,10 +1,10 @@
-export default AutocompleteList;
+export default OptionsListbox;
 export type Option = import("./PreactCombobox.jsx").Option;
 export type OptionMatch = import("./PreactCombobox.jsx").OptionMatch;
 export type Translations = import("./PreactCombobox.jsx").Translations;
 export type OptionTransformFunction = import("./PreactCombobox.jsx").OptionTransformFunction;
 export type VNode = import("preact").VNode;
-export type AutocompleteListProps = {
+export type OptionsListboxProps = {
     /**
      * - Component ID for ARIA attributes
      */
@@ -100,7 +100,7 @@ export type AutocompleteListProps = {
      */
     setDropdownRef?: ((ref: HTMLUListElement | null) => void) | undefined;
 };
-export type AutocompleteListRef = {
+export type OptionsListboxRef = {
     /**
      * - Navigate to previous option
      */
@@ -142,7 +142,7 @@ export type AutocompleteListRef = {
  * @typedef {import("preact").VNode} VNode
  */
 /**
- * @typedef {Object} AutocompleteListProps
+ * @typedef {Object} OptionsListboxProps
  * @property {string} id - Component ID for ARIA attributes
  * @property {string} searchText - Current search/input text
  * @property {OptionMatch[]} filteredOptions - Pre-filtered options to display
@@ -168,7 +168,7 @@ export type AutocompleteListRef = {
  * @property {(ref: HTMLUListElement | null) => void} [setDropdownRef] - Callback to set dropdown ref for popper
  */
 /**
- * @typedef {Object} AutocompleteListRef
+ * @typedef {Object} OptionsListboxRef
  * @property {() => void} navigateUp - Navigate to previous option
  * @property {() => void} navigateDown - Navigate to next option
  * @property {() => void} navigateToFirst - Navigate to first option
@@ -179,8 +179,8 @@ export type AutocompleteListRef = {
  * @property {() => void} clearActiveDescendant - Clear the active descendant
  */
 /**
- * AutocompleteList component - presentational component for rendering options list
+ * OptionsListbox component - renders a listbox with keyboard navigation and selection
  * Receives pre-filtered options and handles navigation/selection
- * @type {import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>}
+ * @type {import("preact/compat").ForwardRefExoticComponent<OptionsListboxProps & import("preact/compat").RefAttributes<OptionsListboxRef>>}
  */
-declare const AutocompleteList: import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>;
+declare const OptionsListbox: import("preact/compat").ForwardRefExoticComponent<OptionsListboxProps & import("preact/compat").RefAttributes<OptionsListboxRef>>;

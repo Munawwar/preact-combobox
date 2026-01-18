@@ -1,4 +1,12 @@
 /**
+ * Returns a ref that always holds the latest value.
+ * Useful for accessing current values in effects without adding them to deps.
+ * Similar to React's experimental useEffectEvent.
+ * @template {any[] | ((...args: any[]) => any)} T
+ * @param {T} value
+ * @returns {T}
+ */
+/**
  * @param {any} value1
  * @param {any} value2
  * @returns {boolean}
@@ -37,7 +45,7 @@ export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }: 
  * @param {UseAsyncOptionsParams} params
  * @returns {UseAsyncOptionsResult}
  */
-export function useAsyncOptions({ allowedOptions, selectedValues, searchText, isOpen, language, maxNumberOfPresentedOptions, }: UseAsyncOptionsParams): UseAsyncOptionsResult;
+export function useAsyncOptions({ allowedOptions: allowedOptionsOriginal, selectedValues: selectedValuesOriginal, searchText, isOpen, language, maxNumberOfPresentedOptions, }: UseAsyncOptionsParams): UseAsyncOptionsResult;
 export type Option = import("./PreactCombobox.jsx").Option;
 export type OptionMatch = import("./PreactCombobox.jsx").OptionMatch;
 export type UseAsyncOptionsParams = {

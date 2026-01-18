@@ -17,12 +17,12 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// lib/AutocompleteList.jsx
-var AutocompleteList_exports = {};
-__export(AutocompleteList_exports, {
-  default: () => AutocompleteList_default
+// lib/OptionsListbox.jsx
+var OptionsListbox_exports = {};
+__export(OptionsListbox_exports, {
+  default: () => OptionsListbox_default
 });
-module.exports = __toCommonJS(AutocompleteList_exports);
+module.exports = __toCommonJS(OptionsListbox_exports);
 
 // node_modules/preact/dist/preact.module.js
 var n;
@@ -635,8 +635,8 @@ function toHTMLId(text) {
   return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
 }
 
-// lib/AutocompleteList.jsx
-var AutocompleteList = D3(
+// lib/OptionsListbox.jsx
+var OptionsListbox = D3(
   ({
     id,
     searchText,
@@ -746,7 +746,9 @@ var AutocompleteList = D3(
             }
             return true;
           }
-          const option = filteredOptions.find((o3) => o3.value === activeDescendant);
+          const option = filteredOptions.find(
+            (o3) => o3.value === activeDescendant
+          );
           if (option && !option.disabled) {
             onOptionSelect(option.value, { toggleSelected: true });
             if (!multiple && onClose) {
@@ -909,5 +911,5 @@ var AutocompleteList = D3(
     );
   }
 );
-var AutocompleteList_default = AutocompleteList;
-//# sourceMappingURL=AutocompleteList.js.map
+var OptionsListbox_default = OptionsListbox;
+//# sourceMappingURL=OptionsListbox.js.map

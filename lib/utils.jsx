@@ -1,5 +1,3 @@
-import { h } from "preact";
-
 /**
  * @typedef {import("./PreactCombobox.jsx").Option} Option
  * @typedef {import("./PreactCombobox.jsx").OptionMatch} OptionMatch
