@@ -1,5 +1,4 @@
 // lib/utils.jsx
-import { h } from "preact";
 import { jsx } from "preact/jsx-runtime";
 var languageCache = {};
 function toHTMLId(text) {

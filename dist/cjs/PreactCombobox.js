@@ -2383,272 +2383,8 @@ function matchSlicesToNodes(matchSlices, text) {
   return nodes;
 }
 
-// lib/hooks.js
-function isEqual(value1, value2) {
-  const seenA = /* @__PURE__ */ new WeakMap();
-  const seenB = /* @__PURE__ */ new WeakMap();
-  function deepCompare(a3, b2) {
-    if (Object.is(a3, b2)) return true;
-    if (a3 === null || b2 === null || typeof a3 !== "object" || typeof b2 !== "object") {
-      return a3 === b2;
-    }
-    if (a3.$$typeof === Symbol.for("react.element") || b2.$$typeof === Symbol.for("react.element")) {
-      return a3 === b2;
-    }
-    if (Object.getPrototypeOf(a3) !== Object.getPrototypeOf(b2)) {
-      return false;
-    }
-    if (seenA.has(a3)) return seenA.get(a3) === b2;
-    if (seenB.has(b2)) return seenB.get(b2) === a3;
-    if (seenA.has(b2) || seenB.has(a3)) return false;
-    seenA.set(a3, b2);
-    seenB.set(b2, a3);
-    if (Array.isArray(a3)) {
-      if (a3.length !== b2.length) {
-        return false;
-      }
-      return a3.every((item, index) => deepCompare(item, b2[index]));
-    }
-    if (a3 instanceof Date) {
-      return a3.getTime() === b2.getTime();
-    }
-    if (a3 instanceof RegExp) {
-      return a3.toString() === b2.toString();
-    }
-    const keysA = Object.keys(a3);
-    const keysB = Object.keys(b2);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every((key) => keysB.includes(key) && deepCompare(a3[key], b2[key]));
-  }
-  return deepCompare(value1, value2);
-}
-function useDeepMemo(newState) {
-  const state = A2(
-    /** @type {T} */
-    null
-  );
-  if (!isEqual(newState, state.current)) {
-    state.current = newState;
-  }
-  return state.current;
-}
-function useLive(initialValue) {
-  const [refreshValue, forceRefresh] = h2(0);
-  const ref = A2(initialValue);
-  let hasValueChanged = false;
-  const getValue = T2(() => {
-    hasValueChanged = true;
-    return () => ref.current;
-  }, [refreshValue]);
-  const setValue = q2(
-    /** @param {T} value */
-    (value) => {
-      if (value !== ref.current) {
-        ref.current = value;
-        forceRefresh((x3) => x3 + 1);
-      }
-    },
-    []
-  );
-  return [getValue, setValue, hasValueChanged];
-}
-var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
-  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
-  let isVisible = false;
-  const handleViewportResize = () => {
-    if (!window.visualViewport) return;
-    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
-    const isVisibleNow = heightDiff > 150;
-    if (isVisible !== isVisibleNow) {
-      isVisible = isVisibleNow;
-      visibleCallback?.(isVisible);
-    }
-    heightCallback?.(heightDiff, isVisible);
-  };
-  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
-  return () => {
-    window.visualViewport?.removeEventListener("resize", handleViewportResize);
-  };
-}
-var isPlaywright = typeof navigator !== "undefined" && navigator.webdriver === true;
-function useAsyncOptions({
-  allowedOptions,
-  selectedValues,
-  searchText,
-  isOpen,
-  language,
-  maxNumberOfPresentedOptions
-}) {
-  const [filteredOptions, setFilteredOptions] = h2(
-    /** @type {OptionMatch[]} */
-    []
-  );
-  const [isLoading, setIsLoading] = h2(false);
-  const [cacheVersion, setCacheVersion] = h2(0);
-  const cachedOptions = A2(
-    /** @type {{ [value: string]: Option }} */
-    {}
-  );
-  const abortControllerRef = A2(
-    /** @type {AbortController | null} */
-    null
-  );
-  const debounceTimerRef = A2(
-    /** @type {ReturnType<typeof setTimeout> | null} */
-    null
-  );
-  const searchTextTrimmed = searchText.trim();
-  const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions
-  );
-  const selectedValuesAsKey = useDeepMemo(selectedValues);
-  const updateCachedOptions = q2(
-    /** @param {Option[]} update */
-    (update) => {
-      let hasNewOptions = false;
-      for (const item of update) {
-        if (!cachedOptions.current[item.value]) {
-          hasNewOptions = true;
-        }
-        cachedOptions.current[item.value] = item;
-      }
-      if (hasNewOptions) {
-        setCacheVersion((v3) => v3 + 1);
-      }
-    },
-    []
-  );
-  const resolvedOptionsLookup = T2(() => {
-    if (Array.isArray(allowedOptions)) {
-      return allowedOptions.reduce(
-        (acc, o3) => {
-          acc[o3.value] = o3;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */
-        {}
-      );
-    }
-    return { ...cachedOptions.current };
-  }, [allowedOptionsAsKey, cacheVersion]);
-  const unresolvedValues = T2(
-    () => selectedValues.filter((v3) => !resolvedOptionsLookup[v3]),
-    [selectedValues, resolvedOptionsLookup]
-  );
-  const unresolvedValuesAsKey = useDeepMemo(unresolvedValues);
-  y2(() => {
-    if (typeof allowedOptions !== "function") return;
-    if (unresolvedValues.length === 0) return;
-    const abortController = new AbortController();
-    allowedOptions(
-      unresolvedValues,
-      unresolvedValues.length,
-      selectedValues,
-      abortController.signal
-    ).then((results) => {
-      if (abortController.signal.aborted) return;
-      if (results?.length) {
-        updateCachedOptions(results);
-      }
-      const stillUnresolved = unresolvedValues.filter(
-        (v3) => !results?.find((r3) => r3.value === v3)
-      );
-      if (stillUnresolved.length > 0) {
-        updateCachedOptions(stillUnresolved.map((v3) => ({ label: v3, value: v3 })));
-      }
-    }).catch((error) => {
-      if (abortController.signal.aborted) return;
-      console.error("Failed to resolve option labels:", error);
-      updateCachedOptions(unresolvedValues.map((v3) => ({ label: v3, value: v3 })));
-    });
-    return () => abortController.abort();
-  }, [unresolvedValuesAsKey, allowedOptions, selectedValuesAsKey, updateCachedOptions]);
-  y2(() => {
-    abortControllerRef.current?.abort();
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
-    if (!isOpen) {
-      setFilteredOptions([]);
-      setIsLoading(false);
-      return;
-    }
-    if (typeof allowedOptions === "function") {
-      const abortController = new AbortController();
-      abortControllerRef.current = abortController;
-      let debounceTime = 0;
-      if (searchTextTrimmed && !isPlaywright) {
-        debounceTime = 250;
-      }
-      setIsLoading(true);
-      const fetchOptions = async () => {
-        try {
-          const results = await allowedOptions(
-            searchTextTrimmed,
-            maxNumberOfPresentedOptions,
-            selectedValues,
-            abortController.signal
-          );
-          if (abortController.signal.aborted) return;
-          if (results?.length) {
-            updateCachedOptions(results);
-          }
-          let updatedOptions = results || [];
-          if (!searchTextTrimmed) {
-            const unreturnedSelectedValues = selectedValues.filter((v3) => !results?.find((r3) => r3.value === v3)).filter((v3) => !cachedOptions.current[v3]).map((v3) => ({ label: v3, value: v3 }));
-            if (unreturnedSelectedValues.length > 0) {
-              updateCachedOptions(unreturnedSelectedValues);
-              updatedOptions = unreturnedSelectedValues.concat(results || []);
-            }
-          }
-          const options2 = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, selectedValues);
-          setFilteredOptions(getMatchScore(searchTextTrimmed, options2, language, false));
-          setIsLoading(false);
-        } catch (error) {
-          if (abortController.signal.aborted) return;
-          setIsLoading(false);
-          throw error;
-        }
-      };
-      if (debounceTime > 0) {
-        debounceTimerRef.current = setTimeout(fetchOptions, debounceTime);
-      } else {
-        fetchOptions();
-      }
-      return () => {
-        abortController.abort();
-        if (debounceTimerRef.current) {
-          clearTimeout(debounceTimerRef.current);
-        }
-      };
-    }
-    const mergedOptions = selectedValues.filter((v3) => !resolvedOptionsLookup[v3]).map((v3) => ({ label: v3, value: v3 })).concat(allowedOptions);
-    const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, selectedValues);
-    setFilteredOptions(getMatchScore(searchText, options, language, true));
-  }, [
-    isOpen,
-    searchTextTrimmed,
-    searchText,
-    language,
-    selectedValuesAsKey,
-    allowedOptionsAsKey,
-    maxNumberOfPresentedOptions,
-    updateCachedOptions,
-    allowedOptions,
-    selectedValues
-  ]);
-  return {
-    filteredOptions,
-    resolvedOptionsLookup,
-    isLoading
-  };
-}
-
-// lib/AutocompleteList.jsx
-var AutocompleteList = D3(
+// lib/OptionsListbox.jsx
+var OptionsListbox = D3(
   ({
     id,
     searchText,
@@ -2758,7 +2494,9 @@ var AutocompleteList = D3(
             }
             return true;
           }
-          const option = filteredOptions.find((o3) => o3.value === activeDescendant);
+          const option = filteredOptions.find(
+            (o3) => o3.value === activeDescendant
+          );
           if (option && !option.disabled) {
             onOptionSelect(option.value, { toggleSelected: true });
             if (!multiple && onClose) {
@@ -2921,7 +2659,295 @@ var AutocompleteList = D3(
     );
   }
 );
-var AutocompleteList_default = AutocompleteList;
+var OptionsListbox_default = OptionsListbox;
+
+// lib/hooks.js
+function isEqual(value1, value2) {
+  const seenA = /* @__PURE__ */ new WeakMap();
+  const seenB = /* @__PURE__ */ new WeakMap();
+  function deepCompare(a3, b2) {
+    if (Object.is(a3, b2)) return true;
+    if (a3 === null || b2 === null || typeof a3 !== "object" || typeof b2 !== "object") {
+      return a3 === b2;
+    }
+    if (a3.$$typeof === Symbol.for("react.element") || b2.$$typeof === Symbol.for("react.element")) {
+      return a3 === b2;
+    }
+    if (Object.getPrototypeOf(a3) !== Object.getPrototypeOf(b2)) {
+      return false;
+    }
+    if (seenA.has(a3)) return seenA.get(a3) === b2;
+    if (seenB.has(b2)) return seenB.get(b2) === a3;
+    if (seenA.has(b2) || seenB.has(a3)) return false;
+    seenA.set(a3, b2);
+    seenB.set(b2, a3);
+    if (Array.isArray(a3)) {
+      if (a3.length !== b2.length) {
+        return false;
+      }
+      return a3.every((item, index) => deepCompare(item, b2[index]));
+    }
+    if (a3 instanceof Date) {
+      return a3.getTime() === b2.getTime();
+    }
+    if (a3 instanceof RegExp) {
+      return a3.toString() === b2.toString();
+    }
+    const keysA = Object.keys(a3);
+    const keysB = Object.keys(b2);
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every((key) => keysB.includes(key) && deepCompare(a3[key], b2[key]));
+  }
+  return deepCompare(value1, value2);
+}
+function useDeepMemo(newState) {
+  const state = A2(
+    /** @type {T} */
+    null
+  );
+  if (!isEqual(newState, state.current)) {
+    state.current = newState;
+  }
+  return state.current;
+}
+function useLive(initialValue) {
+  const [refreshValue, forceRefresh] = h2(0);
+  const ref = A2(initialValue);
+  let hasValueChanged = false;
+  const getValue = T2(() => {
+    hasValueChanged = true;
+    return () => ref.current;
+  }, [refreshValue]);
+  const setValue = q2(
+    /** @param {T} value */
+    (value) => {
+      if (value !== ref.current) {
+        ref.current = value;
+        forceRefresh((x3) => x3 + 1);
+      }
+    },
+    []
+  );
+  return [getValue, setValue, hasValueChanged];
+}
+var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
+  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
+  let isVisible = false;
+  const handleViewportResize = () => {
+    if (!window.visualViewport) return;
+    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
+    const isVisibleNow = heightDiff > 150;
+    if (isVisible !== isVisibleNow) {
+      isVisible = isVisibleNow;
+      visibleCallback?.(isVisible);
+    }
+    heightCallback?.(heightDiff, isVisible);
+  };
+  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
+  return () => {
+    window.visualViewport?.removeEventListener("resize", handleViewportResize);
+  };
+}
+var isPlaywright = typeof navigator !== "undefined" && navigator.webdriver === true;
+function useAsyncOptions({
+  allowedOptions: allowedOptionsOriginal,
+  selectedValues: selectedValuesOriginal,
+  searchText,
+  isOpen,
+  language,
+  maxNumberOfPresentedOptions
+}) {
+  const [filteredOptions, setFilteredOptions] = h2(
+    /** @type {OptionMatch[]} */
+    []
+  );
+  const [isLoading, setIsLoading] = h2(false);
+  const [cacheVersion, setCacheVersion] = h2(0);
+  const cachedOptions = A2(
+    /** @type {{ [value: string]: Option }} */
+    {}
+  );
+  const abortControllerRef = A2(
+    /** @type {AbortController | null} */
+    null
+  );
+  const debounceTimerRef = A2(
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    null
+  );
+  const searchTextTrimmed = searchText.trim();
+  const isFunction = typeof allowedOptionsOriginal === "function";
+  const allowedOptions = useDeepMemo(allowedOptionsOriginal);
+  const selectedValues = useDeepMemo(selectedValuesOriginal);
+  const updateCachedOptions = q2(
+    /** @param {Option[]} update */
+    (update) => {
+      let hasChanged = false;
+      for (const item of update) {
+        if (!cachedOptions.current[item.value] || !isEqual(cachedOptions.current[item.value], item)) {
+          hasChanged = true;
+          cachedOptions.current[item.value] = item;
+        }
+      }
+      if (hasChanged) {
+        setCacheVersion((v3) => v3 + 1);
+      }
+    },
+    []
+  );
+  const resolvedOptionsLookup = T2(() => {
+    if (Array.isArray(allowedOptions)) {
+      return allowedOptions.reduce(
+        (acc, o3) => {
+          acc[o3.value] = o3;
+          return acc;
+        },
+        /** @type {{ [value: string]: Option }} */
+        {}
+      );
+    }
+    return { ...cachedOptions.current };
+  }, [allowedOptions, cacheVersion]);
+  const unresolvedValues = T2(
+    () => selectedValues.filter((v3) => !resolvedOptionsLookup[v3]),
+    [selectedValues, cacheVersion]
+  );
+  y2(() => {
+    if (!isFunction) return;
+    if (unresolvedValues.length === 0) return;
+    const fetchOptions = (
+      /**
+      * @type {(
+      *  queryOrValues: string[]
+      *  | string, limit: number, currentSelections: string[], signal: AbortSignal
+      * ) => Promise<Option[]>}
+      */
+      allowedOptions
+    );
+    const currentSelectedValues = selectedValues;
+    const abortController = new AbortController();
+    fetchOptions(
+      unresolvedValues,
+      unresolvedValues.length,
+      currentSelectedValues,
+      abortController.signal
+    ).then((results) => {
+      if (abortController.signal.aborted) return;
+      if (results?.length) {
+        updateCachedOptions(results);
+      }
+      const stillUnresolved = unresolvedValues.filter(
+        (v3) => !results?.find((r3) => r3.value === v3)
+      );
+      if (stillUnresolved.length > 0) {
+        updateCachedOptions(stillUnresolved.map((v3) => ({ label: v3, value: v3 })));
+      }
+    }).catch((error) => {
+      if (abortController.signal.aborted) return;
+      console.error("Failed to resolve option labels:", error);
+      updateCachedOptions(unresolvedValues.map((v3) => ({ label: v3, value: v3 })));
+    });
+    return () => abortController.abort();
+  }, [
+    // effect should only run when there is selected values with unknown labels
+    unresolvedValues.length > 0,
+    // selectValues doesn't need to be a dependency
+    // this effect only applies to remote fetches, i.e. only when allowedOptions is a function.
+    isFunction ? allowedOptions : null,
+    updateCachedOptions
+  ]);
+  y2(() => {
+    abortControllerRef.current?.abort();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (!isOpen) {
+      setFilteredOptions([]);
+      setIsLoading(false);
+      return;
+    }
+    if (isFunction) {
+      const fetchFn = (
+        /** @type {(queryOrValues: string[] | string, limit: number, currentSelections: string[], signal: AbortSignal) => Promise<Option[]>} */
+        allowedOptions
+      );
+      const currentSelectedValues = selectedValues;
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      const debounceTime = searchTextTrimmed && !isPlaywright ? 250 : 0;
+      setIsLoading(true);
+      const fetchOptions = async () => {
+        try {
+          const results = await fetchFn(
+            searchTextTrimmed,
+            maxNumberOfPresentedOptions,
+            currentSelectedValues,
+            abortController.signal
+          );
+          if (abortController.signal.aborted) return;
+          if (results?.length) {
+            updateCachedOptions(results);
+          }
+          let updatedOptions = results || [];
+          if (!searchTextTrimmed) {
+            const unreturnedSelectedValues = currentSelectedValues.filter((v3) => !results?.find((r3) => r3.value === v3)).filter((v3) => !cachedOptions.current[v3]).map((v3) => ({ label: v3, value: v3 }));
+            if (unreturnedSelectedValues.length > 0) {
+              updateCachedOptions(unreturnedSelectedValues);
+              updatedOptions = unreturnedSelectedValues.concat(results || []);
+            }
+          }
+          const options = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, currentSelectedValues);
+          setFilteredOptions(getMatchScore(searchTextTrimmed, options, language, false));
+          setIsLoading(false);
+        } catch (error) {
+          if (abortController.signal.aborted) return;
+          setIsLoading(false);
+          throw error;
+        }
+      };
+      if (debounceTime > 0) {
+        debounceTimerRef.current = setTimeout(fetchOptions, debounceTime);
+      } else {
+        fetchOptions();
+      }
+      return () => {
+        abortController.abort();
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    } else {
+      const arrayOptions = (
+        /** @type {Option[]} */
+        allowedOptions
+      );
+      const currentSelectedValues = selectedValues;
+      const mergedOptions = currentSelectedValues.filter((v3) => !resolvedOptionsLookup[v3]).map((v3) => ({ label: v3, value: v3 })).concat(arrayOptions);
+      const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, currentSelectedValues);
+      setFilteredOptions(getMatchScore(searchText, options, language, true));
+    }
+  }, [
+    isOpen,
+    searchTextTrimmed,
+    searchText,
+    language,
+    unresolvedValues.length > 0,
+    // selectValues doesn't need to be a dependency as explained above
+    isFunction,
+    allowedOptions,
+    // resolvedOptionsLookup doesn't need to be dependency as explained above
+    maxNumberOfPresentedOptions,
+    updateCachedOptions
+  ]);
+  return {
+    filteredOptions,
+    resolvedOptionsLookup,
+    isLoading
+  };
+}
 
 // lib/TraySearchList.jsx
 var TraySearchList = ({
@@ -3335,8 +3361,8 @@ var PreactCombobox = ({
   const [getIsFocused, setIsFocused] = useLive(false);
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = h2("");
   const [loadingAnnouncement, setLoadingAnnouncement] = h2("");
-  const autocompleteListRef = A2(
-    /** @type {import("./AutocompleteList.jsx").AutocompleteListRef | null} */
+  const optionsListboxRef = A2(
+    /** @type {import("./OptionsListbox.jsx").OptionsListboxRef | null} */
     null
   );
   const [activeDescendantValue, setActiveDescendantValue] = h2("");
@@ -3432,8 +3458,8 @@ var PreactCombobox = ({
   const allOptionsLookup = resolvedOptionsLookup;
   const invalidValues = T2(() => {
     if (allowFreeText) return [];
-    return arrayValues?.filter((v3) => !resolvedOptionsLookup[v3]) || [];
-  }, [allowFreeText, arrayValues, resolvedOptionsLookup]);
+    return arrayValues?.filter((v3) => !allOptionsLookup[v3]) || [];
+  }, [allowFreeText, arrayValues, allOptionsLookup]);
   const updateSelectionAnnouncement = q2(
     /**
      * @param {string[]} selectedValues
@@ -3468,7 +3494,7 @@ var PreactCombobox = ({
         dropdownClosedExplicitlyRef.current = true;
       }
       updateSelectionAnnouncement(arrayValues);
-      autocompleteListRef.current?.clearActiveDescendant();
+      optionsListboxRef.current?.clearActiveDescendant();
     },
     [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues]
   );
@@ -3688,7 +3714,7 @@ var PreactCombobox = ({
      */
     (newValue) => {
       handleOptionSelect(newValue);
-      autocompleteListRef.current?.setActiveDescendant(newValue);
+      optionsListboxRef.current?.setActiveDescendant(newValue);
     },
     [handleOptionSelect]
   );
@@ -3699,7 +3725,7 @@ var PreactCombobox = ({
     (e3) => {
       if (e3.key === "Enter") {
         e3.preventDefault();
-        const selected = autocompleteListRef.current?.selectActive();
+        const selected = optionsListboxRef.current?.selectActive();
         if (!selected && allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
         }
@@ -3707,20 +3733,20 @@ var PreactCombobox = ({
         e3.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        autocompleteListRef.current?.navigateDown();
+        optionsListboxRef.current?.navigateDown();
       } else if (e3.key === "ArrowUp") {
         e3.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        autocompleteListRef.current?.navigateUp();
+        optionsListboxRef.current?.navigateUp();
       } else if (e3.key === "Escape") {
         closeDropdown(true);
       } else if (e3.key === "Home" && e3.ctrlKey && getIsDropdownOpen()) {
         e3.preventDefault();
-        autocompleteListRef.current?.navigateToFirst();
+        optionsListboxRef.current?.navigateToFirst();
       } else if (e3.key === "End" && e3.ctrlKey && getIsDropdownOpen()) {
         e3.preventDefault();
-        autocompleteListRef.current?.navigateToLast();
+        optionsListboxRef.current?.navigateToLast();
       } else if (inputValue === "" && (e3.ctrlKey || e3.metaKey) && e3.key === "z") {
         e3.preventDefault();
         const prevValues = undoStack.current.pop();
@@ -3827,10 +3853,10 @@ var PreactCombobox = ({
     },
     []
   );
-  const autocompleteList = !isServer ? /* @__PURE__ */ u3(
-    AutocompleteList_default,
+  const optionsListbox = !isServer ? /* @__PURE__ */ u3(
+    OptionsListbox_default,
     {
-      ref: autocompleteListRef,
+      ref: optionsListboxRef,
       id,
       searchText: activeInputValue,
       filteredOptions,
@@ -3943,7 +3969,7 @@ var PreactCombobox = ({
             }
           ) : null
         ] }),
-        autocompleteList ? /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? /* @__PURE__ */ u3(
+        optionsListbox ? /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? /* @__PURE__ */ u3(
           TraySearchList_default,
           {
             id,
@@ -3953,9 +3979,9 @@ var PreactCombobox = ({
             theme,
             translations: mergedTranslations,
             onInputChange: handleTrayInputChange,
-            children: autocompleteList
+            children: optionsListbox
           }
-        ) : autocompleteList }) : null,
+        ) : optionsListbox }) : null,
         invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ u3(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ u3(
           "div",
           {

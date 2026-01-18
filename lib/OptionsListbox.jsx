@@ -11,7 +11,7 @@ import { toHTMLId } from "./utils.jsx";
  */
 
 /**
- * @typedef {Object} AutocompleteListProps
+ * @typedef {Object} OptionsListboxProps
  * @property {string} id - Component ID for ARIA attributes
  * @property {string} searchText - Current search/input text
  * @property {OptionMatch[]} filteredOptions - Pre-filtered options to display
@@ -38,7 +38,7 @@ import { toHTMLId } from "./utils.jsx";
  */
 
 /**
- * @typedef {Object} AutocompleteListRef
+ * @typedef {Object} OptionsListboxRef
  * @property {() => void} navigateUp - Navigate to previous option
  * @property {() => void} navigateDown - Navigate to next option
  * @property {() => void} navigateToFirst - Navigate to first option
@@ -50,13 +50,13 @@ import { toHTMLId } from "./utils.jsx";
  */
 
 /**
- * AutocompleteList component - presentational component for rendering options list
+ * OptionsListbox component - renders a listbox with keyboard navigation and selection
  * Receives pre-filtered options and handles navigation/selection
- * @type {import("preact/compat").ForwardRefExoticComponent<AutocompleteListProps & import("preact/compat").RefAttributes<AutocompleteListRef>>}
+ * @type {import("preact/compat").ForwardRefExoticComponent<OptionsListboxProps & import("preact/compat").RefAttributes<OptionsListboxRef>>}
  */
-const AutocompleteList = forwardRef(
+const OptionsListbox = forwardRef(
   (
-    /** @type {AutocompleteListProps} */
+    /** @type {OptionsListboxProps} */
     {
       id,
       searchText,
@@ -181,7 +181,9 @@ const AutocompleteList = forwardRef(
             return true;
           }
 
-          const option = filteredOptions.find((/** @type {OptionMatch} */ o) => o.value === activeDescendant);
+          const option = filteredOptions.find(
+            (/** @type {OptionMatch} */ o) => o.value === activeDescendant,
+          );
           if (option && !option.disabled) {
             onOptionSelect(option.value, { toggleSelected: true });
             if (!multiple && onClose) {
@@ -364,4 +366,4 @@ const AutocompleteList = forwardRef(
   },
 );
 
-export default AutocompleteList;
+export default OptionsListbox;

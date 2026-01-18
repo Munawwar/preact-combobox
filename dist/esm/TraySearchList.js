@@ -5,7 +5,6 @@ import { useCallback as useCallback2, useEffect as useEffect2, useRef as useRef2
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 // lib/utils.jsx
-import { h } from "preact";
 import { jsx } from "preact/jsx-runtime";
 
 // lib/hooks.js

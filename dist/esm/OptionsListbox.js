@@ -1,17 +1,16 @@
-// lib/AutocompleteList.jsx
+// lib/OptionsListbox.jsx
 import { forwardRef } from "preact/compat";
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "preact/hooks";
 
 // lib/utils.jsx
-import { h } from "preact";
 import { jsx } from "preact/jsx-runtime";
 function toHTMLId(text) {
   return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
 }
 
-// lib/AutocompleteList.jsx
+// lib/OptionsListbox.jsx
 import { Fragment, jsx as jsx2, jsxs } from "preact/jsx-runtime";
-var AutocompleteList = forwardRef(
+var OptionsListbox = forwardRef(
   ({
     id,
     searchText,
@@ -121,7 +120,9 @@ var AutocompleteList = forwardRef(
             }
             return true;
           }
-          const option = filteredOptions.find((o) => o.value === activeDescendant);
+          const option = filteredOptions.find(
+            (o) => o.value === activeDescendant
+          );
           if (option && !option.disabled) {
             onOptionSelect(option.value, { toggleSelected: true });
             if (!multiple && onClose) {
@@ -284,8 +285,8 @@ var AutocompleteList = forwardRef(
     );
   }
 );
-var AutocompleteList_default = AutocompleteList;
+var OptionsListbox_default = OptionsListbox;
 export {
-  AutocompleteList_default as default
+  OptionsListbox_default as default
 };
-//# sourceMappingURL=AutocompleteList.js.map
+//# sourceMappingURL=OptionsListbox.js.map
