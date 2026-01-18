@@ -166,9 +166,6 @@ const defaultEnglishTranslations = {
   selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count),
 };
 
-// @ts-ignore
-const isPlaywright = navigator.webdriver === true;
-
 // Auto-detect server-side rendering
 const isServerDefault = typeof self === "undefined";
 
@@ -462,15 +459,11 @@ const PreactCombobox = ({
   }
   const arrayValues = useDeepMemo(tempArrayValue);
   const arrayValuesLookup = useMemo(() => new Set(arrayValues), [arrayValues]);
-  const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions,
-  );
 
   const autoId = useId();
   const id = idProp || autoId;
   const [inputValue, setInputValue] = useState("");
-  const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
-  // Note: filtering logic moved to AutocompleteList component
+  const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const [getIsFocused, setIsFocused] = useLive(false);
   // For screen reader announcement
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState("");
@@ -495,7 +488,7 @@ const PreactCombobox = ({
   const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
 
   // Tray-related state
-  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
+  const [getIsTrayOpen, setIsTrayOpen] = useLive(false);
   const trayClosedExplicitlyRef = useRef(false);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
   const [trayActiveInputValue, setTrayActiveInputValue] = useState("");
@@ -617,7 +610,7 @@ const PreactCombobox = ({
   );
 
   /**
-   * Callback for when AutocompleteList's active descendant changes
+   * Callback for when OptionsListbox's active descendant changes
    * @param {string} value - The new active descendant value
    */
   const handleActiveDescendantChange = useCallback(
@@ -1143,7 +1136,37 @@ const PreactCombobox = ({
     ],
   );
 
-  // Note: Loading announcement logic moved to AutocompleteList component
+  // Update loading announcement when isLoading changes
+  useEffect(() => {
+    // Only announce loading if the list is open
+    if (isLoading && isListOpen) {
+      setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
+    } else if (loadingAnnouncement && !isLoading && isListOpen) {
+      // Only announce completion if we previously announced loading
+      // and the list is still open
+      setLoadingAnnouncement(
+        filteredOptions.length
+          ? mergedTranslations.optionsLoadedAnnouncement
+          : mergedTranslations.noOptionsFoundAnnouncement,
+      );
+      // Clear the announcement after a delay
+      const timer = setTimeout(() => {
+        setLoadingAnnouncement("");
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (loadingAnnouncement && !isListOpen) {
+      // Clear any loading announcements when list closes
+      setLoadingAnnouncement("");
+    }
+  }, [
+    isLoading,
+    loadingAnnouncement,
+    isListOpen,
+    filteredOptions.length,
+    mergedTranslations.loadingOptionsAnnouncement,
+    mergedTranslations.optionsLoadedAnnouncement,
+    mergedTranslations.noOptionsFoundAnnouncement,
+  ]);
 
   // Determine if we should render interactive elements
   const isServerSideForm = isServer && formSubmitCompatible;
