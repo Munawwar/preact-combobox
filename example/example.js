@@ -204,6 +204,7 @@ const carrierData = [
 
 // Simulate remote data fetching
 const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, signal) => {
+  // console.log("fetchCarrierOptions", queryOrValues, limit, currentSelections);
   // Simulate network delay
   await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -340,7 +341,7 @@ function App() {
           tray=${false}
         />
         <br/>
-        
+
         <label for="example-5">Remote data fetching</label>
         <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <${PreactCombobox}

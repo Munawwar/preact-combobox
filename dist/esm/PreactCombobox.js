@@ -2,112 +2,22 @@
 import { createPopper } from "@popperjs/core";
 import { createPortal } from "preact/compat";
 import {
-  useCallback as useCallback2,
-  useEffect,
+  useCallback as useCallback4,
+  useEffect as useEffect4,
   useId,
   useLayoutEffect,
   useMemo as useMemo2,
-  useRef as useRef2,
-  useState as useState2
+  useRef as useRef4,
+  useState as useState4
 } from "preact/hooks";
 
-// lib/hooks.js
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
-function isEqual(value1, value2) {
-  const seenA = /* @__PURE__ */ new WeakMap();
-  const seenB = /* @__PURE__ */ new WeakMap();
-  function deepCompare(a, b) {
-    if (Object.is(a, b)) return true;
-    if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
-      return a === b;
-    }
-    if (a.$$typeof === Symbol.for("react.element") || b.$$typeof === Symbol.for("react.element")) {
-      return a === b;
-    }
-    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
-      return false;
-    }
-    if (seenA.has(a)) return seenA.get(a) === b;
-    if (seenB.has(b)) return seenB.get(b) === a;
-    if (seenA.has(b) || seenB.has(a)) return false;
-    seenA.set(a, b);
-    seenB.set(b, a);
-    if (Array.isArray(a)) {
-      if (a.length !== b.length) {
-        return false;
-      }
-      return a.every((item, index) => deepCompare(item, b[index]));
-    }
-    if (a instanceof Date) {
-      return a.getTime() === b.getTime();
-    }
-    if (a instanceof RegExp) {
-      return a.toString() === b.toString();
-    }
-    const keysA = Object.keys(a);
-    const keysB = Object.keys(b);
-    if (keysA.length !== keysB.length) return false;
-    return keysA.every((key) => keysB.includes(key) && deepCompare(a[key], b[key]));
-  }
-  return deepCompare(value1, value2);
-}
-function useDeepMemo(newState) {
-  const state = useRef(
-    /** @type {T} */
-    null
-  );
-  if (!isEqual(newState, state.current)) {
-    state.current = newState;
-  }
-  return state.current;
-}
-function useLive(initialValue) {
-  const [refreshValue, forceRefresh] = useState(0);
-  const ref = useRef(initialValue);
-  let hasValueChanged = false;
-  const getValue = useMemo(() => {
-    hasValueChanged = true;
-    return () => ref.current;
-  }, [refreshValue]);
-  const setValue = useCallback((value) => {
-    if (value !== ref.current) {
-      ref.current = value;
-      forceRefresh((x) => x + 1);
-    }
-  }, []);
-  return [getValue, setValue, hasValueChanged];
-}
+// lib/OptionsListbox.jsx
+import { forwardRef } from "preact/compat";
+import { useCallback, useEffect, useImperativeHandle, useRef, useState } from "preact/hooks";
 
-// lib/PreactCombobox.jsx
-import { Fragment, jsx, jsxs } from "preact/jsx-runtime";
-var defaultEnglishTranslations = {
-  searchPlaceholder: "Search...",
-  noOptionsFound: "No options found",
-  loadingOptions: "Loading...",
-  loadingOptionsAnnouncement: "Loading options, please wait...",
-  optionsLoadedAnnouncement: "Options loaded.",
-  noOptionsFoundAnnouncement: "No options found.",
-  addOption: 'Add "{value}"',
-  typeToLoadMore: "...type to load more options",
-  clearValue: "Clear value",
-  selectedOption: "Selected option.",
-  invalidOption: "Invalid option.",
-  invalidValues: "Invalid values:",
-  fieldContainsInvalidValues: "Field contains invalid values",
-  noOptionsSelected: "No options selected",
-  selectionAdded: "added selection",
-  selectionRemoved: "removed selection",
-  selectionsCurrent: "currently selected",
-  selectionsMore: "and {count} more option",
-  selectionsMorePlural: "and {count} more options",
-  // Function to format the count in badge, receives count and language as parameters
-  selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count)
-};
-var isPlaywright = navigator.webdriver === true;
-var isServerDefault = typeof self === "undefined";
-function unique(arr) {
-  return Array.from(new Set(arr));
-}
+// lib/utils.jsx
+import { jsx } from "preact/jsx-runtime";
+var languageCache = {};
 function toHTMLId(text) {
   return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
 }
@@ -120,95 +30,6 @@ function sortValuesToTop(options, values) {
     return aSelected ? -1 : 1;
   });
 }
-var Portal = ({ parent = document.body, children, rootElementRef }) => {
-  const [dir, setDir] = useState2(
-    /** @type {string|null} */
-    null
-  );
-  useEffect(() => {
-    if (rootElementRef?.current) {
-      const rootDir = window.getComputedStyle(rootElementRef.current).direction;
-      const parentDir = window.getComputedStyle(parent).direction;
-      if (rootDir !== parentDir) {
-        setDir(rootDir);
-      } else {
-        setDir(null);
-      }
-    }
-  }, [rootElementRef, parent]);
-  const wrappedChildren = dir ? /* @__PURE__ */ jsx("div", { dir: (
-    /** @type {"auto" | "rtl" | "ltr"} */
-    dir
-  ), style: { direction: dir }, children }) : children;
-  return createPortal(wrappedChildren, parent);
-};
-var dropdownPopperModifiers = [
-  {
-    name: "flip",
-    enabled: true
-  },
-  {
-    // make the popper width same as root element
-    name: "referenceElementWidth",
-    enabled: true,
-    phase: "beforeWrite",
-    requires: ["computeStyles"],
-    // @ts-ignore
-    fn: ({ state }) => {
-      state.styles.popper.minWidth = `${state.rects.reference.width}px`;
-    },
-    // @ts-ignore
-    effect: ({ state }) => {
-      state.elements.popper.style.minWidth = `${state.elements.reference.offsetWidth}px`;
-    }
-  },
-  {
-    name: "eventListeners",
-    enabled: true,
-    options: {
-      scroll: true,
-      resize: true
-    }
-  }
-];
-var tooltipPopperModifiers = [
-  {
-    name: "offset",
-    options: {
-      offset: [0, 2]
-    }
-  },
-  {
-    name: "eventListeners",
-    enabled: true,
-    options: {
-      scroll: true,
-      resize: true
-    }
-  }
-];
-var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-var wasVisualViewportInitialHeightAnApproximate = true;
-function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
-  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
-  let isVisible = false;
-  const handleViewportResize = () => {
-    if (!window.visualViewport) return;
-    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
-    const isVisibleNow = heightDiff > 150;
-    if (isVisible !== isVisibleNow) {
-      isVisible = isVisibleNow;
-      visibleCallback?.(isVisible);
-    }
-    heightCallback?.(heightDiff, isVisible);
-  };
-  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
-  return () => {
-    window.visualViewport?.removeEventListener("resize", handleViewportResize);
-  };
-}
-var languageCache = {};
 function getExactMatchScore(query, option, language) {
   const { label, value, ...rest } = option;
   if (value === query) {
@@ -453,7 +274,833 @@ function matchSlicesToNodes(matchSlices, text) {
   }
   return nodes;
 }
-var defaultWarningIcon = /* @__PURE__ */ jsx(
+
+// lib/OptionsListbox.jsx
+import { Fragment, jsx as jsx2, jsxs } from "preact/jsx-runtime";
+var OptionsListbox = forwardRef(
+  ({
+    id,
+    searchText,
+    filteredOptions,
+    isLoading,
+    arrayValues,
+    invalidValues,
+    multiple,
+    allowFreeText,
+    onOptionSelect,
+    onActiveDescendantChange,
+    onClose,
+    optionRenderer,
+    warningIcon,
+    tickIcon,
+    optionIconRenderer,
+    showValue,
+    language,
+    loadingRenderer,
+    translations,
+    theme,
+    isOpen,
+    shouldUseTray,
+    setDropdownRef
+  }, ref) => {
+    const [activeDescendant, setActiveDescendant] = useState("");
+    const listRef = useRef(
+      /** @type {HTMLUListElement | null} */
+      null
+    );
+    const searchTextTrimmed = searchText.trim();
+    const addNewOptionVisible = !isLoading && allowFreeText && searchTextTrimmed && !arrayValues.includes(searchTextTrimmed) && !filteredOptions.find((o) => o.value === searchTextTrimmed);
+    const scrollOptionIntoView = useCallback(
+      /** @param {string} optionValue */
+      (optionValue) => {
+        if (!listRef.current || !optionValue) return;
+        const elementId = `${id}-option-${toHTMLId(optionValue)}`;
+        const element = listRef.current.querySelector(`#${CSS.escape(elementId)}`);
+        if (element) {
+          const listRect = listRef.current.getBoundingClientRect();
+          const itemRect = element.getBoundingClientRect();
+          if (itemRect.bottom > listRect.bottom) {
+            element.scrollIntoView({ block: "end" });
+          } else if (itemRect.top < listRect.top) {
+            element.scrollIntoView({ block: "start" });
+          }
+        }
+      },
+      [id]
+    );
+    const getNavigableOptions = useCallback(() => {
+      const options = filteredOptions.filter((o) => !o.disabled).map((o) => o.value);
+      if (addNewOptionVisible) {
+        return [searchTextTrimmed, ...options];
+      }
+      return options;
+    }, [filteredOptions, addNewOptionVisible, searchTextTrimmed]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        navigateDown: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const currentIndex = activeDescendant ? options.indexOf(activeDescendant) : -1;
+          const nextIndex = currentIndex === options.length - 1 ? 0 : currentIndex + 1;
+          const nextValue = options[nextIndex];
+          if (nextValue !== void 0) {
+            setActiveDescendant(nextValue);
+            scrollOptionIntoView(nextValue);
+          }
+        },
+        navigateUp: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const currentIndex = activeDescendant ? options.indexOf(activeDescendant) : 0;
+          const prevIndex = currentIndex <= 0 ? options.length - 1 : currentIndex - 1;
+          const prevValue = options[prevIndex];
+          if (prevValue !== void 0) {
+            setActiveDescendant(prevValue);
+            scrollOptionIntoView(prevValue);
+          }
+        },
+        navigateToFirst: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const firstValue = options[0];
+          if (firstValue !== void 0) {
+            setActiveDescendant(firstValue);
+            scrollOptionIntoView(firstValue);
+          }
+        },
+        navigateToLast: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const lastValue = options[options.length - 1];
+          if (lastValue !== void 0) {
+            setActiveDescendant(lastValue);
+            scrollOptionIntoView(lastValue);
+          }
+        },
+        selectActive: () => {
+          if (!activeDescendant) return false;
+          if (addNewOptionVisible && activeDescendant === searchTextTrimmed) {
+            onOptionSelect(searchTextTrimmed);
+            if (!multiple && onClose) {
+              onClose();
+            }
+            return true;
+          }
+          const option = filteredOptions.find(
+            (o) => o.value === activeDescendant
+          );
+          if (option && !option.disabled) {
+            onOptionSelect(option.value, { toggleSelected: true });
+            if (!multiple && onClose) {
+              onClose();
+            }
+            return true;
+          }
+          return false;
+        },
+        getActiveDescendant: () => activeDescendant,
+        setActiveDescendant: (value) => {
+          setActiveDescendant(value);
+          scrollOptionIntoView(value);
+        },
+        clearActiveDescendant: () => setActiveDescendant("")
+      }),
+      [
+        activeDescendant,
+        getNavigableOptions,
+        scrollOptionIntoView,
+        addNewOptionVisible,
+        searchTextTrimmed,
+        filteredOptions,
+        onOptionSelect,
+        multiple,
+        onClose
+      ]
+    );
+    useEffect(() => {
+      if (!isOpen) {
+        setActiveDescendant("");
+      }
+    }, [isOpen]);
+    useEffect(() => {
+      onActiveDescendantChange?.(activeDescendant);
+    }, [activeDescendant, onActiveDescendantChange]);
+    const handleListRef = useCallback(
+      /** @param {HTMLUListElement | null} el */
+      (el) => {
+        listRef.current = el;
+        if (setDropdownRef && !shouldUseTray) {
+          setDropdownRef(el);
+        }
+      },
+      [setDropdownRef, shouldUseTray]
+    );
+    if (!isOpen) {
+      return null;
+    }
+    return (
+      // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
+      /* @__PURE__ */ jsx2(
+        "ul",
+        {
+          className: [
+            "PreactCombobox-options",
+            `PreactCombobox--${theme}`,
+            shouldUseTray ? "PreactCombobox-options--tray" : ""
+          ].filter(Boolean).join(" "),
+          role: "listbox",
+          id: `${id}-options-listbox`,
+          "aria-multiselectable": multiple ? "true" : void 0,
+          hidden: !isOpen,
+          ref: handleListRef,
+          children: isLoading ? /* @__PURE__ */ jsx2("li", { className: "PreactCombobox-option", "aria-disabled": true, children: loadingRenderer(translations.loadingOptions) }) : /* @__PURE__ */ jsxs(Fragment, { children: [
+            addNewOptionVisible && /* @__PURE__ */ jsx2(
+              "li",
+              {
+                id: `${id}-option-${toHTMLId(searchTextTrimmed)}`,
+                className: `PreactCombobox-option ${activeDescendant === searchTextTrimmed ? "PreactCombobox-option--active" : ""}`,
+                role: "option",
+                tabIndex: -1,
+                "aria-selected": false,
+                onMouseEnter: () => setActiveDescendant(searchTextTrimmed),
+                onMouseDown: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onOptionSelect(searchTextTrimmed);
+                  if (!multiple && onClose) {
+                    onClose();
+                  }
+                },
+                children: translations.addOption.replace("{value}", searchTextTrimmed)
+              },
+              searchTextTrimmed
+            ),
+            filteredOptions.map((option) => {
+              const isActive = activeDescendant === option.value;
+              const isSelected = arrayValues.includes(option.value);
+              const isInvalid = invalidValues.includes(option.value);
+              const isDisabled = option.disabled;
+              const hasDivider = option.divider && !searchTextTrimmed;
+              const optionClasses = [
+                "PreactCombobox-option",
+                isActive ? "PreactCombobox-option--active" : "",
+                isSelected ? "PreactCombobox-option--selected" : "",
+                isInvalid ? "PreactCombobox-option--invalid" : "",
+                isDisabled ? "PreactCombobox-option--disabled" : "",
+                hasDivider ? "PreactCombobox-option--divider" : ""
+              ].filter(Boolean).join(" ");
+              return /* @__PURE__ */ jsxs(
+                "li",
+                {
+                  id: `${id}-option-${toHTMLId(option.value)}`,
+                  className: optionClasses,
+                  role: "option",
+                  tabIndex: -1,
+                  "aria-selected": isSelected,
+                  "aria-disabled": isDisabled,
+                  onMouseEnter: () => !isDisabled && setActiveDescendant(option.value),
+                  onMouseDown: (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onOptionSelect(option.value, { toggleSelected: true });
+                    if (!multiple && onClose) {
+                      onClose();
+                    }
+                  },
+                  children: [
+                    optionRenderer({
+                      option,
+                      language,
+                      isActive,
+                      isSelected,
+                      isInvalid,
+                      showValue,
+                      warningIcon,
+                      tickIcon,
+                      optionIconRenderer
+                    }),
+                    isSelected ? /* @__PURE__ */ jsx2(
+                      "span",
+                      {
+                        className: "PreactCombobox-srOnly",
+                        "aria-atomic": "true",
+                        "data-reader": "selected",
+                        "aria-hidden": !isActive,
+                        children: translations.selectedOption
+                      }
+                    ) : null,
+                    isInvalid ? /* @__PURE__ */ jsx2(
+                      "span",
+                      {
+                        className: "PreactCombobox-srOnly",
+                        "aria-atomic": "true",
+                        "data-reader": "invalid",
+                        "aria-hidden": !isActive,
+                        children: translations.invalidOption
+                      }
+                    ) : null
+                  ]
+                },
+                option.value
+              );
+            }),
+            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ jsx2("li", { className: "PreactCombobox-option", children: translations.noOptionsFound })
+          ] })
+        }
+      )
+    );
+  }
+);
+var OptionsListbox_default = OptionsListbox;
+
+// lib/TraySearchList.jsx
+import { useCallback as useCallback3, useEffect as useEffect3, useRef as useRef3, useState as useState3 } from "preact/hooks";
+
+// lib/hooks.js
+import { useCallback as useCallback2, useEffect as useEffect2, useMemo, useRef as useRef2, useState as useState2 } from "preact/hooks";
+function isEqual(value1, value2) {
+  const seenA = /* @__PURE__ */ new WeakMap();
+  const seenB = /* @__PURE__ */ new WeakMap();
+  function deepCompare(a, b) {
+    if (Object.is(a, b)) return true;
+    if (a === null || b === null || typeof a !== "object" || typeof b !== "object") {
+      return a === b;
+    }
+    if (a.$$typeof === Symbol.for("react.element") || b.$$typeof === Symbol.for("react.element")) {
+      return a === b;
+    }
+    if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+      return false;
+    }
+    if (seenA.has(a)) return seenA.get(a) === b;
+    if (seenB.has(b)) return seenB.get(b) === a;
+    if (seenA.has(b) || seenB.has(a)) return false;
+    seenA.set(a, b);
+    seenB.set(b, a);
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      return a.every((item, index) => deepCompare(item, b[index]));
+    }
+    if (a instanceof Date) {
+      return a.getTime() === b.getTime();
+    }
+    if (a instanceof RegExp) {
+      return a.toString() === b.toString();
+    }
+    const keysA = Object.keys(a);
+    const keysB = Object.keys(b);
+    if (keysA.length !== keysB.length) return false;
+    return keysA.every((key) => keysB.includes(key) && deepCompare(a[key], b[key]));
+  }
+  return deepCompare(value1, value2);
+}
+function useDeepMemo(newState) {
+  const state = useRef2(
+    /** @type {T} */
+    null
+  );
+  if (!isEqual(newState, state.current)) {
+    state.current = newState;
+  }
+  return state.current;
+}
+function useLive(initialValue) {
+  const [refreshValue, forceRefresh] = useState2(0);
+  const ref = useRef2(initialValue);
+  let hasValueChanged = false;
+  const getValue = useMemo(() => {
+    hasValueChanged = true;
+    return () => ref.current;
+  }, [refreshValue]);
+  const setValue = useCallback2(
+    /** @param {T} value */
+    (value) => {
+      if (value !== ref.current) {
+        ref.current = value;
+        forceRefresh((x) => x + 1);
+      }
+    },
+    []
+  );
+  return [getValue, setValue, hasValueChanged];
+}
+var isTouchDevice = typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
+var visualViewportInitialHeight = window.visualViewport?.height ?? 0;
+function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
+  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
+  let isVisible = false;
+  const handleViewportResize = () => {
+    if (!window.visualViewport) return;
+    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
+    const isVisibleNow = heightDiff > 150;
+    if (isVisible !== isVisibleNow) {
+      isVisible = isVisibleNow;
+      visibleCallback?.(isVisible);
+    }
+    heightCallback?.(heightDiff, isVisible);
+  };
+  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
+  return () => {
+    window.visualViewport?.removeEventListener("resize", handleViewportResize);
+  };
+}
+var isPlaywright = typeof navigator !== "undefined" && navigator.webdriver === true;
+function useAsyncOptions({
+  allowedOptions: allowedOptionsOriginal,
+  selectedValues: selectedValuesOriginal,
+  searchText,
+  isOpen,
+  language,
+  maxNumberOfPresentedOptions
+}) {
+  const [filteredOptions, setFilteredOptions] = useState2(
+    /** @type {OptionMatch[]} */
+    []
+  );
+  const [isLoading, setIsLoading] = useState2(false);
+  const [cacheVersion, setCacheVersion] = useState2(0);
+  const cachedOptions = useRef2(
+    /** @type {{ [value: string]: Option }} */
+    {}
+  );
+  const abortControllerRef = useRef2(
+    /** @type {AbortController | null} */
+    null
+  );
+  const debounceTimerRef = useRef2(
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    null
+  );
+  const wasOpenRef = useRef2(false);
+  const searchTextTrimmed = searchText.trim();
+  const isFunction = typeof allowedOptionsOriginal === "function";
+  const allowedOptions = useDeepMemo(allowedOptionsOriginal);
+  const selectedValues = useDeepMemo(selectedValuesOriginal);
+  const updateCachedOptions = useCallback2(
+    /** @param {Option[]} update */
+    (update) => {
+      let hasChanged = false;
+      for (const item of update) {
+        if (!cachedOptions.current[item.value] || !isEqual(cachedOptions.current[item.value], item)) {
+          hasChanged = true;
+          cachedOptions.current[item.value] = item;
+        }
+      }
+      if (hasChanged) {
+        setCacheVersion((v) => v + 1);
+      }
+    },
+    []
+  );
+  const resolvedOptionsLookup = useMemo(() => {
+    if (Array.isArray(allowedOptions)) {
+      return allowedOptions.reduce(
+        (acc, o) => {
+          acc[o.value] = o;
+          return acc;
+        },
+        /** @type {{ [value: string]: Option }} */
+        {}
+      );
+    }
+    return { ...cachedOptions.current };
+  }, [allowedOptions, cacheVersion]);
+  const unresolvedValues = useMemo(
+    () => selectedValues.filter((v) => !resolvedOptionsLookup[v]),
+    [selectedValues, cacheVersion]
+  );
+  useEffect2(() => {
+    if (!isFunction) return;
+    if (unresolvedValues.length === 0) return;
+    const fetchOptions = (
+      /**
+      * @type {(
+      *  queryOrValues: string[]
+      *  | string, limit: number, currentSelections: string[], signal: AbortSignal
+      * ) => Promise<Option[]>}
+      */
+      allowedOptions
+    );
+    const currentSelectedValues = selectedValues;
+    const abortController = new AbortController();
+    fetchOptions(
+      unresolvedValues,
+      unresolvedValues.length,
+      currentSelectedValues,
+      abortController.signal
+    ).then((results) => {
+      if (abortController.signal.aborted) return;
+      if (results?.length) {
+        updateCachedOptions(results);
+      }
+      const stillUnresolved = unresolvedValues.filter(
+        (v) => !results?.find((r) => r.value === v)
+      );
+      if (stillUnresolved.length > 0) {
+        updateCachedOptions(stillUnresolved.map((v) => ({ label: v, value: v })));
+      }
+    }).catch((error) => {
+      if (abortController.signal.aborted) return;
+      console.error("Failed to resolve option labels:", error);
+      updateCachedOptions(unresolvedValues.map((v) => ({ label: v, value: v })));
+    });
+    return () => abortController.abort();
+  }, [
+    // effect should only run when there is selected values with unknown labels
+    unresolvedValues.length > 0,
+    // selectValues doesn't need to be a dependency
+    // this effect only applies to remote fetches, i.e. only when allowedOptions is a function.
+    isFunction ? allowedOptions : null,
+    updateCachedOptions
+  ]);
+  useEffect2(() => {
+    abortControllerRef.current?.abort();
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+    if (!isOpen) {
+      setFilteredOptions([]);
+      setIsLoading(false);
+      wasOpenRef.current = false;
+      return;
+    }
+    const isFirstOpen = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    if (isFunction) {
+      const fetchFn = (
+        /** @type {(queryOrValues: string[] | string, limit: number, currentSelections: string[], signal: AbortSignal) => Promise<Option[]>} */
+        allowedOptions
+      );
+      const currentSelectedValues = selectedValues;
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+      let debounceTime = isPlaywright ? 5 : 250;
+      if (isFirstOpen) debounceTime = 0;
+      setIsLoading(true);
+      const fetchOptions = async () => {
+        try {
+          const results = await fetchFn(
+            searchTextTrimmed,
+            maxNumberOfPresentedOptions,
+            currentSelectedValues,
+            abortController.signal
+          );
+          if (abortController.signal.aborted) return;
+          if (results?.length) {
+            updateCachedOptions(results);
+          }
+          let updatedOptions = results || [];
+          if (!searchTextTrimmed) {
+            const unreturnedSelectedValues = currentSelectedValues.filter((v) => !results?.find((r) => r.value === v)).filter((v) => !cachedOptions.current[v]).map((v) => ({ label: v, value: v }));
+            if (unreturnedSelectedValues.length > 0) {
+              updateCachedOptions(unreturnedSelectedValues);
+              updatedOptions = unreturnedSelectedValues.concat(results || []);
+            }
+          }
+          const options = searchTextTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, currentSelectedValues);
+          setFilteredOptions(getMatchScore(searchTextTrimmed, options, language, false));
+          setIsLoading(false);
+        } catch (error) {
+          if (abortController.signal.aborted) return;
+          setIsLoading(false);
+          throw error;
+        }
+      };
+      if (debounceTime > 0) {
+        debounceTimerRef.current = setTimeout(fetchOptions, debounceTime);
+      } else {
+        fetchOptions();
+      }
+      return () => {
+        abortController.abort();
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
+    } else {
+      const arrayOptions = (
+        /** @type {Option[]} */
+        allowedOptions
+      );
+      const currentSelectedValues = selectedValues;
+      const mergedOptions = currentSelectedValues.filter((v) => !resolvedOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(arrayOptions);
+      const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, currentSelectedValues);
+      setFilteredOptions(getMatchScore(searchText, options, language, true));
+    }
+  }, [
+    isOpen,
+    searchTextTrimmed,
+    searchText,
+    language,
+    unresolvedValues.length > 0,
+    // selectValues doesn't need to be a dependency as explained above
+    isFunction,
+    allowedOptions,
+    // resolvedOptionsLookup doesn't need to be dependency as explained above
+    maxNumberOfPresentedOptions,
+    updateCachedOptions
+  ]);
+  return {
+    filteredOptions,
+    resolvedOptionsLookup,
+    isLoading
+  };
+}
+
+// lib/TraySearchList.jsx
+import { jsx as jsx3, jsxs as jsxs2 } from "preact/jsx-runtime";
+var TraySearchList = ({
+  id,
+  isOpen,
+  onClose,
+  trayLabel,
+  theme,
+  translations,
+  onInputChange,
+  children
+}) => {
+  const [trayInputValue, setTrayInputValue] = useState3("");
+  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState3(0);
+  const trayInputRef = useRef3(
+    /** @type {HTMLInputElement | null} */
+    null
+  );
+  const trayModalRef = useRef3(
+    /** @type {HTMLDivElement | null} */
+    null
+  );
+  const originalOverflowRef = useRef3("");
+  const virtualKeyboardHeightAdjustSubscription = useRef3(
+    /** @type {function | null} */
+    null
+  );
+  const handleTrayInputChange = useCallback3(
+    /**
+     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e
+     */
+    (e) => {
+      const value = e.currentTarget.value;
+      setTrayInputValue(value);
+      onInputChange(value);
+    },
+    [onInputChange]
+  );
+  const handleClose = useCallback3(() => {
+    setTrayInputValue("");
+    setVirtualKeyboardHeight(0);
+    virtualKeyboardHeightAdjustSubscription.current?.();
+    virtualKeyboardHeightAdjustSubscription.current = null;
+    const scrollingElement = (
+      /** @type {HTMLElement} */
+      document.scrollingElement || document.documentElement
+    );
+    scrollingElement.style.overflow = originalOverflowRef.current;
+    onClose();
+  }, [onClose]);
+  useEffect3(() => {
+    if (isOpen) {
+      const scrollingElement = (
+        /** @type {HTMLElement} */
+        document.scrollingElement || document.documentElement
+      );
+      originalOverflowRef.current = scrollingElement.style.overflow;
+      scrollingElement.style.overflow = "hidden";
+      if (!virtualKeyboardHeightAdjustSubscription.current) {
+        virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
+          heightCallback(keyboardHeight, isVisible) {
+            setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+          }
+        });
+      }
+      trayInputRef.current?.focus();
+    }
+  }, [isOpen]);
+  useEffect3(() => {
+    return () => {
+      if (virtualKeyboardHeightAdjustSubscription.current) {
+        virtualKeyboardHeightAdjustSubscription.current();
+        virtualKeyboardHeightAdjustSubscription.current = null;
+      }
+    };
+  }, []);
+  if (!isOpen) {
+    return null;
+  }
+  return (
+    // I couldn't use native <dialog> element because trying to focus input right
+    // after dialog.close() doesn't seem to work on Chrome (Android).
+    /* @__PURE__ */ jsx3(
+      "div",
+      {
+        ref: trayModalRef,
+        className: `PreactCombobox-modal ${`PreactCombobox--${theme}`}`,
+        style: { display: isOpen ? null : "none" },
+        onClick: (e) => {
+          if (e.target === trayModalRef.current) {
+            handleClose();
+          }
+        },
+        onKeyDown: (e) => {
+          if (e.key === "Escape") {
+            handleClose();
+          }
+        },
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-labelledby": trayLabel ? `${id}-tray-label` : void 0,
+        tabIndex: -1,
+        children: /* @__PURE__ */ jsxs2("div", { className: `PreactCombobox-tray ${`PreactCombobox--${theme}`}`, children: [
+          /* @__PURE__ */ jsxs2("div", { className: "PreactCombobox-trayHeader", children: [
+            trayLabel && /* @__PURE__ */ jsx3(
+              "label",
+              {
+                id: `${id}-tray-label`,
+                className: "PreactCombobox-trayLabel",
+                htmlFor: `${id}-tray-input`,
+                children: trayLabel
+              }
+            ),
+            /* @__PURE__ */ jsx3(
+              "input",
+              {
+                id: `${id}-tray-input`,
+                ref: trayInputRef,
+                type: "text",
+                value: trayInputValue,
+                placeholder: translations.searchPlaceholder,
+                onChange: handleTrayInputChange,
+                onKeyDown: (e) => {
+                  if (e.key === "Escape") {
+                    handleClose();
+                  }
+                },
+                className: `PreactCombobox-trayInput ${!trayLabel ? "PreactCombobox-trayInput--noLabel" : ""}`,
+                role: "combobox",
+                "aria-expanded": "true",
+                "aria-haspopup": "listbox",
+                "aria-controls": `${id}-options-listbox`,
+                "aria-label": trayLabel || translations.searchPlaceholder,
+                autoComplete: "off"
+              }
+            )
+          ] }),
+          children,
+          virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx3(
+            "div",
+            {
+              className: "PreactCombobox-virtualKeyboardSpacer",
+              style: { height: `${virtualKeyboardHeight}px` },
+              "aria-hidden": "true"
+            }
+          )
+        ] })
+      }
+    )
+  );
+};
+var TraySearchList_default = TraySearchList;
+
+// lib/PreactCombobox.jsx
+import { Fragment as Fragment2, jsx as jsx4, jsxs as jsxs3 } from "preact/jsx-runtime";
+var defaultEnglishTranslations = {
+  searchPlaceholder: "Search...",
+  noOptionsFound: "No options found",
+  loadingOptions: "Loading...",
+  loadingOptionsAnnouncement: "Loading options, please wait...",
+  optionsLoadedAnnouncement: "Options loaded.",
+  noOptionsFoundAnnouncement: "No options found.",
+  addOption: 'Add "{value}"',
+  typeToLoadMore: "...type to load more options",
+  clearValue: "Clear value",
+  selectedOption: "Selected option.",
+  invalidOption: "Invalid option.",
+  invalidValues: "Invalid values:",
+  fieldContainsInvalidValues: "Field contains invalid values",
+  noOptionsSelected: "No options selected",
+  selectionAdded: "added selection",
+  selectionRemoved: "removed selection",
+  selectionsCurrent: "currently selected",
+  selectionsMore: "and {count} more option",
+  selectionsMorePlural: "and {count} more options",
+  // Function to format the count in badge, receives count and language as parameters
+  selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count)
+};
+var isServerDefault = typeof self === "undefined";
+function unique(arr) {
+  return Array.from(new Set(arr));
+}
+var Portal = ({ parent = document.body, children, rootElementRef }) => {
+  const [dir, setDir] = useState4(
+    /** @type {string|null} */
+    null
+  );
+  useEffect4(() => {
+    if (rootElementRef?.current) {
+      const rootDir = window.getComputedStyle(rootElementRef.current).direction;
+      const parentDir = window.getComputedStyle(parent).direction;
+      if (rootDir !== parentDir) {
+        setDir(rootDir);
+      } else {
+        setDir(null);
+      }
+    }
+  }, [rootElementRef, parent]);
+  const wrappedChildren = dir ? /* @__PURE__ */ jsx4("div", { dir: (
+    /** @type {"auto" | "rtl" | "ltr"} */
+    dir
+  ), style: { direction: dir }, children }) : children;
+  return createPortal(wrappedChildren, parent);
+};
+var dropdownPopperModifiers = [
+  {
+    name: "flip",
+    enabled: true
+  },
+  {
+    // make the popper width same as root element
+    name: "referenceElementWidth",
+    enabled: true,
+    phase: "beforeWrite",
+    requires: ["computeStyles"],
+    // @ts-ignore
+    fn: ({ state }) => {
+      state.styles.popper.minWidth = `${state.rects.reference.width}px`;
+    },
+    // @ts-ignore
+    effect: ({ state }) => {
+      state.elements.popper.style.minWidth = `${state.elements.reference.offsetWidth}px`;
+    }
+  },
+  {
+    name: "eventListeners",
+    enabled: true,
+    options: {
+      scroll: true,
+      resize: true
+    }
+  }
+];
+var tooltipPopperModifiers = [
+  {
+    name: "offset",
+    options: {
+      offset: [0, 2]
+    }
+  },
+  {
+    name: "eventListeners",
+    enabled: true,
+    options: {
+      scroll: true,
+      resize: true
+    }
+  }
+];
+var defaultWarningIcon = /* @__PURE__ */ jsx4(
   "svg",
   {
     className: "PreactCombobox-warningIcon",
@@ -461,10 +1108,10 @@ var defaultWarningIcon = /* @__PURE__ */ jsx(
     width: "24",
     height: "24",
     "aria-hidden": "true",
-    children: /* @__PURE__ */ jsx("path", { d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" })
+    children: /* @__PURE__ */ jsx4("path", { d: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" })
   }
 );
-var defaultTickIcon = /* @__PURE__ */ jsx(
+var defaultTickIcon = /* @__PURE__ */ jsx4(
   "svg",
   {
     className: "PreactCombobox-tickIcon",
@@ -472,10 +1119,10 @@ var defaultTickIcon = /* @__PURE__ */ jsx(
     width: "14",
     height: "14",
     "aria-hidden": "true",
-    children: /* @__PURE__ */ jsx("path", { d: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z", fill: "currentColor" })
+    children: /* @__PURE__ */ jsx4("path", { d: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z", fill: "currentColor" })
   }
 );
-var defaultChevronIcon = /* @__PURE__ */ jsx(
+var defaultChevronIcon = /* @__PURE__ */ jsx4(
   "svg",
   {
     className: "PreactCombobox-chevron",
@@ -483,7 +1130,7 @@ var defaultChevronIcon = /* @__PURE__ */ jsx(
     width: "24",
     height: "24",
     "aria-hidden": "true",
-    children: /* @__PURE__ */ jsx("path", { d: "M7 10l5 5 5-5z" })
+    children: /* @__PURE__ */ jsx4("path", { d: "M7 10l5 5 5-5z" })
   }
 );
 var defaultLoadingRenderer = (loadingText) => loadingText;
@@ -497,11 +1144,11 @@ function defaultOptionRenderer({
   optionIconRenderer
 }) {
   const isLabelSameAsValue = option.value === option.label;
-  const getLabel = (labelNodes, valueNodes) => /* @__PURE__ */ jsxs(Fragment, { children: [
+  const getLabel = (labelNodes, valueNodes) => /* @__PURE__ */ jsxs3(Fragment2, { children: [
     optionIconRenderer?.(option, false),
-    /* @__PURE__ */ jsxs("span", { className: "PreactCombobox-optionLabelFlex", children: [
-      /* @__PURE__ */ jsx("span", { children: labelNodes }),
-      isLabelSameAsValue || !showValue ? null : /* @__PURE__ */ jsxs("span", { className: "PreactCombobox-optionValue", "aria-hidden": "true", children: [
+    /* @__PURE__ */ jsxs3("span", { className: "PreactCombobox-optionLabelFlex", children: [
+      /* @__PURE__ */ jsx4("span", { children: labelNodes }),
+      isLabelSameAsValue || !showValue ? null : /* @__PURE__ */ jsxs3("span", { className: "PreactCombobox-optionValue", "aria-hidden": "true", children: [
         "(",
         valueNodes,
         ")"
@@ -519,8 +1166,8 @@ function defaultOptionRenderer({
   } else {
     labelElement = getLabel([label], [value]);
   }
-  return /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsx(
+  return /* @__PURE__ */ jsxs3(Fragment2, { children: [
+    /* @__PURE__ */ jsx4(
       "span",
       {
         className: `PreactCombobox-optionCheckbox ${isSelected ? "PreactCombobox-optionCheckbox--selected" : ""}`,
@@ -532,7 +1179,7 @@ function defaultOptionRenderer({
   ] });
 }
 function defaultOptionIconRenderer(option) {
-  return option.icon ? /* @__PURE__ */ jsx("span", { className: "PreactCombobox-optionIcon", "aria-hidden": "true", role: "img", children: option.icon }) : null;
+  return option.icon ? /* @__PURE__ */ jsx4("span", { className: "PreactCombobox-optionIcon", "aria-hidden": "true", role: "img", children: option.icon }) : null;
 }
 var defaultArrayValue = [];
 function formatSelectionAnnouncement(selectedValues, diff, optionsLookup, language, translations) {
@@ -607,70 +1254,52 @@ var PreactCombobox = ({
   }
   const arrayValues = useDeepMemo(tempArrayValue);
   const arrayValuesLookup = useMemo2(() => new Set(arrayValues), [arrayValues]);
-  const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions
-  );
   const autoId = useId();
   const id = idProp || autoId;
-  const [inputValue, setInputValue] = useState2("");
-  const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
-  const cachedOptions = useRef2(
-    /** @type {{ [value: string]: Option }} */
-    {}
-  );
-  const [filteredOptions, setFilteredOptions] = useState2(
-    /** @type {OptionMatch[]} */
-    []
-  );
-  const [isLoading, setIsLoading] = useState2(false);
+  const [inputValue, setInputValue] = useState4("");
+  const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const [getIsFocused, setIsFocused] = useLive(false);
-  const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState2("");
-  const [loadingAnnouncement, setLoadingAnnouncement] = useState2("");
-  const activeDescendant = useRef2("");
-  const [warningIconHovered, setWarningIconHovered] = useState2(false);
-  const inputRef = useRef2(
+  const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState4("");
+  const [loadingAnnouncement, setLoadingAnnouncement] = useState4("");
+  const optionsListboxRef = useRef4(
+    /** @type {import("./OptionsListbox.jsx").OptionsListboxRef | null} */
+    null
+  );
+  const [activeDescendantValue, setActiveDescendantValue] = useState4("");
+  const [warningIconHovered, setWarningIconHovered] = useState4(false);
+  const inputRef = useRef4(
     /** @type {HTMLInputElement | null} */
     null
   );
-  const blurTimeoutRef = useRef2(
+  const blurTimeoutRef = useRef4(
     /** @type {number | undefined} */
     void 0
   );
-  const rootElementRef = useRef2(
+  const rootElementRef = useRef4(
     /** @type {HTMLDivElement | null} */
     null
   );
-  const dropdownPopperRef = useRef2(
+  const dropdownPopperRef = useRef4(
     /** @type {HTMLUListElement | null} */
     null
   );
-  const dropdownClosedExplicitlyRef = useRef2(false);
-  const warningIconRef = useRef2(null);
-  const tooltipPopperRef = useRef2(null);
-  const undoStack = useRef2(
+  const dropdownClosedExplicitlyRef = useRef4(false);
+  const warningIconRef = useRef4(null);
+  const tooltipPopperRef = useRef4(null);
+  const undoStack = useRef4(
     /** @type {string[][]} */
     []
   );
-  const redoStack = useRef2(
+  const redoStack = useRef4(
     /** @type {string[][]} */
     []
   );
   const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
-  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
-  const [trayInputValue, setTrayInputValue] = useState2("");
-  const trayInputRef = useRef2(
-    /** @type {HTMLInputElement | null} */
-    null
-  );
-  const trayModalRef = useRef2(
-    /** @type {HTMLDivElement | null} */
-    null
-  );
-  const trayClosedExplicitlyRef = useRef2(false);
-  const [isMobileScreen, setIsMobileScreen] = useState2(false);
-  const originalOverflowRef = useRef2("");
-  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState2(0);
-  useEffect(() => {
+  const [getIsTrayOpen, setIsTrayOpen] = useLive(false);
+  const trayClosedExplicitlyRef = useRef4(false);
+  const [isMobileScreen, setIsMobileScreen] = useState4(false);
+  const [trayActiveInputValue, setTrayActiveInputValue] = useState4("");
+  useEffect4(() => {
     if (tray === "auto") {
       const mediaQuery = window.matchMedia(`(max-width: ${trayBreakpoint})`);
       setIsMobileScreen(mediaQuery.matches);
@@ -680,9 +1309,9 @@ var PreactCombobox = ({
     }
   }, [tray, trayBreakpoint]);
   const shouldUseTray = tray === true || tray === "auto" && isMobileScreen;
-  const activeInputValue = getIsTrayOpen() ? trayInputValue : inputValue;
+  const activeInputValue = getIsTrayOpen() ? trayActiveInputValue : inputValue;
   const inputTrimmed = activeInputValue.trim();
-  const computeEffectiveTrayLabel = useCallback2(() => {
+  const computeEffectiveTrayLabel = useCallback4(() => {
     if (trayLabelProp) return trayLabelProp;
     if (typeof self === "undefined" || isServer || !inputRef.current) return "";
     const inputElement = inputRef.current;
@@ -717,34 +1346,21 @@ var PreactCombobox = ({
   useLayoutEffect(() => {
     setTrayLabel(computeEffectiveTrayLabel());
   }, [setTrayLabel, computeEffectiveTrayLabel]);
-  const updateCachedOptions = useCallback2(
-    /** @param {Option[]} update */
-    (update) => {
-      for (const item of update) {
-        cachedOptions.current[item.value] = item;
-      }
-    },
-    []
-  );
-  const allOptions = useDeepMemo(
-    Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current)
-  );
-  const allOptionsLookup = useMemo2(
-    () => allOptions.reduce(
-      (acc, o) => {
-        acc[o.value] = o;
-        return acc;
-      },
-      /** @type {{ [value: string]: Option }} */
-      {}
-    ),
-    [allOptions]
-  );
+  const isListOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
+  const { filteredOptions, resolvedOptionsLookup, isLoading } = useAsyncOptions({
+    allowedOptions,
+    selectedValues: arrayValues,
+    searchText: activeInputValue,
+    isOpen: isListOpen,
+    language,
+    maxNumberOfPresentedOptions
+  });
+  const allOptionsLookup = resolvedOptionsLookup;
   const invalidValues = useMemo2(() => {
     if (allowFreeText) return [];
     return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
   }, [allowFreeText, arrayValues, allOptionsLookup]);
-  const updateSelectionAnnouncement = useCallback2(
+  const updateSelectionAnnouncement = useCallback4(
     /**
      * @param {string[]} selectedValues
      * @param {"added"|"removed"|null} [diff]
@@ -761,42 +1377,14 @@ var PreactCombobox = ({
     },
     [allOptionsLookup, mergedTranslations, language]
   );
-  const activateDescendant = useCallback2(
-    /**
-     * @param {string} optionValue
-     * @param {boolean} [scroll=true]
-     */
-    (optionValue, scroll = true) => {
-      if (activeDescendant.current && dropdownPopperRef.current) {
-        const el = dropdownPopperRef.current.querySelector(".PreactCombobox-option--active");
-        el?.classList.remove("PreactCombobox-option--active");
-        el?.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "true");
-        el?.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "true");
-      }
-      activeDescendant.current = optionValue;
-      const elementId = optionValue ? `${id}-option-${toHTMLId(optionValue)}` : "";
-      inputRef.current?.setAttribute("aria-activedescendant", elementId);
-      if (elementId && dropdownPopperRef.current) {
-        const activeDescendantElement = dropdownPopperRef.current.querySelector(`#${elementId}`);
-        if (activeDescendantElement) {
-          activeDescendantElement.classList.add("PreactCombobox-option--active");
-          activeDescendantElement.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "false");
-          activeDescendantElement.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "false");
-          if (scroll) {
-            const dropdownRect = dropdownPopperRef.current.getBoundingClientRect();
-            const itemRect = activeDescendantElement.getBoundingClientRect();
-            if (itemRect.top < dropdownRect.top) {
-              dropdownPopperRef.current.scrollTop += itemRect.top - dropdownRect.top;
-            } else if (itemRect.bottom > dropdownRect.bottom) {
-              dropdownPopperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
-            }
-          }
-        }
-      }
+  const handleActiveDescendantChange = useCallback4(
+    /** @param {string} value */
+    (value2) => {
+      setActiveDescendantValue(value2);
     },
-    [id]
+    []
   );
-  const closeDropdown = useCallback2(
+  const closeDropdown = useCallback4(
     (closedExplicitly = false) => {
       setIsDropdownOpen(false);
       if (dropdownPopperRef.current) {
@@ -806,11 +1394,11 @@ var PreactCombobox = ({
         dropdownClosedExplicitlyRef.current = true;
       }
       updateSelectionAnnouncement(arrayValues);
-      activateDescendant("");
+      optionsListboxRef.current?.clearActiveDescendant();
     },
-    [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues]
+    [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues]
   );
-  useEffect(() => {
+  useEffect4(() => {
     if (getIsDropdownOpen() && !shouldUseTray && rootElementRef.current && dropdownPopperRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
@@ -828,119 +1416,7 @@ var PreactCombobox = ({
       dropdownPopperRef.current.style.display = "none";
     }
   }, [getIsDropdownOpen, shouldUseTray]);
-  const abortControllerRef = useRef2(
-    /** @type {AbortController | null} */
-    null
-  );
-  const inputTypingDebounceTimer = useRef2(
-    /** @type {any} */
-    null
-  );
-  const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
-  const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
-  useEffect(() => {
-    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
-    const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
-    if (!shouldFetchOptions) return;
-    const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = abortController;
-    let debounceTime = 0;
-    if (typeof allowedOptions === "function" && !// don't debounce for initial render (when we have to resolve the labels for selected values).
-    // don't debounce for first time the dropdown is opened as well.
-    (newUnknownValues.length > 0 || (isOpen && shouldUseTray ? hasTrayOpenChanged : hasDropdownOpenChanged)) && // Hack: We avoid debouncing to speed up playwright tests
-    !isPlaywright) {
-      debounceTime = 250;
-    }
-    clearTimeout(inputTypingDebounceTimer.current);
-    const callback = async () => {
-      if (typeof allowedOptions === "function") {
-        const signal = (
-          /** @type {AbortSignal} */
-          abortController.signal
-        );
-        const [searchResults, selectedResults] = await Promise.all([
-          isOpen ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
-            /** @type {Option[]} */
-            []
-          ),
-          // We need to fetch unknown options's labels regardless of whether the dropdown
-          // is open or not, because we want to show it in the placeholder.
-          newUnknownValues.length > 0 ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal) : null
-        ]).catch((error) => {
-          if (signal.aborted) {
-            return [null, null];
-          }
-          setIsLoading(false);
-          throw error;
-        });
-        setIsLoading(false);
-        if (searchResults?.length) {
-          updateCachedOptions(searchResults);
-        }
-        if (selectedResults?.length) {
-          updateCachedOptions(selectedResults);
-        }
-        let updatedOptions = searchResults || [];
-        if (!inputTrimmed) {
-          const unreturnedValues = newUnknownValues.filter((v) => !cachedOptions.current[v]).map((v) => ({ label: v, value: v }));
-          if (unreturnedValues.length > 0) {
-            updateCachedOptions(unreturnedValues);
-            updatedOptions = unreturnedValues.concat(searchResults || []);
-          }
-        }
-        const options = inputTrimmed ? updatedOptions : sortValuesToTop(updatedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
-      } else {
-        const mergedOptions = arrayValues.filter((v) => !allOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
-        const options = activeInputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
-      }
-    };
-    if (typeof allowedOptions === "function") {
-      setIsLoading(true);
-    }
-    let timer = null;
-    if (debounceTime > 0) {
-      timer = setTimeout(callback, debounceTime);
-    } else {
-      callback();
-    }
-    inputTypingDebounceTimer.current = timer;
-    return () => {
-      abortController?.abort();
-      if (timer) clearTimeout(timer);
-    };
-  }, [
-    getIsDropdownOpen,
-    getIsTrayOpen,
-    shouldUseTray,
-    inputTrimmed,
-    language,
-    newUnknownValuesAsKey,
-    allowedOptionsAsKey
-  ]);
-  const addNewOptionVisible = !isLoading && allowFreeText && inputTrimmed && !arrayValues.includes(inputTrimmed) && !filteredOptions.find((o) => o.value === inputTrimmed);
-  useEffect(() => {
-    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
-    if (!isOpen) return;
-    if (activeDescendant.current && filteredOptions.find((o) => o.value === activeDescendant.current)) {
-      activateDescendant(activeDescendant.current);
-    } else if (addNewOptionVisible && activeDescendant.current === inputTrimmed) {
-      activateDescendant(inputTrimmed);
-    } else {
-      activateDescendant("");
-    }
-  }, [
-    shouldUseTray,
-    getIsDropdownOpen,
-    getIsTrayOpen,
-    filteredOptions,
-    activateDescendant,
-    addNewOptionVisible,
-    inputTrimmed
-  ]);
-  useEffect(() => {
+  useEffect4(() => {
     if (invalidValues.length > 0 && warningIconHovered && warningIconRef.current && tooltipPopperRef.current && rootElementRef.current) {
       const computedDir = window.getComputedStyle(rootElementRef.current).direction;
       const placement = computedDir === "rtl" ? "bottom-end" : "bottom-start";
@@ -955,7 +1431,7 @@ var PreactCombobox = ({
       };
     }
   }, [warningIconHovered, invalidValues.length]);
-  const handleOptionSelect = useCallback2(
+  const handleOptionSelect = useCallback4(
     /**
      * @param {string} selectedValue
      * @param {{ toggleSelected?: boolean }} [options]
@@ -1008,7 +1484,7 @@ var PreactCombobox = ({
       allOptionsLookup
     ]
   );
-  const focusInput = useCallback2(
+  const focusInput = useCallback4(
     (forceOpenKeyboard = false) => {
       const input = inputRef.current;
       if (input) {
@@ -1026,53 +1502,19 @@ var PreactCombobox = ({
     },
     [getIsFocused]
   );
-  const openTray = useCallback2(() => {
+  const openTray = useCallback4(() => {
     if (!shouldUseTray) return;
-    const scrollingElement = (
-      /** @type {HTMLElement} */
-      document.scrollingElement || document.documentElement
-    );
-    originalOverflowRef.current = scrollingElement.style.overflow;
-    scrollingElement.style.overflow = "hidden";
     setIsTrayOpen(true);
     setIsDropdownOpen(false);
     trayClosedExplicitlyRef.current = false;
-    if (!virtualKeyboardHeightAdjustSubscription.current) {
-      if (wasVisualViewportInitialHeightAnApproximate && trayModalRef.current) {
-        trayModalRef.current.style.removeProperty("display");
-        const height = trayModalRef.current.offsetHeight;
-        if (height > 0) {
-          visualViewportInitialHeight = height;
-          wasVisualViewportInitialHeightAnApproximate = false;
-        }
-      }
-      virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
-        heightCallback(keyboardHeight, isVisible) {
-          setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
-        }
-      });
-    }
   }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
-  useEffect(() => {
-    if (shouldUseTray && getIsTrayOpen()) {
-      trayInputRef.current?.focus();
-    }
-  }, [shouldUseTray, getIsTrayOpen]);
-  const closeTray = useCallback2(() => {
+  const closeTray = useCallback4(() => {
     setIsTrayOpen(false);
-    setTrayInputValue("");
-    setVirtualKeyboardHeight(0);
-    virtualKeyboardHeightAdjustSubscription.current?.();
-    virtualKeyboardHeightAdjustSubscription.current = null;
-    const scrollingElement = (
-      /** @type {HTMLElement} */
-      document.scrollingElement || document.documentElement
-    );
-    scrollingElement.style.overflow = originalOverflowRef.current;
+    setTrayActiveInputValue("");
     trayClosedExplicitlyRef.current = true;
     focusInput(true);
   }, [setIsTrayOpen, focusInput]);
-  const handleInputChange = useCallback2(
+  const handleInputChange = useCallback4(
     /**
      * Handle input change
      * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
@@ -1090,26 +1532,22 @@ var PreactCombobox = ({
     },
     [setIsDropdownOpen, shouldUseTray, openTray]
   );
-  const handleTrayInputChange = useCallback2(
+  const handleTrayInputChange = useCallback4(
     /**
      * Handle tray input change
-     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     * @param {string} value - Input value
      */
-    (e) => {
-      setTrayInputValue(e.currentTarget.value);
+    (value2) => {
+      setTrayActiveInputValue(value2);
     },
     []
   );
-  const virtualKeyboardExplicitlyClosedRef = useRef2(null);
-  const virtualKeyboardDismissSubscription = useRef2(
+  const virtualKeyboardExplicitlyClosedRef = useRef4(null);
+  const virtualKeyboardDismissSubscription = useRef4(
     /** @type {function | null} */
     null
   );
-  const virtualKeyboardHeightAdjustSubscription = useRef2(
-    /** @type {function | null} */
-    null
-  );
-  const handleInputFocus = useCallback2(() => {
+  const handleInputFocus = useCallback4(() => {
     setIsFocused(true);
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = void 0;
@@ -1138,7 +1576,7 @@ var PreactCombobox = ({
     updateSelectionAnnouncement,
     shouldUseTray
   ]);
-  const handleInputBlur = useCallback2(() => {
+  const handleInputBlur = useCallback4(() => {
     setIsFocused(false);
     clearTimeout(blurTimeoutRef.current);
     blurTimeoutRef.current = void 0;
@@ -1166,126 +1604,45 @@ var PreactCombobox = ({
     closeDropdown,
     shouldUseTray
   ]);
-  const handleAddNewOption = useCallback2(
+  const handleAddNewOption = useCallback4(
     /**
      * @param {string} newValue
      */
     (newValue) => {
       handleOptionSelect(newValue);
-      if (!filteredOptions.find((o) => o.value === newValue)) {
-        setFilteredOptions((options) => {
-          options = [
-            /** @type {OptionMatch} */
-            {
-              label: newValue,
-              value: newValue
-            }
-          ].concat(options);
-          const isRemoteSearch = typeof allowedOptions === "function";
-          return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
-        });
-      }
-      activateDescendant(newValue);
+      optionsListboxRef.current?.setActiveDescendant(newValue);
     },
-    [
-      allowedOptions,
-      language,
-      handleOptionSelect,
-      activateDescendant,
-      inputTrimmed,
-      filteredOptions
-    ]
+    [handleOptionSelect]
   );
-  const handleKeyDown = useCallback2(
+  const handleKeyDown = useCallback4(
     /**
      * @param {import('preact/compat').KeyboardEvent<HTMLInputElement>} e - Keyboard event
      */
     (e) => {
-      const currentActiveDescendant = activeDescendant.current;
       if (e.key === "Enter") {
         e.preventDefault();
-        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : -1;
-        if (currentIndex > -1) {
-          const option = (
-            /** @type {OptionMatch} */
-            filteredOptions[currentIndex]
-          );
-          handleOptionSelect(option.value, {
-            toggleSelected: true
-          });
-        } else if (allowFreeText && inputTrimmed !== "") {
+        const selected = optionsListboxRef.current?.selectActive();
+        if (!selected && allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
         }
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : -1;
-        if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex < 0 || currentIndex === filteredOptions.length - 1)) {
-          activateDescendant(inputTrimmed);
-        } else if (filteredOptions.length) {
-          let nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          let attempts = 0;
-          while (attempts < filteredOptions.length) {
-            const option = (
-              /** @type {OptionMatch} */
-              filteredOptions[nextIndex]
-            );
-            if (!option.disabled) {
-              activateDescendant(option.value);
-              break;
-            }
-            nextIndex = nextIndex === filteredOptions.length - 1 ? 0 : nextIndex + 1;
-            attempts++;
-          }
-        }
+        optionsListboxRef.current?.navigateDown();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant) : 0;
-        if (addNewOptionVisible && currentActiveDescendant !== inputTrimmed && (currentIndex === 0 && currentActiveDescendant || !filteredOptions.length)) {
-          activateDescendant(inputTrimmed);
-        } else if (filteredOptions.length) {
-          let prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          let attempts = 0;
-          while (attempts < filteredOptions.length) {
-            const option = (
-              /** @type {OptionMatch} */
-              filteredOptions[prevIndex]
-            );
-            if (!option.disabled) {
-              activateDescendant(option.value);
-              break;
-            }
-            prevIndex = (prevIndex - 1 + filteredOptions.length) % filteredOptions.length;
-            attempts++;
-          }
-        }
+        optionsListboxRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        if (filteredOptions.length > 0) {
-          const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
-          if (firstNonDisabledOption) {
-            activateDescendant(firstNonDisabledOption.value);
-          }
-        } else if (addNewOptionVisible) {
-          activateDescendant(inputTrimmed);
-        }
+        optionsListboxRef.current?.navigateToFirst();
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        if (filteredOptions.length > 0) {
-          const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
-          if (lastNonDisabledOption) {
-            activateDescendant(lastNonDisabledOption.value);
-          }
-        } else if (addNewOptionVisible) {
-          activateDescendant(inputTrimmed);
-        }
+        optionsListboxRef.current?.navigateToLast();
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         const prevValues = undoStack.current.pop();
@@ -1305,11 +1662,7 @@ var PreactCombobox = ({
       }
     },
     [
-      activateDescendant,
       allowFreeText,
-      filteredOptions,
-      addNewOptionVisible,
-      handleOptionSelect,
       handleAddNewOption,
       inputValue,
       inputTrimmed,
@@ -1321,12 +1674,13 @@ var PreactCombobox = ({
       updateSelectionAnnouncement
     ]
   );
-  const handlePaste = useCallback2(
+  const handlePaste = useCallback4(
     /**
      * @param {import('preact/compat').ClipboardEvent<HTMLInputElement>} e - Clipboard event
      */
     (e) => {
       if (!values) return;
+      const allOptions = Object.values(allOptionsLookup);
       const valuesLookup = {
         ...Object.fromEntries(values.map((v) => [v, v])),
         ...Object.fromEntries(allOptions.map((o) => [o.value, o.value]))
@@ -1348,11 +1702,10 @@ var PreactCombobox = ({
       updateSelectionAnnouncement(newValues, "added");
       undoStack.current.push(values);
       redoStack.current = [];
-      setFilteredOptions((filteredOptions2) => filteredOptions2.slice());
     },
-    [allOptions, onChange, values, updateSelectionAnnouncement]
+    [allOptionsLookup, onChange, values, updateSelectionAnnouncement]
   );
-  const handleClearValue = useCallback2(() => {
+  const handleClearValue = useCallback4(() => {
     setInputValue("");
     onChange(multiple ? [] : "");
     updateSelectionAnnouncement(arrayValues, "removed");
@@ -1362,7 +1715,7 @@ var PreactCombobox = ({
       focusInput();
     }
   }, [onChange, multiple, arrayValues, updateSelectionAnnouncement, getIsFocused, focusInput]);
-  const handleRootElementClick = useCallback2(() => {
+  const handleRootElementClick = useCallback4(() => {
     if (!disabled) {
       if (shouldUseTray) {
         openTray();
@@ -1376,8 +1729,8 @@ var PreactCombobox = ({
     }
   }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
   const selectChildren = useMemo2(
-    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
-      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
+    () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx4("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx4("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
     ) : null,
     [
       arrayValues,
@@ -1388,11 +1741,10 @@ var PreactCombobox = ({
       maxNumberOfPresentedOptions
     ]
   );
-  useEffect(() => {
-    const isOpen = getIsDropdownOpen() || getIsTrayOpen();
-    if (isLoading && isOpen) {
+  useEffect4(() => {
+    if (isLoading && isListOpen) {
       setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
-    } else if (loadingAnnouncement && !isLoading && isOpen) {
+    } else if (loadingAnnouncement && !isLoading && isListOpen) {
       setLoadingAnnouncement(
         filteredOptions.length ? mergedTranslations.optionsLoadedAnnouncement : mergedTranslations.noOptionsFoundAnnouncement
       );
@@ -1400,152 +1752,56 @@ var PreactCombobox = ({
         setLoadingAnnouncement("");
       }, 1e3);
       return () => clearTimeout(timer);
-    } else if (loadingAnnouncement && !isOpen) {
+    } else if (loadingAnnouncement && !isListOpen) {
       setLoadingAnnouncement("");
     }
   }, [
     isLoading,
     loadingAnnouncement,
-    getIsDropdownOpen,
-    getIsTrayOpen,
+    isListOpen,
     filteredOptions.length,
     mergedTranslations.loadingOptionsAnnouncement,
     mergedTranslations.optionsLoadedAnnouncement,
     mergedTranslations.noOptionsFoundAnnouncement
   ]);
   const isServerSideForm = isServer && formSubmitCompatible;
-  let list = null;
-  if (!isServer) {
-    list = // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
-    /* @__PURE__ */ jsx(
-      "ul",
-      {
-        className: [
-          "PreactCombobox-options",
-          `PreactCombobox--${theme}`,
-          shouldUseTray ? "PreactCombobox-options--tray" : ""
-        ].filter(Boolean).join(" "),
-        role: "listbox",
-        id: `${id}-options-listbox`,
-        "aria-multiselectable": multiple ? "true" : void 0,
-        hidden: shouldUseTray ? !getIsTrayOpen() : !getIsDropdownOpen(),
-        ref: shouldUseTray ? null : dropdownPopperRef,
-        children: isLoading ? /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", "aria-disabled": true, children: loadingRenderer(mergedTranslations.loadingOptions) }) : /* @__PURE__ */ jsxs(Fragment, { children: [
-          addNewOptionVisible && /* @__PURE__ */ jsx(
-            "li",
-            {
-              id: `${id}-option-${toHTMLId(inputTrimmed)}`,
-              className: "PreactCombobox-option",
-              role: "option",
-              tabIndex: -1,
-              "aria-selected": false,
-              onMouseEnter: () => activateDescendant(inputTrimmed, false),
-              onMouseDown: (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleAddNewOption(inputTrimmed);
-                if (shouldUseTray) {
-                  if (!multiple) {
-                    closeTray();
-                  } else {
-                    trayInputRef.current?.focus();
-                  }
-                } else {
-                  if (!multiple) {
-                    closeDropdown();
-                  }
-                  focusInput();
-                }
-              },
-              children: mergedTranslations.addOption.replace("{value}", inputTrimmed)
-            },
-            inputTrimmed
-          ),
-          filteredOptions.map((option) => {
-            const isActive = activeDescendant.current === option.value;
-            const isSelected = arrayValues.includes(option.value);
-            const isInvalid = invalidValues.includes(option.value);
-            const isDisabled = option.disabled;
-            const hasDivider = option.divider && !inputTrimmed;
-            const optionClasses = [
-              "PreactCombobox-option",
-              isActive ? "PreactCombobox-option--active" : "",
-              isSelected ? "PreactCombobox-option--selected" : "",
-              isInvalid ? "PreactCombobox-option--invalid" : "",
-              isDisabled ? "PreactCombobox-option--disabled" : "",
-              hasDivider ? "PreactCombobox-option--divider" : ""
-            ].filter(Boolean).join(" ");
-            return /* @__PURE__ */ jsxs(
-              "li",
-              {
-                id: `${id}-option-${toHTMLId(option.value)}`,
-                className: optionClasses,
-                role: "option",
-                tabIndex: -1,
-                "aria-selected": isSelected,
-                "aria-disabled": isDisabled,
-                onMouseEnter: () => !isDisabled && activateDescendant(option.value, false),
-                onMouseDown: (e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleOptionSelect(option.value, { toggleSelected: true });
-                  if (shouldUseTray) {
-                    if (!multiple) {
-                      closeTray();
-                    } else {
-                      trayInputRef.current?.focus();
-                    }
-                  } else {
-                    if (!multiple) {
-                      closeDropdown();
-                    }
-                    focusInput();
-                  }
-                },
-                children: [
-                  optionRenderer({
-                    option,
-                    language,
-                    isActive,
-                    isSelected,
-                    isInvalid,
-                    showValue,
-                    warningIcon,
-                    tickIcon,
-                    optionIconRenderer
-                  }),
-                  isSelected ? /* @__PURE__ */ jsx(
-                    "span",
-                    {
-                      className: "PreactCombobox-srOnly",
-                      "aria-atomic": "true",
-                      "data-reader": "selected",
-                      "aria-hidden": !isActive,
-                      children: mergedTranslations.selectedOption
-                    }
-                  ) : null,
-                  isInvalid ? /* @__PURE__ */ jsx(
-                    "span",
-                    {
-                      className: "PreactCombobox-srOnly",
-                      "aria-atomic": "true",
-                      "data-reader": "invalid",
-                      "aria-hidden": !isActive,
-                      children: mergedTranslations.invalidOption
-                    }
-                  ) : null
-                ]
-              },
-              option.value
-            );
-          }),
-          filteredOptions.length === 0 && !isLoading && (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.noOptionsFound }),
-          filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
-        ] })
-      }
-    );
-  }
-  return /* @__PURE__ */ jsxs(
+  const setDropdownRef = useCallback4(
+    /** @param {HTMLUListElement | null} el */
+    (el) => {
+      dropdownPopperRef.current = el;
+    },
+    []
+  );
+  const optionsListbox = !isServer ? /* @__PURE__ */ jsx4(
+    OptionsListbox_default,
+    {
+      ref: optionsListboxRef,
+      id,
+      searchText: activeInputValue,
+      filteredOptions,
+      isLoading,
+      arrayValues,
+      invalidValues,
+      multiple,
+      allowFreeText,
+      onOptionSelect: handleOptionSelect,
+      onActiveDescendantChange: handleActiveDescendantChange,
+      onClose: shouldUseTray ? closeTray : closeDropdown,
+      optionRenderer,
+      warningIcon,
+      tickIcon,
+      optionIconRenderer,
+      showValue,
+      language,
+      loadingRenderer,
+      translations: mergedTranslations,
+      theme,
+      isOpen: isListOpen,
+      shouldUseTray,
+      setDropdownRef
+    }
+  ) : null;
+  return /* @__PURE__ */ jsxs3(
     "div",
     {
       className: [
@@ -1561,13 +1817,13 @@ var PreactCombobox = ({
       ref: rootElementRef,
       ...rootElementProps,
       children: [
-        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? lastSelectionAnnouncement : "" }),
-        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? loadingAnnouncement : "" }),
-        /* @__PURE__ */ jsx("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: invalidValues.length > 0 && getIsFocused() ? mergedTranslations.fieldContainsInvalidValues : "" }),
-        /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`, children: [
-          !isServerSideForm && /* @__PURE__ */ jsxs(Fragment, { children: [
+        /* @__PURE__ */ jsx4("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? lastSelectionAnnouncement : "" }),
+        /* @__PURE__ */ jsx4("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: getIsFocused() ? loadingAnnouncement : "" }),
+        /* @__PURE__ */ jsx4("div", { className: "PreactCombobox-srOnly", "aria-live": "polite", "aria-atomic": "true", children: invalidValues.length > 0 && getIsFocused() ? mergedTranslations.fieldContainsInvalidValues : "" }),
+        /* @__PURE__ */ jsxs3("div", { className: `PreactCombobox-field ${disabled ? "PreactCombobox-field--disabled" : ""}`, children: [
+          !isServerSideForm && /* @__PURE__ */ jsxs3(Fragment2, { children: [
             !multiple && singleSelectValue && allOptionsLookup[singleSelectValue] && optionIconRenderer?.(allOptionsLookup[singleSelectValue], true),
-            /* @__PURE__ */ jsx(
+            /* @__PURE__ */ jsx4(
               "input",
               {
                 id,
@@ -1587,23 +1843,23 @@ var PreactCombobox = ({
                 "aria-expanded": getIsDropdownOpen(),
                 "aria-haspopup": "listbox",
                 "aria-controls": `${id}-options-listbox`,
-                "aria-activedescendant": activeDescendant.current ? `${id}-option-${toHTMLId(activeDescendant.current)}` : void 0,
+                "aria-activedescendant": activeDescendantValue ? `${id}-option-${toHTMLId(activeDescendantValue)}` : void 0,
                 disabled,
                 required: required && arrayValues.length === 0,
                 ...inputProps
               }
             ),
-            !disabled && showClearButton && arrayValues.length > 0 ? /* @__PURE__ */ jsx(
+            !disabled && showClearButton && arrayValues.length > 0 ? /* @__PURE__ */ jsx4(
               "button",
               {
                 type: "button",
                 className: "PreactCombobox-clearButton",
                 "aria-label": mergedTranslations.clearValue,
                 onClick: handleClearValue,
-                children: /* @__PURE__ */ jsx("span", { "aria-hidden": "true", children: "\u2715" })
+                children: /* @__PURE__ */ jsx4("span", { "aria-hidden": "true", children: "\u2715" })
               }
             ) : null,
-            invalidValues.length > 0 && /* @__PURE__ */ jsx(
+            invalidValues.length > 0 && /* @__PURE__ */ jsx4(
               "span",
               {
                 ref: warningIconRef,
@@ -1613,10 +1869,10 @@ var PreactCombobox = ({
                 children: warningIcon
               }
             ),
-            multiple && arrayValues.length > 1 && /* @__PURE__ */ jsx("span", { className: "PreactCombobox-badge", children: mergedTranslations.selectedCountFormatter(arrayValues.length, language) }),
+            multiple && arrayValues.length > 1 && /* @__PURE__ */ jsx4("span", { className: "PreactCombobox-badge", children: mergedTranslations.selectedCountFormatter(arrayValues.length, language) }),
             chevronIcon
           ] }),
-          formSubmitCompatible ? /* @__PURE__ */ jsx(
+          formSubmitCompatible ? /* @__PURE__ */ jsx4(
             "select",
             {
               ...selectElementProps,
@@ -1632,78 +1888,20 @@ var PreactCombobox = ({
             }
           ) : null
         ] }),
-        list && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? (
-          // I couldn't use native <dialog> element because trying to focus input right
-          // after dialog.close() doesn't seem to work on Chrome (Android).
-          /* @__PURE__ */ jsx(
-            "div",
-            {
-              ref: trayModalRef,
-              className: `PreactCombobox-modal ${`PreactCombobox--${theme}`}`,
-              style: { display: getIsTrayOpen() ? null : "none" },
-              onClick: (e) => {
-                if (e.target === trayModalRef.current) {
-                  closeTray();
-                }
-              },
-              onKeyDown: (e) => {
-                if (e.key === "Escape") {
-                  closeTray();
-                }
-              },
-              role: "dialog",
-              "aria-modal": "true",
-              "aria-labelledby": getTrayLabel() ? `${id}-tray-label` : void 0,
-              tabIndex: -1,
-              children: /* @__PURE__ */ jsxs("div", { className: `PreactCombobox-tray ${`PreactCombobox--${theme}`}`, children: [
-                /* @__PURE__ */ jsxs("div", { className: "PreactCombobox-trayHeader", children: [
-                  getTrayLabel() && /* @__PURE__ */ jsx(
-                    "label",
-                    {
-                      id: `${id}-tray-label`,
-                      className: "PreactCombobox-trayLabel",
-                      htmlFor: `${id}-tray-input`,
-                      children: getTrayLabel()
-                    }
-                  ),
-                  /* @__PURE__ */ jsx(
-                    "input",
-                    {
-                      id: `${id}-tray-input`,
-                      ref: trayInputRef,
-                      type: "text",
-                      value: trayInputValue,
-                      placeholder: mergedTranslations.searchPlaceholder,
-                      onChange: handleTrayInputChange,
-                      onKeyDown: (e) => {
-                        if (e.key === "Escape") {
-                          closeTray();
-                        }
-                      },
-                      className: `PreactCombobox-trayInput ${!getTrayLabel() ? "PreactCombobox-trayInput--noLabel" : ""}`,
-                      role: "combobox",
-                      "aria-expanded": "true",
-                      "aria-haspopup": "listbox",
-                      "aria-controls": `${id}-options-listbox`,
-                      "aria-label": getTrayLabel() || mergedTranslations.searchPlaceholder,
-                      autoComplete: "off"
-                    }
-                  )
-                ] }),
-                list,
-                virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx(
-                  "div",
-                  {
-                    className: "PreactCombobox-virtualKeyboardSpacer",
-                    style: { height: `${virtualKeyboardHeight}px` },
-                    "aria-hidden": "true"
-                  }
-                )
-              ] })
-            }
-          )
-        ) : list }),
-        invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ jsx(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsxs(
+        optionsListbox ? /* @__PURE__ */ jsx4(Portal, { parent: portal, rootElementRef, children: shouldUseTray ? /* @__PURE__ */ jsx4(
+          TraySearchList_default,
+          {
+            id,
+            isOpen: getIsTrayOpen(),
+            onClose: closeTray,
+            trayLabel: getTrayLabel() || "",
+            theme,
+            translations: mergedTranslations,
+            onInputChange: handleTrayInputChange,
+            children: optionsListbox
+          }
+        ) : optionsListbox }) : null,
+        invalidValues.length > 0 && warningIconHovered && !isServer && /* @__PURE__ */ jsx4(Portal, { parent: portal, rootElementRef, children: /* @__PURE__ */ jsxs3(
           "div",
           {
             className: `PreactCombobox-valueTooltip ${`PreactCombobox--${theme}`}`,
@@ -1711,7 +1909,7 @@ var PreactCombobox = ({
             ref: tooltipPopperRef,
             children: [
               mergedTranslations.invalidValues,
-              invalidValues.map((value2) => /* @__PURE__ */ jsx("div", { className: "PreactCombobox-tooltipValue", children: value2 }, value2))
+              invalidValues.map((value2) => /* @__PURE__ */ jsx4("div", { className: "PreactCombobox-tooltipValue", children: value2 }, value2))
             ]
           }
         ) })
@@ -1722,8 +1920,6 @@ var PreactCombobox = ({
 var PreactCombobox_default = PreactCombobox;
 export {
   PreactCombobox_default as default,
-  defaultOptionRenderer,
-  matchSlicesToNodes,
-  subscribeToVirtualKeyboard
+  defaultOptionRenderer
 };
 //# sourceMappingURL=PreactCombobox.js.map

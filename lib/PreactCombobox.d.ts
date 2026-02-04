@@ -1,20 +1,3 @@
-/**
- * Subscribe to virtual keyboard visibility changes (touch devices only)
- * @param {Object} params - Parameters for subscribing to virtual keyboard
- * @param {function(boolean): void} [params.visibleCallback] - Called with boolean when keyboard visibility changes
- * @param {function(number, boolean): void} [params.heightCallback] - Called with keyboard height when keyboard height changes
- * @returns {function | null} - Unsubscribe function
- */
-export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }: {
-    visibleCallback?: ((arg0: boolean) => void) | undefined;
-    heightCallback?: ((arg0: number, arg1: boolean) => void) | undefined;
-}): Function | null;
-/**
- * @param {OptionMatch['matchSlices']} matchSlices
- * @param {string} text
- * @returns {VNode[]}
- */
-export function matchSlicesToNodes(matchSlices: OptionMatch["matchSlices"], text: string): VNode[];
 export function defaultOptionRenderer(params: {
     option: OptionMatch;
     language: string;

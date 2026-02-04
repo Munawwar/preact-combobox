@@ -9,7 +9,10 @@ import {
   useRef,
   useState,
 } from "preact/hooks";
-import { useDeepMemo, useLive } from "./hooks.js";
+import OptionsListbox from "./OptionsListbox.jsx";
+import TraySearchList from "./TraySearchList.jsx";
+import { subscribeToVirtualKeyboard, useAsyncOptions, useDeepMemo, useLive } from "./hooks.js";
+import { matchSlicesToNodes, toHTMLId } from "./utils.jsx";
 import "./PreactCombobox.css";
 
 // --- types ---
@@ -163,9 +166,6 @@ const defaultEnglishTranslations = {
   selectedCountFormatter: (count, lang) => new Intl.NumberFormat(lang).format(count),
 };
 
-// @ts-ignore
-const isPlaywright = navigator.webdriver === true;
-
 // Auto-detect server-side rendering
 const isServerDefault = typeof self === "undefined";
 
@@ -174,34 +174,6 @@ const isServerDefault = typeof self === "undefined";
  */
 function unique(arr) {
   return Array.from(new Set(arr));
-}
-
-/**
- * Converts any text into a valid HTML ID attribute value.
- * Returns empty string if text becomes empty after removing invalid characters.
- *
- * @param {string} text - The text to convert into an HTML ID
- * @returns {string} A valid HTML ID or empty string
- */
-function toHTMLId(text) {
-  // Remove any characters that are not letters, numbers, hyphens, underscores, colons, or periods
-  return text.replace(/[^a-zA-Z0-9\-_:.]/g, "");
-}
-
-/**
- * @template {OptionMatch|Option} T
- * @param {T[]} options
- * @param {string[]} values
- * @returns {T[]}
- */
-function sortValuesToTop(options, values) {
-  const selectedSet = new Set(values);
-  return options.sort((a, b) => {
-    const aSelected = selectedSet.has(a.value);
-    const bSelected = selectedSet.has(b.value);
-    if (aSelected === bSelected) return 0;
-    return aSelected ? -1 : 1;
-  });
 }
 
 /**
@@ -283,335 +255,6 @@ const tooltipPopperModifiers = [
     },
   },
 ];
-
-const isTouchDevice =
-  typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
-// Since page hasn't potentially fully loaded yet we get only an approximate height
-let visualViewportInitialHeight = window.visualViewport?.height ?? 0;
-let wasVisualViewportInitialHeightAnApproximate = true;
-
-/**
- * Subscribe to virtual keyboard visibility changes (touch devices only)
- * @param {Object} params - Parameters for subscribing to virtual keyboard
- * @param {function(boolean): void} [params.visibleCallback] - Called with boolean when keyboard visibility changes
- * @param {function(number, boolean): void} [params.heightCallback] - Called with keyboard height when keyboard height changes
- * @returns {function | null} - Unsubscribe function
- */
-export function subscribeToVirtualKeyboard({ visibleCallback, heightCallback }) {
-  if (!isTouchDevice || typeof window === "undefined" || !window.visualViewport) return null;
-
-  let isVisible = false;
-  const handleViewportResize = () => {
-    if (!window.visualViewport) return;
-    const heightDiff = visualViewportInitialHeight - window.visualViewport.height;
-    const isVisibleNow = heightDiff > 150;
-    if (isVisible !== isVisibleNow) {
-      isVisible = isVisibleNow;
-      visibleCallback?.(isVisible);
-    }
-    heightCallback?.(heightDiff, isVisible);
-  };
-  window.visualViewport.addEventListener("resize", handleViewportResize, { passive: true });
-  return () => {
-    window.visualViewport?.removeEventListener("resize", handleViewportResize);
-  };
-}
-
-/** @type {Record<string, LanguageCache>} */
-const languageCache = {};
-
-/**
- * @param {string} query
- * @param {Option} option
- * @param {string} language
- * @returns {OptionMatch|null}
- */
-function getExactMatchScore(query, option, language) {
-  const { label, value, ...rest } = option;
-  if (value === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
-    };
-  }
-  if (label === query) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 9,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
-    };
-  }
-
-  const { caseMatcher } = /** @type {LanguageCache} */ (languageCache[language]);
-  if (caseMatcher.compare(value, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'value'} */
-      matched: "value",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, value.length]],
-    };
-  }
-  if (caseMatcher.compare(label, query) === 0) {
-    return {
-      ...rest,
-      label,
-      value,
-      score: 7,
-      /** @type {'label'} */
-      matched: "label",
-      /** @type {Array<[number, number]>} */
-      matchSlices: [[0, label.length]],
-    };
-  }
-
-  return null;
-}
-
-/**
- * Calculates the match score between a query text and a list of option labels.
- * It returns scores for each option sorted in descending order.
- *
- * It takes the `query` string, evaluates the following rules in order and assigns the one with highest score:
- * - Score 7: If whole query matches a label on an option (Case insensitive match)
- * - Score 5: Same as previous check but this time case and accent insensitive matching
- * - Score 3: Phrase matching (e.g. "word1 partialWord2*")
- * - Score 0-1: Number of words matched / total number of words in query (e.g. "word1")
- *
- * @param {string} query - The query text to match against options.
- * @param {Option[]} options
- * @param {string} [language='en'] Language to use for word splitting and matching
- * @param {boolean} [filterAndSort=true] Whether to filter and sort the results. If false, returns all options but with attempted matches.
- * @returns {Array<OptionMatch>}
- */
-function getMatchScore(query, options, language = "en", filterAndSort = true) {
-  // biome-ignore lint/style/noParameterAssign: ignore
-  query = query.trim();
-
-  if (!query) {
-    const matchSlices = /** @type {Array<[number, number]>} */ ([]);
-    return options.map((option) => ({
-      ...option,
-      label: option.label,
-      value: option.value,
-      score: 0,
-      matched: "none",
-      matchSlices,
-    }));
-  }
-
-  if (!languageCache[language]) {
-    languageCache[language] = {
-      baseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "base",
-      }),
-      caseMatcher: new Intl.Collator(language, {
-        usage: "search",
-        sensitivity: "accent",
-      }),
-      wordSegmenter: new Intl.Segmenter(language, {
-        granularity: "word",
-      }),
-    };
-  }
-  const { baseMatcher, caseMatcher, wordSegmenter } = languageCache[language];
-
-  const isCommaSeparated = query.includes(",");
-
-  let matches = options.map((option) => {
-    const { label, value, ...rest } = option;
-    if (isCommaSeparated) {
-      const querySegments = query.split(",");
-      const matches = querySegments
-        .map((querySegment) => getExactMatchScore(querySegment.trim(), option, language))
-        .filter((match) => match !== null)
-        .sort((a, b) => b.score - a.score);
-      return /** @type {OptionMatch} */ (
-        matches[0] || {
-          ...rest,
-          label,
-          value,
-          score: 0,
-          matched: "none",
-        }
-      );
-    }
-
-    // Rule 1: Exact match (case sensitive)
-    // Rule 2: Exact match (case insensitive)
-    const exactMatch = getExactMatchScore(query, option, language);
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    // Rule 3: Exact match with accents normalized (case insensitive)
-    if (baseMatcher.compare(label, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'label'} */
-        matched: "label",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, label.length]],
-      };
-    }
-    if (baseMatcher.compare(value, query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 5,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, value.length]],
-      };
-    }
-
-    // Rule 4: Phrase match (imagine a wildcard query like "word1 partialWord2*")
-    // This match needs to be case and accent insensitive
-    const querySegments = Array.from(wordSegmenter.segment(query));
-    const labelWordSegments = Array.from(wordSegmenter.segment(label.trim()));
-    let len = 0;
-    let firstIndex = -1;
-    for (let i = 0; i < labelWordSegments.length; i++) {
-      const labelWordSegment = /** @type {Intl.SegmentData} */ (labelWordSegments[i]);
-      const querySegment = querySegments[len];
-      if (!querySegment) break;
-      if (len === querySegments.length - 1) {
-        // check for partial word match
-        // I can't use labelWordSegment.segment.startsWith(querySegment.segment) because it's case and accent sensitive
-        const lastQueryWord = querySegment.segment;
-        if (
-          baseMatcher.compare(
-            labelWordSegment.segment.slice(0, lastQueryWord.length),
-            lastQueryWord,
-          ) === 0
-        ) {
-          return {
-            ...rest,
-            label,
-            value,
-            score: 3,
-            /** @type {'label'} */
-            matched: "label",
-            /** @type {Array<[number, number]>} */
-            // @ts-ignore
-            matchSlices: [
-              [
-                firstIndex > -1 ? firstIndex : labelWordSegment.index,
-                labelWordSegment.index + lastQueryWord.length,
-              ],
-            ],
-          };
-        }
-      } else if (baseMatcher.compare(labelWordSegment.segment, querySegment.segment) === 0) {
-        len++;
-        if (len === 1) {
-          firstIndex = labelWordSegment.index;
-        }
-        continue;
-      }
-      len = 0;
-      firstIndex = -1;
-    }
-    // Also check for partial value match (this doesn't need accent check)
-    if (caseMatcher.compare(value.slice(0, query.length), query) === 0) {
-      return {
-        ...rest,
-        label,
-        value,
-        score: 3,
-        /** @type {'value'} */
-        matched: "value",
-        /** @type {Array<[number, number]>} */
-        matchSlices: [[0, query.length]],
-      };
-    }
-
-    // Rule 5: Word matches
-    const queryWords = querySegments.filter((s) => s.isWordLike);
-    const labelWords = labelWordSegments.filter((s) => s.isWordLike);
-    /** @type {Array<[number, number]|undefined>} */
-    const slices = queryWords.map((word) => {
-      const match = labelWords.find(
-        (labelWord) => baseMatcher.compare(labelWord.segment, word.segment) === 0,
-      );
-      if (match) {
-        return [match.index, match.index + match.segment.length];
-      }
-    });
-    // TODO: Do we need a deep equal de-duplication here?
-    const matchSlices = slices.filter((s) => s !== undefined).sort((a, b) => a[0] - b[0]);
-    const wordScoring = matchSlices.length / queryWords.length;
-    return {
-      ...rest,
-      label,
-      value,
-      score: wordScoring,
-      /** @type {'label'|'none'} */
-      matched: wordScoring ? "label" : "none",
-      matchSlices,
-    };
-  });
-
-  if (filterAndSort) {
-    matches = matches.filter((match) => match.score > 0);
-    matches.sort((a, b) => {
-      if (a.score === b.score) {
-        const val = a.label.localeCompare(b.label, undefined, {
-          sensitivity: "base",
-        });
-        return val === 0 ? a.value.localeCompare(b.value, undefined, { sensitivity: "base" }) : val;
-      }
-      return b.score - a.score;
-    });
-  }
-  return matches;
-}
-
-/**
- * @param {OptionMatch['matchSlices']} matchSlices
- * @param {string} text
- * @returns {VNode[]}
- */
-export function matchSlicesToNodes(matchSlices, text) {
-  const nodes = /** @type {VNode[]} */ ([]);
-  let index = 0;
-  matchSlices.map((slice) => {
-    const [start, end] = slice;
-    // console.log(slice);
-    if (index < start) {
-      // console.log(label.slice(index, start));
-      nodes.push(<span key={`${index}-${start}`}>{text.slice(index, start)}</span>);
-    }
-    // console.log(label.slice(start, end));
-    nodes.push(<u key={`${start}-${end}`}>{text.slice(start, end)}</u>);
-    index = end;
-  });
-  if (index < text.length) {
-    // console.log(label.slice(index));
-    nodes.push(<span key={`${index}-${text.length}`}>{text.slice(index)}</span>);
-  }
-  return nodes;
-}
 
 // Default icons
 const defaultWarningIcon = (
@@ -816,24 +459,22 @@ const PreactCombobox = ({
   }
   const arrayValues = useDeepMemo(tempArrayValue);
   const arrayValuesLookup = useMemo(() => new Set(arrayValues), [arrayValues]);
-  const allowedOptionsAsKey = useDeepMemo(
-    typeof allowedOptions === "function" ? null : allowedOptions,
-  );
 
   const autoId = useId();
   const id = idProp || autoId;
   const [inputValue, setInputValue] = useState("");
-  const [getIsDropdownOpen, setIsDropdownOpen, hasDropdownOpenChanged] = useLive(false);
-  const cachedOptions = useRef(/** @type {{ [value: string]: Option }} */ ({}));
-  const [filteredOptions, setFilteredOptions] = useState(/** @type {OptionMatch[]} */ ([]));
-  const [isLoading, setIsLoading] = useState(false);
+  const [getIsDropdownOpen, setIsDropdownOpen] = useLive(false);
   const [getIsFocused, setIsFocused] = useLive(false);
   // For screen reader announcement
   const [lastSelectionAnnouncement, setLastSelectionAnnouncement] = useState("");
   // For loading status announcements
   const [loadingAnnouncement, setLoadingAnnouncement] = useState("");
-  // NOTE: Using ref for performance. Setting few attributes by re-rendering a large list is too expensive.
-  const activeDescendant = useRef("");
+  // Ref for OptionsListbox component to call navigation methods
+  const optionsListboxRef = useRef(
+    /** @type {import("./OptionsListbox.jsx").OptionsListboxRef | null} */ (null),
+  );
+  // Track active descendant for aria-activedescendant on input (synced from AutocompleteList)
+  const [activeDescendantValue, setActiveDescendantValue] = useState("");
   const [warningIconHovered, setWarningIconHovered] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const blurTimeoutRef = useRef(/** @type {number | undefined} */ (undefined));
@@ -847,14 +488,10 @@ const PreactCombobox = ({
   const [getTrayLabel, setTrayLabel] = useLive(trayLabelProp);
 
   // Tray-related state
-  const [getIsTrayOpen, setIsTrayOpen, hasTrayOpenChanged] = useLive(false);
-  const [trayInputValue, setTrayInputValue] = useState("");
-  const trayInputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
-  const trayModalRef = useRef(/** @type {HTMLDivElement | null} */ (null));
+  const [getIsTrayOpen, setIsTrayOpen] = useLive(false);
   const trayClosedExplicitlyRef = useRef(false);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
-  const originalOverflowRef = useRef("");
-  const [virtualKeyboardHeight, setVirtualKeyboardHeight] = useState(0);
+  const [trayActiveInputValue, setTrayActiveInputValue] = useState("");
 
   // Media query detection for auto tray mode
   useEffect(() => {
@@ -871,7 +508,7 @@ const PreactCombobox = ({
   const shouldUseTray = tray === true || (tray === "auto" && isMobileScreen);
 
   // Use appropriate input value based on mode
-  const activeInputValue = getIsTrayOpen() ? trayInputValue : inputValue;
+  const activeInputValue = getIsTrayOpen() ? trayActiveInputValue : inputValue;
   const inputTrimmed = activeInputValue.trim();
 
   /**
@@ -933,30 +570,22 @@ const PreactCombobox = ({
     setTrayLabel(computeEffectiveTrayLabel());
   }, [setTrayLabel, computeEffectiveTrayLabel]);
 
-  const updateCachedOptions = useCallback(
-    /** @param {Option[]} update */
-    (update) => {
-      for (const item of update) {
-        cachedOptions.current[item.value] = item;
-      }
-    },
-    [],
-  );
+  // Determine if options should be fetched/filtered (dropdown or tray is open)
+  const isListOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
 
-  const allOptions = useDeepMemo(
-    Array.isArray(allowedOptions) ? allowedOptions : Object.values(cachedOptions.current),
-  );
-  const allOptionsLookup = useMemo(
-    () =>
-      allOptions.reduce(
-        (acc, o) => {
-          acc[o.value] = o;
-          return acc;
-        },
-        /** @type {{ [value: string]: Option }} */ ({}),
-      ),
-    [allOptions],
-  );
+  // Use the async options hook for fetching, caching, and filtering
+  const { filteredOptions, resolvedOptionsLookup, isLoading } = useAsyncOptions({
+    allowedOptions,
+    selectedValues: arrayValues,
+    searchText: activeInputValue,
+    isOpen: isListOpen,
+    language,
+    maxNumberOfPresentedOptions,
+  });
+
+  // Alias for backward compatibility with existing code
+  const allOptionsLookup = resolvedOptionsLookup;
+
   const invalidValues = useMemo(() => {
     if (allowFreeText) return [];
     return arrayValues?.filter((v) => !allOptionsLookup[v]) || [];
@@ -981,55 +610,15 @@ const PreactCombobox = ({
   );
 
   /**
-   * Note that aria-activedescendant only works with HTML id attributes.
-   * @param {string} optionValue - The value of the option to activate
-   * @param {boolean} [scroll=true] Scroll to the option if it's not already in view
+   * Callback for when OptionsListbox's active descendant changes
+   * @param {string} value - The new active descendant value
    */
-  const activateDescendant = useCallback(
-    /**
-     * @param {string} optionValue
-     * @param {boolean} [scroll=true]
-     */
-    (optionValue, scroll = true) => {
-      // NOTE: Using direct DOM API for performance
-      // Remove current active element CSS
-      if (activeDescendant.current && dropdownPopperRef.current) {
-        const el = dropdownPopperRef.current.querySelector(".PreactCombobox-option--active");
-        el?.classList.remove("PreactCombobox-option--active");
-        // Remove non-active options from screen reader announcement
-        el?.querySelector('span[data-reader="selected"]')?.setAttribute("aria-hidden", "true");
-        el?.querySelector('span[data-reader="invalid"]')?.setAttribute("aria-hidden", "true");
-      }
-
-      activeDescendant.current = optionValue;
-
-      // Set the places in DOM where aria-activedescendant and aria-selected are set
-      const elementId = optionValue ? `${id}-option-${toHTMLId(optionValue)}` : "";
-      inputRef.current?.setAttribute("aria-activedescendant", elementId);
-      if (elementId && dropdownPopperRef.current) {
-        const activeDescendantElement = dropdownPopperRef.current.querySelector(`#${elementId}`);
-        if (activeDescendantElement) {
-          activeDescendantElement.classList.add("PreactCombobox-option--active");
-          activeDescendantElement
-            .querySelector('span[data-reader="selected"]')
-            ?.setAttribute("aria-hidden", "false");
-          activeDescendantElement
-            .querySelector('span[data-reader="invalid"]')
-            ?.setAttribute("aria-hidden", "false");
-          if (scroll) {
-            const dropdownRect = dropdownPopperRef.current.getBoundingClientRect();
-            const itemRect = activeDescendantElement.getBoundingClientRect();
-
-            if (itemRect.top < dropdownRect.top) {
-              dropdownPopperRef.current.scrollTop += itemRect.top - dropdownRect.top;
-            } else if (itemRect.bottom > dropdownRect.bottom) {
-              dropdownPopperRef.current.scrollTop += itemRect.bottom - dropdownRect.bottom;
-            }
-          }
-        }
-      }
+  const handleActiveDescendantChange = useCallback(
+    /** @param {string} value */
+    (value) => {
+      setActiveDescendantValue(value);
     },
-    [id],
+    [],
   );
 
   const closeDropdown = useCallback(
@@ -1047,9 +636,10 @@ const PreactCombobox = ({
       // Announce current selections when dropdown is closed
       updateSelectionAnnouncement(arrayValues);
 
-      activateDescendant("");
+      // Clear active descendant via ref (will also trigger state update via callback)
+      optionsListboxRef.current?.clearActiveDescendant();
     },
-    [setIsDropdownOpen, activateDescendant, updateSelectionAnnouncement, arrayValues],
+    [setIsDropdownOpen, updateSelectionAnnouncement, arrayValues],
   );
 
   // Setup popper when dropdown is opened
@@ -1080,162 +670,12 @@ const PreactCombobox = ({
     }
   }, [getIsDropdownOpen, shouldUseTray]);
 
-  const abortControllerRef = useRef(/** @type {AbortController | null} */ (null));
-  const inputTypingDebounceTimer = useRef(/** @type {any} */ (null));
-  const newUnknownValues = arrayValues.filter((v) => !allOptionsLookup[v]);
-  const newUnknownValuesAsKey = useDeepMemo(newUnknownValues);
-  // Fill the dropdown with options on open and also on input change
-  // Not on useEffect deps:
-  // arrayValues doesn't need to be a dependency except on an unexpected selection change from parent
-  // because options info don't change on arrayValues change rather only the toggle state of the rendered
-  // option changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see above comment
-  useEffect(() => {
-    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
-    const shouldFetchOptions = isOpen || typeof allowedOptions === "function";
-    if (!shouldFetchOptions) return;
+  // Note: filtering state moved to AutocompleteList component
+  // Note: All filtering and fetching logic moved to AutocompleteList component
 
-    const abortController = typeof allowedOptions === "function" ? new AbortController() : null;
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = abortController;
+  // Note: addNewOptionVisible now handled in AutocompleteList component
 
-    let debounceTime = 0; // for local data
-    if (
-      typeof allowedOptions === "function" &&
-      !(
-        // don't debounce for initial render (when we have to resolve the labels for selected values).
-        // don't debounce for first time the dropdown is opened as well.
-        (
-          newUnknownValues.length > 0 ||
-          (isOpen && shouldUseTray ? hasTrayOpenChanged : hasDropdownOpenChanged)
-        )
-      ) &&
-      // Hack: We avoid debouncing to speed up playwright tests
-      !isPlaywright
-    ) {
-      // a typical user types 4 characters per second, so 250ms is a good debounce time
-      debounceTime = 250;
-    }
-    clearTimeout(inputTypingDebounceTimer.current);
-
-    const callback = async () => {
-      if (typeof allowedOptions === "function") {
-        // @ts-ignore
-        const signal = /** @type {AbortSignal} */ (abortController.signal);
-        const [searchResults, selectedResults] = await Promise.all([
-          isOpen
-            ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
-            : /** @type {Option[]} */ ([]),
-          // We need to fetch unknown options's labels regardless of whether the dropdown
-          // is open or not, because we want to show it in the placeholder.
-          newUnknownValues.length > 0
-            ? allowedOptions(newUnknownValues, newUnknownValues.length, arrayValues, signal)
-            : null,
-        ]).catch((error) => {
-          if (signal.aborted) {
-            return [null, null];
-          }
-          setIsLoading(false);
-          throw error;
-        });
-
-        setIsLoading(false);
-        if (searchResults?.length) {
-          updateCachedOptions(searchResults);
-        }
-        if (selectedResults?.length) {
-          updateCachedOptions(selectedResults);
-        }
-        let updatedOptions = searchResults || [];
-        // Handle case where backend doesn't return labels for all the sent selections
-        if (!inputTrimmed) {
-          const unreturnedValues = newUnknownValues
-            .filter((v) => !cachedOptions.current[v])
-            .map((v) => ({ label: v, value: v }));
-          if (unreturnedValues.length > 0) {
-            updateCachedOptions(unreturnedValues);
-            updatedOptions = unreturnedValues.concat(searchResults || []);
-          }
-        }
-        // when search is applied don't sort the selected values to the top
-        const options = inputTrimmed
-          ? updatedOptions
-          : sortValuesToTop(updatedOptions, arrayValues);
-        // we don't need to re-sort what the backend returns, so pass filterAndSort=false to getMatchScore()
-        setFilteredOptions(getMatchScore(inputTrimmed, options, language, false));
-      } else {
-        const mergedOptions = arrayValues
-          .filter((v) => !allOptionsLookup[v])
-          .map((v) => ({ label: v, value: v }))
-          .concat(allowedOptions);
-        // when search is applied don't sort the selected values to the top
-        const options = activeInputValue
-          ? mergedOptions
-          : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
-      }
-    };
-
-    // We need to set isLoading immediately to show "loading" state without waiting
-    // for the debounce to complete so that playwright tests don't need an arbitrary
-    // wait delay for the options to load.
-    if (typeof allowedOptions === "function") {
-      setIsLoading(true);
-    }
-
-    let timer = null;
-    if (debounceTime > 0) {
-      timer = setTimeout(callback, debounceTime);
-    } else {
-      callback();
-    }
-    inputTypingDebounceTimer.current = timer;
-
-    // Clean up function
-    return () => {
-      abortController?.abort();
-      if (timer) clearTimeout(timer);
-    };
-  }, [
-    getIsDropdownOpen,
-    getIsTrayOpen,
-    shouldUseTray,
-    inputTrimmed,
-    language,
-    newUnknownValuesAsKey,
-    allowedOptionsAsKey,
-  ]);
-
-  const addNewOptionVisible =
-    !isLoading &&
-    allowFreeText &&
-    inputTrimmed &&
-    !arrayValues.includes(inputTrimmed) &&
-    !filteredOptions.find((o) => o.value === inputTrimmed);
-
-  // Detect changes to filtered options and re-activate or deactivate the active descendant
-  useEffect(() => {
-    const isOpen = shouldUseTray ? getIsTrayOpen() : getIsDropdownOpen();
-    if (!isOpen) return;
-    if (
-      activeDescendant.current &&
-      filteredOptions.find((o) => o.value === activeDescendant.current)
-    ) {
-      activateDescendant(activeDescendant.current);
-    } else if (addNewOptionVisible && activeDescendant.current === inputTrimmed) {
-      activateDescendant(inputTrimmed);
-    } else {
-      activateDescendant("");
-    }
-  }, [
-    shouldUseTray,
-    getIsDropdownOpen,
-    getIsTrayOpen,
-    filteredOptions,
-    activateDescendant,
-    addNewOptionVisible,
-    inputTrimmed,
-  ]);
+  // Note: activeDescendant state now lives in AutocompleteList, synced via onActiveDescendantChange callback
 
   // Setup warning tooltip popper when hovering over warning icon
   useEffect(() => {
@@ -1357,57 +797,14 @@ const PreactCombobox = ({
 
   const openTray = useCallback(() => {
     if (!shouldUseTray) return;
-    // Get the scrolling element (body or html)
-    const scrollingElement = /** @type {HTMLElement} */ (
-      document.scrollingElement || document.documentElement
-    );
-
-    // Save original overflow and apply hidden
-    originalOverflowRef.current = scrollingElement.style.overflow;
-    scrollingElement.style.overflow = "hidden";
-
     setIsTrayOpen(true);
     setIsDropdownOpen(false);
     trayClosedExplicitlyRef.current = false;
-
-    // Subscribe to virtual keyboard for tray
-    if (!virtualKeyboardHeightAdjustSubscription.current) {
-      if (wasVisualViewportInitialHeightAnApproximate && trayModalRef.current) {
-        trayModalRef.current.style.removeProperty("display");
-        const height = trayModalRef.current.offsetHeight;
-        if (height > 0) {
-          visualViewportInitialHeight = height;
-          wasVisualViewportInitialHeightAnApproximate = false;
-        }
-      }
-      virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
-        heightCallback(keyboardHeight, isVisible) {
-          setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
-        },
-      });
-    }
   }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
-
-  // focus the input when the tray is opened first time
-  useEffect(() => {
-    if (shouldUseTray && getIsTrayOpen()) {
-      trayInputRef.current?.focus();
-    }
-  }, [shouldUseTray, getIsTrayOpen]);
 
   const closeTray = useCallback(() => {
     setIsTrayOpen(false);
-    setTrayInputValue("");
-    setVirtualKeyboardHeight(0);
-    virtualKeyboardHeightAdjustSubscription.current?.();
-    virtualKeyboardHeightAdjustSubscription.current = null;
-
-    // Restore original overflow
-    const scrollingElement = /** @type {HTMLElement} */ (
-      document.scrollingElement || document.documentElement
-    );
-    scrollingElement.style.overflow = originalOverflowRef.current;
-
+    setTrayActiveInputValue("");
     trayClosedExplicitlyRef.current = true;
     focusInput(true);
   }, [setIsTrayOpen, focusInput]);
@@ -1434,10 +831,10 @@ const PreactCombobox = ({
   const handleTrayInputChange = useCallback(
     /**
      * Handle tray input change
-     * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e - Input change event
+     * @param {string} value - Input value
      */
-    (e) => {
-      setTrayInputValue(e.currentTarget.value);
+    (value) => {
+      setTrayActiveInputValue(value);
     },
     [],
   );
@@ -1450,7 +847,6 @@ const PreactCombobox = ({
    */
   const virtualKeyboardExplicitlyClosedRef = useRef(null);
   const virtualKeyboardDismissSubscription = useRef(/** @type {function | null} */ (null));
-  const virtualKeyboardHeightAdjustSubscription = useRef(/** @type {function | null} */ (null));
 
   const handleInputFocus = useCallback(() => {
     setIsFocused(true);
@@ -1519,29 +915,10 @@ const PreactCombobox = ({
      */
     (newValue) => {
       handleOptionSelect(newValue);
-      if (!filteredOptions.find((o) => o.value === newValue)) {
-        setFilteredOptions((options) => {
-          // biome-ignore lint/style/noParameterAssign:
-          options = [
-            /** @type {OptionMatch} */ ({
-              label: newValue,
-              value: newValue,
-            }),
-          ].concat(options);
-          const isRemoteSearch = typeof allowedOptions === "function";
-          return getMatchScore(inputTrimmed, options, language, !isRemoteSearch);
-        });
-      }
-      activateDescendant(newValue);
+      // Set active descendant via ref
+      optionsListboxRef.current?.setActiveDescendant(newValue);
     },
-    [
-      allowedOptions,
-      language,
-      handleOptionSelect,
-      activateDescendant,
-      inputTrimmed,
-      filteredOptions,
-    ],
+    [handleOptionSelect],
   );
 
   /**
@@ -1552,105 +929,34 @@ const PreactCombobox = ({
      * @param {import('preact/compat').KeyboardEvent<HTMLInputElement>} e - Keyboard event
      */
     (e) => {
-      const currentActiveDescendant = activeDescendant.current;
       if (e.key === "Enter") {
         e.preventDefault();
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : -1;
-        if (currentIndex > -1) {
-          const option = /** @type {OptionMatch} */ (filteredOptions[currentIndex]);
-          handleOptionSelect(option.value, {
-            toggleSelected: true,
-          });
-        } else if (allowFreeText && inputTrimmed !== "") {
+        // Try to select the active option first
+        const selected = optionsListboxRef.current?.selectActive();
+        // If nothing was selected and free text is allowed, add new option
+        if (!selected && allowFreeText && inputTrimmed !== "") {
           handleAddNewOption(inputTrimmed);
         }
-        // ArrowDown highlights next option
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : -1;
-        if (
-          addNewOptionVisible &&
-          currentActiveDescendant !== inputTrimmed &&
-          (currentIndex < 0 || currentIndex === filteredOptions.length - 1)
-        ) {
-          activateDescendant(inputTrimmed);
-        } else if (filteredOptions.length) {
-          // Find next non-disabled option
-          let nextIndex = currentIndex === filteredOptions.length - 1 ? 0 : currentIndex + 1;
-          let attempts = 0;
-          while (attempts < filteredOptions.length) {
-            const option = /** @type {OptionMatch} */ (filteredOptions[nextIndex]);
-            if (!option.disabled) {
-              activateDescendant(option.value);
-              break;
-            }
-            nextIndex = nextIndex === filteredOptions.length - 1 ? 0 : nextIndex + 1;
-            attempts++;
-          }
-        }
-        // ArrowUp highlights previous option
+        // Navigate to next option
+        optionsListboxRef.current?.navigateDown();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setIsDropdownOpen(true);
         dropdownClosedExplicitlyRef.current = false;
-        if (!filteredOptions.length && !addNewOptionVisible) return;
-        const currentIndex = currentActiveDescendant
-          ? filteredOptions.findIndex((o) => o.value === currentActiveDescendant)
-          : 0;
-        if (
-          addNewOptionVisible &&
-          currentActiveDescendant !== inputTrimmed &&
-          ((currentIndex === 0 && currentActiveDescendant) || !filteredOptions.length)
-        ) {
-          activateDescendant(inputTrimmed);
-        } else if (filteredOptions.length) {
-          // Find previous non-disabled option
-          let prevIndex = (currentIndex - 1 + filteredOptions.length) % filteredOptions.length;
-          let attempts = 0;
-          while (attempts < filteredOptions.length) {
-            const option = /** @type {OptionMatch} */ (filteredOptions[prevIndex]);
-            if (!option.disabled) {
-              activateDescendant(option.value);
-              break;
-            }
-            prevIndex = (prevIndex - 1 + filteredOptions.length) % filteredOptions.length;
-            attempts++;
-          }
-        }
-        // Escape blurs input
+        // Navigate to previous option
+        optionsListboxRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
-        // Home key navigates to first option
       } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        if (filteredOptions.length > 0) {
-          // Find first non-disabled option
-          const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
-          if (firstNonDisabledOption) {
-            activateDescendant(firstNonDisabledOption.value);
-          }
-        } else if (addNewOptionVisible) {
-          activateDescendant(inputTrimmed);
-        }
-        // End key navigates to last option
+        optionsListboxRef.current?.navigateToFirst();
       } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
         e.preventDefault();
-        if (filteredOptions.length > 0) {
-          // Find last non-disabled option
-          const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
-          if (lastNonDisabledOption) {
-            activateDescendant(lastNonDisabledOption.value);
-          }
-        } else if (addNewOptionVisible) {
-          activateDescendant(inputTrimmed);
-        }
+        optionsListboxRef.current?.navigateToLast();
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
@@ -1672,11 +978,7 @@ const PreactCombobox = ({
       }
     },
     [
-      activateDescendant,
       allowFreeText,
-      filteredOptions,
-      addNewOptionVisible,
-      handleOptionSelect,
       handleAddNewOption,
       inputValue,
       inputTrimmed,
@@ -1700,6 +1002,8 @@ const PreactCombobox = ({
       if (!values) return;
 
       // e.preventDefault();
+      // Get options array from lookup
+      const allOptions = Object.values(allOptionsLookup);
       // Case 1 : Exact matches
       const valuesLookup = {
         ...Object.fromEntries(values.map((v) => [v, v])),
@@ -1733,10 +1037,9 @@ const PreactCombobox = ({
       updateSelectionAnnouncement(newValues, "added");
       undoStack.current.push(values);
       redoStack.current = [];
-      // force a re-render
-      setFilteredOptions((filteredOptions) => filteredOptions.slice());
+      // Note: Option re-rendering handled by AutocompleteList component
     },
-    [allOptions, onChange, values, updateSelectionAnnouncement],
+    [allOptionsLookup, onChange, values, updateSelectionAnnouncement],
   );
 
   const handleClearValue = useCallback(() => {
@@ -1804,13 +1107,12 @@ const PreactCombobox = ({
 
   // Update loading announcement when isLoading changes
   useEffect(() => {
-    const isOpen = getIsDropdownOpen() || getIsTrayOpen();
-    // Only announce loading if the dropdown is open
-    if (isLoading && isOpen) {
+    // Only announce loading if the list is open
+    if (isLoading && isListOpen) {
       setLoadingAnnouncement(mergedTranslations.loadingOptionsAnnouncement);
-    } else if (loadingAnnouncement && !isLoading && isOpen) {
+    } else if (loadingAnnouncement && !isLoading && isListOpen) {
       // Only announce completion if we previously announced loading
-      // and the dropdown is still open
+      // and the list is still open
       setLoadingAnnouncement(
         filteredOptions.length
           ? mergedTranslations.optionsLoadedAnnouncement
@@ -1821,15 +1123,14 @@ const PreactCombobox = ({
         setLoadingAnnouncement("");
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (loadingAnnouncement && !isOpen) {
-      // Clear any loading announcements when dropdown closes
+    } else if (loadingAnnouncement && !isListOpen) {
+      // Clear any loading announcements when list closes
       setLoadingAnnouncement("");
     }
   }, [
     isLoading,
     loadingAnnouncement,
-    getIsDropdownOpen,
-    getIsTrayOpen,
+    isListOpen,
     filteredOptions.length,
     mergedTranslations.loadingOptionsAnnouncement,
     mergedTranslations.optionsLoadedAnnouncement,
@@ -1839,156 +1140,43 @@ const PreactCombobox = ({
   // Determine if we should render interactive elements
   const isServerSideForm = isServer && formSubmitCompatible;
 
-  let list = null;
-  if (!isServer) {
-    list = (
-      // biome-ignore lint/a11y/useFocusableInteractive: <explanation>
-      <ul
-        className={[
-          "PreactCombobox-options",
-          `PreactCombobox--${theme}`,
-          shouldUseTray ? "PreactCombobox-options--tray" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        // biome-ignore lint/a11y/useSemanticElements: it is correct by examples I've found for comboboxes
-        role="listbox"
-        id={`${id}-options-listbox`}
-        aria-multiselectable={multiple ? "true" : undefined}
-        hidden={shouldUseTray ? !getIsTrayOpen() : !getIsDropdownOpen()}
-        ref={shouldUseTray ? null : dropdownPopperRef}
-      >
-        {isLoading ? (
-          <li className="PreactCombobox-option" aria-disabled>
-            {loadingRenderer(mergedTranslations.loadingOptions)}
-          </li>
-        ) : (
-          <>
-            {addNewOptionVisible && (
-              <li
-                key={inputTrimmed}
-                id={`${id}-option-${toHTMLId(inputTrimmed)}`}
-                className="PreactCombobox-option"
-                // biome-ignore lint/a11y/useSemanticElements: parent is <ul> so want to keep equivalent semantics
-                role="option"
-                tabIndex={-1}
-                aria-selected={false}
-                onMouseEnter={() => activateDescendant(inputTrimmed, false)}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleAddNewOption(inputTrimmed);
-                  if (shouldUseTray) {
-                    if (!multiple) {
-                      closeTray();
-                    } else {
-                      trayInputRef.current?.focus();
-                    }
-                  } else {
-                    if (!multiple) {
-                      closeDropdown();
-                    }
-                    focusInput();
-                  }
-                }}
-              >
-                {mergedTranslations.addOption.replace("{value}", inputTrimmed)}
-              </li>
-            )}
-            {filteredOptions.map((option) => {
-              // "Active" means it's like a focus / hover. It doesn't mean the option was selected.
-              // aria-activedescendant is used to tell screen readers the active option.
-              const isActive = activeDescendant.current === option.value;
-              const isSelected = arrayValues.includes(option.value);
-              const isInvalid = invalidValues.includes(option.value);
-              const isDisabled = option.disabled;
-              const hasDivider = option.divider && !inputTrimmed; // Only show divider when search is empty
-              const optionClasses = [
-                "PreactCombobox-option",
-                isActive ? "PreactCombobox-option--active" : "",
-                isSelected ? "PreactCombobox-option--selected" : "",
-                isInvalid ? "PreactCombobox-option--invalid" : "",
-                isDisabled ? "PreactCombobox-option--disabled" : "",
-                hasDivider ? "PreactCombobox-option--divider" : "",
-              ]
-                .filter(Boolean)
-                .join(" ");
-              return (
-                <li
-                  key={option.value}
-                  id={`${id}-option-${toHTMLId(option.value)}`}
-                  className={optionClasses}
-                  // biome-ignore lint/a11y/useSemanticElements: <explanation>
-                  role="option"
-                  tabIndex={-1}
-                  aria-selected={isSelected}
-                  aria-disabled={isDisabled}
-                  onMouseEnter={() => !isDisabled && activateDescendant(option.value, false)}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleOptionSelect(option.value, { toggleSelected: true });
-                    if (shouldUseTray) {
-                      if (!multiple) {
-                        closeTray();
-                      } else {
-                        trayInputRef.current?.focus();
-                      }
-                    } else {
-                      if (!multiple) {
-                        closeDropdown();
-                      }
-                      focusInput();
-                    }
-                  }}
-                >
-                  {optionRenderer({
-                    option,
-                    language,
-                    isActive,
-                    isSelected,
-                    isInvalid,
-                    showValue,
-                    warningIcon,
-                    tickIcon,
-                    optionIconRenderer,
-                  })}
-                  {isSelected ? (
-                    <span
-                      className="PreactCombobox-srOnly"
-                      aria-atomic="true"
-                      data-reader="selected"
-                      aria-hidden={!isActive}
-                    >
-                      {mergedTranslations.selectedOption}
-                    </span>
-                  ) : null}
-                  {isInvalid ? (
-                    <span
-                      className="PreactCombobox-srOnly"
-                      aria-atomic="true"
-                      data-reader="invalid"
-                      aria-hidden={!isActive}
-                    >
-                      {mergedTranslations.invalidOption}
-                    </span>
-                  ) : null}
-                </li>
-              );
-            })}
-            {filteredOptions.length === 0 &&
-              !isLoading &&
-              (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && (
-                <li className="PreactCombobox-option">{mergedTranslations.noOptionsFound}</li>
-              )}
-            {filteredOptions.length === maxNumberOfPresentedOptions && (
-              <li className="PreactCombobox-option">{mergedTranslations.typeToLoadMore}</li>
-            )}
-          </>
-        )}
-      </ul>
-    );
-  }
+  // Callback to set dropdown ref for popper positioning
+  const setDropdownRef = useCallback(
+    /** @param {HTMLUListElement | null} el */
+    (el) => {
+      dropdownPopperRef.current = el;
+    },
+    [],
+  );
+
+  const optionsListbox = !isServer ? (
+    <OptionsListbox
+      ref={optionsListboxRef}
+      id={id}
+      searchText={activeInputValue}
+      filteredOptions={filteredOptions}
+      isLoading={isLoading}
+      arrayValues={arrayValues}
+      invalidValues={invalidValues}
+      multiple={multiple}
+      allowFreeText={allowFreeText}
+      onOptionSelect={handleOptionSelect}
+      onActiveDescendantChange={handleActiveDescendantChange}
+      onClose={shouldUseTray ? closeTray : closeDropdown}
+      optionRenderer={optionRenderer}
+      warningIcon={warningIcon}
+      tickIcon={tickIcon}
+      optionIconRenderer={optionIconRenderer}
+      showValue={showValue}
+      language={language}
+      loadingRenderer={loadingRenderer}
+      translations={mergedTranslations}
+      theme={theme}
+      isOpen={isListOpen}
+      shouldUseTray={shouldUseTray}
+      setDropdownRef={setDropdownRef}
+    />
+  ) : null;
 
   return (
     <div
@@ -2060,8 +1248,8 @@ const PreactCombobox = ({
               aria-haspopup="listbox"
               aria-controls={`${id}-options-listbox`}
               aria-activedescendant={
-                activeDescendant.current
-                  ? `${id}-option-${toHTMLId(activeDescendant.current)}`
+                activeDescendantValue
+                  ? `${id}-option-${toHTMLId(activeDescendantValue)}`
                   : undefined
               }
               disabled={disabled}
@@ -2116,79 +1304,25 @@ const PreactCombobox = ({
         ) : null}
       </div>
 
-      {list && (
+      {optionsListbox ? (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           {shouldUseTray ? (
-            // I couldn't use native <dialog> element because trying to focus input right
-            // after dialog.close() doesn't seem to work on Chrome (Android).
-            <div
-              ref={trayModalRef}
-              className={`PreactCombobox-modal ${`PreactCombobox--${theme}`}`}
-              style={{ display: getIsTrayOpen() ? null : "none" }}
-              onClick={(e) => {
-                // Close modal when clicking backdrop
-                if (e.target === trayModalRef.current) {
-                  closeTray();
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  closeTray();
-                }
-              }}
-              // biome-ignore lint/a11y/useSemanticElements: Custom modal implementation instead of dialog element
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={getTrayLabel() ? `${id}-tray-label` : undefined}
-              tabIndex={-1}
+            <TraySearchList
+              id={id}
+              isOpen={getIsTrayOpen()}
+              onClose={closeTray}
+              trayLabel={getTrayLabel() || ""}
+              theme={theme}
+              translations={mergedTranslations}
+              onInputChange={handleTrayInputChange}
             >
-              <div className={`PreactCombobox-tray ${`PreactCombobox--${theme}`}`}>
-                <div className="PreactCombobox-trayHeader">
-                  {getTrayLabel() && (
-                    <label
-                      id={`${id}-tray-label`}
-                      className="PreactCombobox-trayLabel"
-                      htmlFor={`${id}-tray-input`}
-                    >
-                      {getTrayLabel()}
-                    </label>
-                  )}
-                  <input
-                    id={`${id}-tray-input`}
-                    ref={trayInputRef}
-                    type="text"
-                    value={trayInputValue}
-                    placeholder={mergedTranslations.searchPlaceholder}
-                    onChange={handleTrayInputChange}
-                    onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        closeTray();
-                      }
-                    }}
-                    className={`PreactCombobox-trayInput ${!getTrayLabel() ? "PreactCombobox-trayInput--noLabel" : ""}`}
-                    role="combobox"
-                    aria-expanded="true"
-                    aria-haspopup="listbox"
-                    aria-controls={`${id}-options-listbox`}
-                    aria-label={getTrayLabel() || mergedTranslations.searchPlaceholder}
-                    autoComplete="off"
-                  />
-                </div>
-                {list}
-                {virtualKeyboardHeight > 0 && (
-                  <div
-                    className="PreactCombobox-virtualKeyboardSpacer"
-                    style={{ height: `${virtualKeyboardHeight}px` }}
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-            </div>
+              {optionsListbox}
+            </TraySearchList>
           ) : (
-            list
+            optionsListbox
           )}
         </Portal>
-      )}
+      ) : null}
       {invalidValues.length > 0 && warningIconHovered && !isServer && (
         <Portal parent={portal} rootElementRef={rootElementRef}>
           <div
