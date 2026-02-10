@@ -3105,23 +3105,67 @@ var PreactCombobox = ({
       allOptionsLookup
     ]
   );
-  const focusInput = q2(
-    (forceOpenKeyboard = false) => {
-      const input = inputRef.current;
-      if (input) {
-        const shouldTemporarilyDisableInput = getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
-        if (shouldTemporarilyDisableInput) {
-          input.setAttribute("readonly", "readonly");
+  const focusInputWithVirtualKeyboardGuard = q2(
+    /**
+     * @param {Object} params
+     * @param {HTMLInputElement | null} params.input
+     * @param {boolean} [params.shouldPreventKeyboardReopen]
+     * @param {boolean} [params.forceOpenKeyboard]
+     * @param {{ current: ReturnType<typeof setTimeout> | null } | null} [params.readonlyResetTimeoutRef]
+     */
+    (params) => {
+      const {
+        input,
+        shouldPreventKeyboardReopen = false,
+        forceOpenKeyboard = false,
+        readonlyResetTimeoutRef = null
+      } = params;
+      if (!input) return;
+      const shouldTemporarilyDisableInput = shouldPreventKeyboardReopen && !forceOpenKeyboard;
+      if (shouldTemporarilyDisableInput) {
+        input.setAttribute("readonly", "readonly");
+      }
+      input.focus();
+      if (shouldTemporarilyDisableInput) {
+        if (readonlyResetTimeoutRef?.current) {
+          clearTimeout(readonlyResetTimeoutRef.current);
         }
-        input.focus();
-        if (shouldTemporarilyDisableInput) {
-          setTimeout(() => {
-            input.removeAttribute("readonly");
-          }, 10);
+        const removeReadonly = () => {
+          input.removeAttribute("readonly");
+          if (readonlyResetTimeoutRef) {
+            readonlyResetTimeoutRef.current = null;
+          }
+        };
+        if (readonlyResetTimeoutRef) {
+          readonlyResetTimeoutRef.current = setTimeout(removeReadonly, 10);
+        } else {
+          setTimeout(removeReadonly, 10);
         }
       }
     },
-    [getIsFocused]
+    []
+  );
+  const focusInput = q2(
+    (forceOpenKeyboard = false) => {
+      focusInputWithVirtualKeyboardGuard({
+        input: inputRef.current,
+        shouldPreventKeyboardReopen: getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true,
+        forceOpenKeyboard
+      });
+    },
+    [getIsFocused, focusInputWithVirtualKeyboardGuard]
+  );
+  const focusTrayInput = q2(
+    (forceOpenKeyboard = false) => {
+      const input = trayInputRef.current;
+      focusInputWithVirtualKeyboardGuard({
+        input,
+        shouldPreventKeyboardReopen: document.activeElement === input && virtualKeyboardExplicitlyClosedRef.current === true,
+        forceOpenKeyboard,
+        readonlyResetTimeoutRef: trayReadonlyResetTimeoutRef
+      });
+    },
+    [focusInputWithVirtualKeyboardGuard]
   );
   const openTray = q2(() => {
     if (!shouldUseTray) return;
@@ -3146,21 +3190,28 @@ var PreactCombobox = ({
       virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
         heightCallback(keyboardHeight, isVisible) {
           setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+          virtualKeyboardExplicitlyClosedRef.current = !isVisible;
         }
       });
     }
   }, [shouldUseTray, setIsDropdownOpen, setIsTrayOpen]);
   y2(() => {
     if (shouldUseTray && getIsTrayOpen()) {
-      trayInputRef.current?.focus();
+      focusTrayInput(true);
     }
-  }, [shouldUseTray, getIsTrayOpen]);
+  }, [shouldUseTray, getIsTrayOpen, focusTrayInput]);
   const closeTray = q2(() => {
     setIsTrayOpen(false);
     setTrayInputValue("");
     setVirtualKeyboardHeight(0);
+    virtualKeyboardExplicitlyClosedRef.current = null;
     virtualKeyboardHeightAdjustSubscription.current?.();
     virtualKeyboardHeightAdjustSubscription.current = null;
+    if (trayReadonlyResetTimeoutRef.current) {
+      clearTimeout(trayReadonlyResetTimeoutRef.current);
+      trayReadonlyResetTimeoutRef.current = null;
+    }
+    trayInputRef.current?.removeAttribute("readonly");
     const scrollingElement = (
       /** @type {HTMLElement} */
       document.scrollingElement || document.documentElement
@@ -3204,6 +3255,10 @@ var PreactCombobox = ({
   );
   const virtualKeyboardHeightAdjustSubscription = A2(
     /** @type {function | null} */
+    null
+  );
+  const trayReadonlyResetTimeoutRef = A2(
+    /** @type {ReturnType<typeof setTimeout> | null} */
     null
   );
   const handleInputFocus = q2(() => {
@@ -3545,7 +3600,7 @@ var PreactCombobox = ({
                   if (!multiple) {
                     closeTray();
                   } else {
-                    trayInputRef.current?.focus();
+                    focusTrayInput();
                   }
                 } else {
                   if (!multiple) {
@@ -3590,7 +3645,7 @@ var PreactCombobox = ({
                     if (!multiple) {
                       closeTray();
                     } else {
-                      trayInputRef.current?.focus();
+                      focusTrayInput();
                     }
                   } else {
                     if (!multiple) {

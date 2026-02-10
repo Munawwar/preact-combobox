@@ -1327,32 +1327,77 @@ const PreactCombobox = ({
     ],
   );
 
-  const focusInput = useCallback(
-    (forceOpenKeyboard = false) => {
-      const input = inputRef.current;
-      if (input) {
-        // If user explicitly close their virtual keyboard, we temporarily disable the input
-        // before focusing it to avoid the keyboard from opening again.
-        const shouldTemporarilyDisableInput =
-          getIsFocused() &&
-          virtualKeyboardExplicitlyClosedRef.current === true &&
-          !forceOpenKeyboard;
-        if (shouldTemporarilyDisableInput) {
-          input.setAttribute("readonly", "readonly");
+  const focusInputWithVirtualKeyboardGuard = useCallback(
+    /**
+     * @param {Object} params
+     * @param {HTMLInputElement | null} params.input
+     * @param {boolean} [params.shouldPreventKeyboardReopen]
+     * @param {boolean} [params.forceOpenKeyboard]
+     * @param {{ current: ReturnType<typeof setTimeout> | null } | null} [params.readonlyResetTimeoutRef]
+     */
+    (params) => {
+      const {
+        input,
+        shouldPreventKeyboardReopen = false,
+        forceOpenKeyboard = false,
+        readonlyResetTimeoutRef = null,
+      } = params;
+      if (!input) return;
+      // If user explicitly closed the keyboard, we need to temporarily disable the input
+      // to prevent the keyboard from being reopened.
+      const shouldTemporarilyDisableInput = shouldPreventKeyboardReopen && !forceOpenKeyboard;
+      if (shouldTemporarilyDisableInput) {
+        input.setAttribute("readonly", "readonly");
+      }
+      // Does it make sense to focus the input if it's already focused?
+      // Yes, because it's possible that the next event in the event loop
+      // is the one that will trigger the a 'blur' event. To cancel the blur,
+      // we need to focus the input again.
+      input.focus();
+      if (shouldTemporarilyDisableInput) {
+        if (readonlyResetTimeoutRef?.current) {
+          clearTimeout(readonlyResetTimeoutRef.current);
         }
-        // Does it make sense to focus the input if it's already focused?
-        // Yes, because it's possible that the next event in the event loop
-        // is the one that will trigger the a 'blur' event. To cancel the blur,
-        // we need to focus the input again.
-        input.focus();
-        if (shouldTemporarilyDisableInput) {
-          setTimeout(() => {
-            input.removeAttribute("readonly");
-          }, 10);
+        const removeReadonly = () => {
+          input.removeAttribute("readonly");
+          if (readonlyResetTimeoutRef) {
+            readonlyResetTimeoutRef.current = null;
+          }
+        };
+        if (readonlyResetTimeoutRef) {
+          readonlyResetTimeoutRef.current = setTimeout(removeReadonly, 10);
+        } else {
+          setTimeout(removeReadonly, 10);
         }
       }
     },
-    [getIsFocused],
+    [],
+  );
+
+  const focusInput = useCallback(
+    (forceOpenKeyboard = false) => {
+      focusInputWithVirtualKeyboardGuard({
+        input: inputRef.current,
+        shouldPreventKeyboardReopen:
+          getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true,
+        forceOpenKeyboard,
+      });
+    },
+    [getIsFocused, focusInputWithVirtualKeyboardGuard],
+  );
+
+  const focusTrayInput = useCallback(
+    (forceOpenKeyboard = false) => {
+      const input = trayInputRef.current;
+      focusInputWithVirtualKeyboardGuard({
+        input,
+        shouldPreventKeyboardReopen:
+          document.activeElement === input && virtualKeyboardExplicitlyClosedRef.current === true,
+        forceOpenKeyboard,
+        readonlyResetTimeoutRef: trayReadonlyResetTimeoutRef,
+      });
+    },
+    [focusInputWithVirtualKeyboardGuard],
   );
 
   const openTray = useCallback(() => {
@@ -1383,6 +1428,7 @@ const PreactCombobox = ({
       virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
         heightCallback(keyboardHeight, isVisible) {
           setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+          virtualKeyboardExplicitlyClosedRef.current = !isVisible;
         },
       });
     }
@@ -1391,16 +1437,22 @@ const PreactCombobox = ({
   // focus the input when the tray is opened first time
   useEffect(() => {
     if (shouldUseTray && getIsTrayOpen()) {
-      trayInputRef.current?.focus();
+      focusTrayInput(true);
     }
-  }, [shouldUseTray, getIsTrayOpen]);
+  }, [shouldUseTray, getIsTrayOpen, focusTrayInput]);
 
   const closeTray = useCallback(() => {
     setIsTrayOpen(false);
     setTrayInputValue("");
     setVirtualKeyboardHeight(0);
+    virtualKeyboardExplicitlyClosedRef.current = null;
     virtualKeyboardHeightAdjustSubscription.current?.();
     virtualKeyboardHeightAdjustSubscription.current = null;
+    if (trayReadonlyResetTimeoutRef.current) {
+      clearTimeout(trayReadonlyResetTimeoutRef.current);
+      trayReadonlyResetTimeoutRef.current = null;
+    }
+    trayInputRef.current?.removeAttribute("readonly");
 
     // Restore original overflow
     const scrollingElement = /** @type {HTMLElement} */ (
@@ -1451,6 +1503,9 @@ const PreactCombobox = ({
   const virtualKeyboardExplicitlyClosedRef = useRef(null);
   const virtualKeyboardDismissSubscription = useRef(/** @type {function | null} */ (null));
   const virtualKeyboardHeightAdjustSubscription = useRef(/** @type {function | null} */ (null));
+  const trayReadonlyResetTimeoutRef = useRef(
+    /** @type {ReturnType<typeof setTimeout> | null} */ (null),
+  );
 
   const handleInputFocus = useCallback(() => {
     setIsFocused(true);
@@ -1882,7 +1937,7 @@ const PreactCombobox = ({
                     if (!multiple) {
                       closeTray();
                     } else {
-                      trayInputRef.current?.focus();
+                      focusTrayInput();
                     }
                   } else {
                     if (!multiple) {
@@ -1932,7 +1987,7 @@ const PreactCombobox = ({
                       if (!multiple) {
                         closeTray();
                       } else {
-                        trayInputRef.current?.focus();
+                        focusTrayInput();
                       }
                     } else {
                       if (!multiple) {
