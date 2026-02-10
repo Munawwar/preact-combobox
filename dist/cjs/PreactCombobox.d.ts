@@ -327,10 +327,10 @@ export type PreactComboboxProps = {
     /**
      * - [private property - do not use] Maximum number of options to present
      */
-    maxNumberOfPresentedOptions?: number | undefined;
+    maxPresentedOptions?: number | undefined;
 };
 /**
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
-declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, tickIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxNumberOfPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;
+declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, tickIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;

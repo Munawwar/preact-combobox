@@ -230,10 +230,129 @@ const fetchCarrierOptions = async (queryOrValues, limit, currentSelections, sign
     .slice(0, limit);
 };
 
-// Performance test
-// for (let i = 0; i < 10000; i++) {
-//   allowedOptions.push({ label: "Option " + i, value: "option" + i });
-// }
+// 120 world cities — many with diacritics to showcase search
+const manyOptions = [
+  { label: "Ålesund", value: "alesund", divider: true },
+  { label: "Ålborg", value: "aalborg" },
+  { label: "Almería", value: "almeria", disabled: true },
+  { label: "Amsterdam", value: "amsterdam" },
+  { label: "Asunción", value: "asuncion" },
+  { label: "Athens", value: "athens" },
+  { label: "Auckland", value: "auckland" },
+  { label: "Bangkok", value: "bangkok" },
+  { label: "Beijing", value: "beijing" },
+  { label: "Belém", value: "belem" },
+  { label: "Berlin", value: "berlin" },
+  { label: "Besançon", value: "besancon" },
+  { label: "Béziers", value: "beziers" },
+  { label: "Białystok", value: "bialystok" },
+  { label: "Bogotá", value: "bogota" },
+  { label: "Brașov", value: "brasov" },
+  { label: "Brasília", value: "brasilia" },
+  { label: "Brussels", value: "brussels" },
+  { label: "Bucharest", value: "bucharest" },
+  { label: "Budapest", value: "budapest" },
+  { label: "Buenos Aires", value: "buenos-aires" },
+  { label: "Cádiz", value: "cadiz" },
+  { label: "Cairo", value: "cairo" },
+  { label: "Cape Town", value: "cape-town" },
+  { label: "Casablanca", value: "casablanca" },
+  { label: "České Budějovice", value: "ceske-budejovice" },
+  { label: "Cluj-Napoca", value: "cluj-napoca" },
+  { label: "Colombo", value: "colombo" },
+  { label: "Constanța", value: "constanta" },
+  { label: "Córdoba", value: "cordoba" },
+  { label: "Curaçao", value: "curacao" },
+  { label: "Częstochowa", value: "czestochowa" },
+  { label: "Debrecen", value: "debrecen" },
+  { label: "Delhi", value: "delhi" },
+  { label: "Dubai", value: "dubai" },
+  { label: "Düsseldorf", value: "dusseldorf" },
+  { label: "Florianópolis", value: "florianopolis" },
+  { label: "Gävle", value: "gavle" },
+  { label: "Gdańsk", value: "gdansk" },
+  { label: "Genève", value: "geneve" },
+  { label: "Goiânia", value: "goiania" },
+  { label: "Göteborg", value: "goteborg" },
+  { label: "Graz", value: "graz" },
+  { label: "Gruyères", value: "gruyeres" },
+  { label: "Győr", value: "gyor" },
+  { label: "Havana", value: "havana" },
+  { label: "Helsingør", value: "helsingor" },
+  { label: "Hong Kong", value: "hong-kong" },
+  { label: "Iași", value: "iasi" },
+  { label: "Innsbruck", value: "innsbruck" },
+  { label: "Istanbul", value: "istanbul" },
+  { label: "Jakarta", value: "jakarta" },
+  { label: "Jönköping", value: "jonkoping" },
+  { label: "København", value: "kobenhavn" },
+  { label: "Köln", value: "koln" },
+  { label: "Košice", value: "kosice" },
+  { label: "Kraków", value: "krakow" },
+  { label: "Lagos", value: "lagos" },
+  { label: "León", value: "leon" },
+  { label: "Liège", value: "liege" },
+  { label: "Lima", value: "lima" },
+  { label: "Linköping", value: "linkoping" },
+  { label: "Łódź", value: "lodz" },
+  { label: "London", value: "london" },
+  { label: "Lübeck", value: "lubeck" },
+  { label: "Luleå", value: "lulea" },
+  { label: "Lyon", value: "lyon" },
+  { label: "Madrid", value: "madrid" },
+  { label: "Málaga", value: "malaga" },
+  { label: "Malmö", value: "malmo" },
+  { label: "Manila", value: "manila" },
+  { label: "Marseille", value: "marseille" },
+  { label: "Medellín", value: "medellin" },
+  { label: "Melbourne", value: "melbourne" },
+  { label: "México City", value: "mexico-city" },
+  { label: "Montréal", value: "montreal" },
+  { label: "Mumbai", value: "mumbai" },
+  { label: "München", value: "munchen" },
+  { label: "Nairobi", value: "nairobi" },
+  { label: "Neuchâtel", value: "neuchatel" },
+  { label: "Nice", value: "nice" },
+  { label: "Norrköping", value: "norrkoping" },
+  { label: "Nürnberg", value: "nurnberg" },
+  { label: "Örebro", value: "orebro" },
+  { label: "Orléans", value: "orleans" },
+  { label: "Panamá", value: "panama" },
+  { label: "Paris", value: "paris" },
+  { label: "Pécs", value: "pecs" },
+  { label: "Plzeň", value: "plzen" },
+  { label: "Poznań", value: "poznan" },
+  { label: "Prague", value: "prague" },
+  { label: "Québec", value: "quebec" },
+  { label: "Recife", value: "recife" },
+  { label: "Reykjavík", value: "reykjavik" },
+  { label: "Rome", value: "rome" },
+  { label: "Salzburg", value: "salzburg" },
+  { label: "San José", value: "san-jose" },
+  { label: "Santiago", value: "santiago" },
+  { label: "São Paulo", value: "sao-paulo" },
+  { label: "Seoul", value: "seoul" },
+  { label: "Shanghai", value: "shanghai" },
+  { label: "Singapore", value: "singapore" },
+  { label: "Sofia", value: "sofia" },
+  { label: "Strasbourg", value: "strasbourg" },
+  { label: "Sydney", value: "sydney" },
+  { label: "Székesfehérvár", value: "szekesfehervar" },
+  { label: "Taipei", value: "taipei" },
+  { label: "Timișoara", value: "timisoara" },
+  { label: "Tokyo", value: "tokyo" },
+  { label: "Tórshavn", value: "torshavn" },
+  { label: "Toulouse", value: "toulouse" },
+  { label: "Tromsø", value: "tromso" },
+  { label: "Umeå", value: "umea" },
+  { label: "Valparaíso", value: "valparaiso" },
+  { label: "Västerås", value: "vasteras" },
+  { label: "Vienna", value: "vienna" },
+  { label: "Warsaw", value: "warsaw" },
+  { label: "Wrocław", value: "wroclaw" },
+  { label: "Würzburg", value: "wurzburg" },
+  { label: "Zürich", value: "zurich" },
+];
 
 // Arabic translations
 const arabicTranslations = {
@@ -265,6 +384,7 @@ const arabicTranslations = {
 
 function App() {
   const [appTheme, setAppTheme] = useState("light");
+  const [valuesManyOptions, setValuesManyOptions] = useState(["zurich"]);
   const [valuesBasicExample, setValuesBasicExample] = useState(["United Arab Emirates"]);
   const [invalidValuesExample, setInvalidValuesExample] = useState(["India"]);
   const [singleSelectExample, setSingleSelectExample] = useState("usa");
@@ -288,6 +408,21 @@ function App() {
 
   return html`
     <form>
+        <label for="example-0">Multi-select, Free text allowed, Form Submit Compatible</label>
+        <p>With dividers, disabled options, and mobile tray</p>
+        <${PreactCombobox}
+          id="example-0"
+          allowedOptions=${manyOptions}
+          allowFreeText=${true}
+          value=${valuesManyOptions}
+          onChange=${setValuesManyOptions}
+          name="example-0"
+          required=${true}
+          formSubmitCompatible=${true}
+          theme=${appTheme}
+        />
+        <br/>
+
         <label for="example-1">Multi-select, Free text allowed, Form Submit Compatible</label>
         <p>With dividers, disabled options, and mobile tray</p>
         <${PreactCombobox}

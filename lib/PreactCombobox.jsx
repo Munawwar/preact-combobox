@@ -133,7 +133,7 @@ import "./PreactCombobox.css";
  * @property {VNode} [chevronIcon] Custom chevron icon element or component
  * @property {(text: string) => VNode|string} [loadingRenderer] Custom loading indicator element or text
  *
- * @property {number} [maxNumberOfPresentedOptions=100] - [private property - do not use] Maximum number of options to present
+ * @property {number} [maxPresentedOptions=100] - [private property - do not use] Maximum number of options to present
  */
 
 // --- end of types ---
@@ -796,7 +796,7 @@ const PreactCombobox = ({
   trayLabel: trayLabelProp,
   translations = defaultEnglishTranslations,
   // private option for now
-  maxNumberOfPresentedOptions = 100,
+  maxPresentedOptions = 100,
 }) => {
   // Merge default translations with provided translations
   const mergedTranslations = useDeepMemo(
@@ -1124,7 +1124,7 @@ const PreactCombobox = ({
         const signal = /** @type {AbortSignal} */ (abortController.signal);
         const [searchResults, selectedResults] = await Promise.all([
           isOpen
-            ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal)
+            ? allowedOptions(inputTrimmed, maxPresentedOptions, arrayValues, signal)
             : /** @type {Option[]} */ ([]),
           // We need to fetch unknown options's labels regardless of whether the dropdown
           // is open or not, because we want to show it in the placeholder.
@@ -1172,7 +1172,9 @@ const PreactCombobox = ({
         const options = activeInputValue
           ? mergedOptions
           : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
+        setFilteredOptions(
+          getMatchScore(activeInputValue, options, language, true).slice(0, maxPresentedOptions),
+        );
       }
     };
 
@@ -1894,7 +1896,7 @@ const PreactCombobox = ({
               typeof allowedOptions !== "function"
                 ? allowedOptions
                     .filter((o) => !arrayValuesLookup.has(o.value))
-                    .slice(0, maxNumberOfPresentedOptions - arrayValues.length)
+                    .slice(0, maxPresentedOptions - arrayValues.length)
                     .map((o) => (
                       <option key={o.value} value={o.value} disabled={o.disabled}>
                         {o.label}
@@ -1909,7 +1911,7 @@ const PreactCombobox = ({
       formSubmitCompatible,
       allowedOptions,
       arrayValuesLookup,
-      maxNumberOfPresentedOptions,
+      maxPresentedOptions,
     ],
   );
 
@@ -2092,7 +2094,7 @@ const PreactCombobox = ({
               (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && (
                 <li className="PreactCombobox-option">{mergedTranslations.noOptionsFound}</li>
               )}
-            {filteredOptions.length === maxNumberOfPresentedOptions && (
+            {filteredOptions.length === maxPresentedOptions && (
               <li className="PreactCombobox-option">{mergedTranslations.typeToLoadMore}</li>
             )}
           </>

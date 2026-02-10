@@ -582,7 +582,7 @@ var PreactCombobox = ({
   trayLabel: trayLabelProp,
   translations = defaultEnglishTranslations,
   // private option for now
-  maxNumberOfPresentedOptions = 100
+  maxPresentedOptions = 100
 }) => {
   const mergedTranslations = useDeepMemo(
     translations === defaultEnglishTranslations ? translations : { ...defaultEnglishTranslations, ...translations }
@@ -860,7 +860,7 @@ var PreactCombobox = ({
           abortController.signal
         );
         const [searchResults, selectedResults] = await Promise.all([
-          isOpen ? allowedOptions(inputTrimmed, maxNumberOfPresentedOptions, arrayValues, signal) : (
+          isOpen ? allowedOptions(inputTrimmed, maxPresentedOptions, arrayValues, signal) : (
             /** @type {Option[]} */
             []
           ),
@@ -894,7 +894,9 @@ var PreactCombobox = ({
       } else {
         const mergedOptions = arrayValues.filter((v) => !allOptionsLookup[v]).map((v) => ({ label: v, value: v })).concat(allowedOptions);
         const options = activeInputValue ? mergedOptions : sortValuesToTop(mergedOptions, arrayValues);
-        setFilteredOptions(getMatchScore(activeInputValue, options, language, true));
+        setFilteredOptions(
+          getMatchScore(activeInputValue, options, language, true).slice(0, maxPresentedOptions)
+        );
       }
     };
     if (typeof allowedOptions === "function") {
@@ -1478,7 +1480,7 @@ var PreactCombobox = ({
   }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
   const selectChildren = useMemo2(
     () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ jsx("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
-      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o) => !arrayValuesLookup.has(o.value)).slice(0, maxPresentedOptions - arrayValues.length).map((o) => /* @__PURE__ */ jsx("option", { value: o.value, disabled: o.disabled, children: o.label }, o.value)) : []
     ) : null,
     [
       arrayValues,
@@ -1486,7 +1488,7 @@ var PreactCombobox = ({
       formSubmitCompatible,
       allowedOptions,
       arrayValuesLookup,
-      maxNumberOfPresentedOptions
+      maxPresentedOptions
     ]
   );
   useEffect(() => {
@@ -1641,7 +1643,7 @@ var PreactCombobox = ({
             );
           }),
           filteredOptions.length === 0 && !isLoading && (!allowFreeText || !activeInputValue || arrayValues.includes(activeInputValue)) && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.noOptionsFound }),
-          filteredOptions.length === maxNumberOfPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
+          filteredOptions.length === maxPresentedOptions && /* @__PURE__ */ jsx("li", { className: "PreactCombobox-option", children: mergedTranslations.typeToLoadMore })
         ] })
       }
     );

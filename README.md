@@ -139,6 +139,7 @@ You can customize the component's appearance by overriding CSS variables. The co
 | `tickIcon` | `VNode` | (default icon) | Custom tick icon for selected options |
 | `chevronIcon` | `VNode` | (default icon) | Custom dropdown icon |
 | `loadingRenderer` | `(text: string) => VNode\|string` | (default text) | Custom loading indicator |
+| `maxPresentedOptions` | `number` | `100` | Maximum number of options to show in the dropdown. For async options, this value is passed as the `limit` parameter to the fetcher function |
 
 ## Advanced Features
 
