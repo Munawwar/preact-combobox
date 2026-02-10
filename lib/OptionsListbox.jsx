@@ -43,6 +43,8 @@ import { toHTMLId } from "./utils.jsx";
  * @property {() => void} navigateDown - Navigate to next option
  * @property {() => void} navigateToFirst - Navigate to first option
  * @property {() => void} navigateToLast - Navigate to last option
+ * @property {() => void} navigatePageDown - Navigate down by one visible page of options
+ * @property {() => void} navigatePageUp - Navigate up by one visible page of options
  * @property {() => boolean} selectActive - Select the currently active option, returns true if selection was made
  * @property {() => string} getActiveDescendant - Get the currently active descendant value
  * @property {(value: string) => void} setActiveDescendant - Set the active descendant value
@@ -105,10 +107,12 @@ const OptionsListbox = forwardRef(
         if (element) {
           const listRect = listRef.current.getBoundingClientRect();
           const itemRect = element.getBoundingClientRect();
+          // do not user scrollIntoView, because that would scroll the page
+          // as well and that's annoying.
           if (itemRect.bottom > listRect.bottom) {
-            element.scrollIntoView({ block: "end" });
+            listRef.current.scrollTop += itemRect.bottom - listRect.bottom;
           } else if (itemRect.top < listRect.top) {
-            element.scrollIntoView({ block: "start" });
+            listRef.current.scrollTop += itemRect.top - listRect.top;
           }
         }
       },
@@ -168,6 +172,50 @@ const OptionsListbox = forwardRef(
           if (lastValue !== undefined) {
             setActiveDescendant(lastValue);
             scrollOptionIntoView(lastValue);
+          }
+        },
+        navigatePageDown: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const firstOptionEl = listRef.current?.querySelector(".PreactCombobox-option");
+          const pageSize =
+            listRef.current && firstOptionEl
+              ? Math.max(
+                  1,
+                  Math.floor(
+                    listRef.current.clientHeight / firstOptionEl.getBoundingClientRect().height,
+                  ),
+                )
+              : 10;
+          const currentIndex = activeDescendant ? options.indexOf(activeDescendant) : -1;
+          const targetIndex = Math.min(currentIndex + pageSize, options.length - 1);
+          const targetValue = options[targetIndex];
+          if (targetValue !== undefined) {
+            setActiveDescendant(targetValue);
+            scrollOptionIntoView(targetValue);
+          }
+        },
+        navigatePageUp: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const firstOptionEl = listRef.current?.querySelector(".PreactCombobox-option");
+          const pageSize =
+            listRef.current && firstOptionEl
+              ? Math.max(
+                  1,
+                  Math.floor(
+                    listRef.current.clientHeight / firstOptionEl.getBoundingClientRect().height,
+                  ),
+                )
+              : 10;
+          const currentIndex = activeDescendant
+            ? options.indexOf(activeDescendant)
+            : options.length;
+          const targetIndex = Math.max(currentIndex - pageSize, 0);
+          const targetValue = options[targetIndex];
+          if (targetValue !== undefined) {
+            setActiveDescendant(targetValue);
+            scrollOptionIntoView(targetValue);
           }
         },
         selectActive: () => {

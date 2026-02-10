@@ -320,9 +320,9 @@ var OptionsListbox = forwardRef(
           const listRect = listRef.current.getBoundingClientRect();
           const itemRect = element.getBoundingClientRect();
           if (itemRect.bottom > listRect.bottom) {
-            element.scrollIntoView({ block: "end" });
+            listRef.current.scrollTop += itemRect.bottom - listRect.bottom;
           } else if (itemRect.top < listRect.top) {
-            element.scrollIntoView({ block: "start" });
+            listRef.current.scrollTop += itemRect.top - listRect.top;
           }
         }
       },
@@ -376,6 +376,42 @@ var OptionsListbox = forwardRef(
           if (lastValue !== void 0) {
             setActiveDescendant(lastValue);
             scrollOptionIntoView(lastValue);
+          }
+        },
+        navigatePageDown: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const firstOptionEl = listRef.current?.querySelector(".PreactCombobox-option");
+          const pageSize = listRef.current && firstOptionEl ? Math.max(
+            1,
+            Math.floor(
+              listRef.current.clientHeight / firstOptionEl.getBoundingClientRect().height
+            )
+          ) : 10;
+          const currentIndex = activeDescendant ? options.indexOf(activeDescendant) : -1;
+          const targetIndex = Math.min(currentIndex + pageSize, options.length - 1);
+          const targetValue = options[targetIndex];
+          if (targetValue !== void 0) {
+            setActiveDescendant(targetValue);
+            scrollOptionIntoView(targetValue);
+          }
+        },
+        navigatePageUp: () => {
+          const options = getNavigableOptions();
+          if (options.length === 0) return;
+          const firstOptionEl = listRef.current?.querySelector(".PreactCombobox-option");
+          const pageSize = listRef.current && firstOptionEl ? Math.max(
+            1,
+            Math.floor(
+              listRef.current.clientHeight / firstOptionEl.getBoundingClientRect().height
+            )
+          ) : 10;
+          const currentIndex = activeDescendant ? options.indexOf(activeDescendant) : options.length;
+          const targetIndex = Math.max(currentIndex - pageSize, 0);
+          const targetValue = options[targetIndex];
+          if (targetValue !== void 0) {
+            setActiveDescendant(targetValue);
+            scrollOptionIntoView(targetValue);
           }
         },
         selectActive: () => {
@@ -1523,23 +1559,55 @@ var PreactCombobox = ({
       allOptionsLookup
     ]
   );
-  const focusInput = useCallback4(
-    (forceOpenKeyboard = false) => {
-      const input = inputRef.current;
-      if (input) {
-        const shouldTemporarilyDisableInput = getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true && !forceOpenKeyboard;
-        if (shouldTemporarilyDisableInput) {
-          input.setAttribute("readonly", "readonly");
+  const focusInputWithVirtualKeyboardGuard = useCallback4(
+    /**
+     * @param {Object} params
+     * @param {HTMLInputElement | null} params.input
+     * @param {boolean} [params.shouldPreventKeyboardReopen]
+     * @param {boolean} [params.forceOpenKeyboard]
+     * @param {{ current: ReturnType<typeof setTimeout> | null } | null} [params.readonlyResetTimeoutRef]
+     */
+    (params) => {
+      const {
+        input,
+        shouldPreventKeyboardReopen = false,
+        forceOpenKeyboard = false,
+        readonlyResetTimeoutRef = null
+      } = params;
+      if (!input) return;
+      const shouldTemporarilyDisableInput = shouldPreventKeyboardReopen && !forceOpenKeyboard;
+      if (shouldTemporarilyDisableInput) {
+        input.setAttribute("readonly", "readonly");
+      }
+      input.focus();
+      if (shouldTemporarilyDisableInput) {
+        if (readonlyResetTimeoutRef?.current) {
+          clearTimeout(readonlyResetTimeoutRef.current);
         }
-        input.focus();
-        if (shouldTemporarilyDisableInput) {
-          setTimeout(() => {
-            input.removeAttribute("readonly");
-          }, 10);
+        const removeReadonly = () => {
+          input.removeAttribute("readonly");
+          if (readonlyResetTimeoutRef) {
+            readonlyResetTimeoutRef.current = null;
+          }
+        };
+        if (readonlyResetTimeoutRef) {
+          readonlyResetTimeoutRef.current = setTimeout(removeReadonly, 10);
+        } else {
+          setTimeout(removeReadonly, 10);
         }
       }
     },
-    [getIsFocused]
+    []
+  );
+  const focusInput = useCallback4(
+    (forceOpenKeyboard = false) => {
+      focusInputWithVirtualKeyboardGuard({
+        input: inputRef.current,
+        shouldPreventKeyboardReopen: getIsFocused() && virtualKeyboardExplicitlyClosedRef.current === true,
+        forceOpenKeyboard
+      });
+    },
+    [getIsFocused, focusInputWithVirtualKeyboardGuard]
   );
   const openTray = useCallback4(() => {
     if (!shouldUseTray) return;
@@ -1676,12 +1744,22 @@ var PreactCombobox = ({
         optionsListboxRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
-      } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
+      } else if (e.key === "Home" && (e.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e.preventDefault();
         optionsListboxRef.current?.navigateToFirst();
-      } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
+      } else if (e.key === "End" && (e.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e.preventDefault();
         optionsListboxRef.current?.navigateToLast();
+      } else if (e.key === "PageDown") {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        optionsListboxRef.current?.navigatePageDown();
+      } else if (e.key === "PageUp") {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        optionsListboxRef.current?.navigatePageUp();
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         const prevValues = undoStack.current.pop();

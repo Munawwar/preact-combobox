@@ -118,6 +118,14 @@ export type OptionsListboxRef = {
      */
     navigateToLast: () => void;
     /**
+     * - Navigate down by one visible page of options
+     */
+    navigatePageDown: () => void;
+    /**
+     * - Navigate up by one visible page of options
+     */
+    navigatePageUp: () => void;
+    /**
      * - Select the currently active option, returns true if selection was made
      */
     selectActive: () => boolean;
@@ -173,6 +181,8 @@ export type OptionsListboxRef = {
  * @property {() => void} navigateDown - Navigate to next option
  * @property {() => void} navigateToFirst - Navigate to first option
  * @property {() => void} navigateToLast - Navigate to last option
+ * @property {() => void} navigatePageDown - Navigate down by one visible page of options
+ * @property {() => void} navigatePageUp - Navigate up by one visible page of options
  * @property {() => boolean} selectActive - Select the currently active option, returns true if selection was made
  * @property {() => string} getActiveDescendant - Get the currently active descendant value
  * @property {(value: string) => void} setActiveDescendant - Set the active descendant value

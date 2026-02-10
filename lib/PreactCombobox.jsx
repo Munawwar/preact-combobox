@@ -982,12 +982,22 @@ const PreactCombobox = ({
         optionsListboxRef.current?.navigateUp();
       } else if (e.key === "Escape") {
         closeDropdown(true);
-      } else if (e.key === "Home" && e.ctrlKey && getIsDropdownOpen()) {
+      } else if (e.key === "Home" && (e.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e.preventDefault();
         optionsListboxRef.current?.navigateToFirst();
-      } else if (e.key === "End" && e.ctrlKey && getIsDropdownOpen()) {
+      } else if (e.key === "End" && (e.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e.preventDefault();
         optionsListboxRef.current?.navigateToLast();
+      } else if (e.key === "PageDown") {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        optionsListboxRef.current?.navigatePageDown();
+      } else if (e.key === "PageUp") {
+        e.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        optionsListboxRef.current?.navigatePageUp();
         // Undo action
       } else if (inputValue === "" && (e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
