@@ -385,7 +385,7 @@
 
   /* Performance improvement: Only supported on Safari 18+ */
   content-visibility: auto;
-  contain-intrinsic-height: auto 35px;
+  contain-intrinsic-height: auto 38px;
 }
 
 .PreactCombobox-option:hover {

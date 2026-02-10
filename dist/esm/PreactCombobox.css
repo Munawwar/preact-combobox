@@ -343,7 +343,7 @@
   min-height: 38px;
   color: var(--preact-combobox-text);
   content-visibility: auto;
-  contain-intrinsic-height: auto 35px;
+  contain-intrinsic-height: auto 38px;
 }
 .PreactCombobox-option:hover {
   background-color: var(--preact-combobox-option-hover-bg);
