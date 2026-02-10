@@ -39,6 +39,10 @@ const TraySearchList = ({
   const trayModalRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const originalOverflowRef = useRef("");
   const virtualKeyboardHeightAdjustSubscription = useRef(/** @type {function | null} */ (null));
+  const virtualKeyboardExplicitlyClosedRef = useRef(false);
+  const readonlyResetTimeoutRef = useRef(
+    /** @type {ReturnType<typeof setTimeout> | null} */ (null),
+  );
 
   // Handle tray input change
   const handleTrayInputChange = useCallback(
@@ -53,12 +57,34 @@ const TraySearchList = ({
     [onInputChange],
   );
 
+  const preventKeyboardReopenOnOptionTap = useCallback(() => {
+    const input = trayInputRef.current;
+    if (!input) return;
+    const shouldTemporarilyDisableInput =
+      virtualKeyboardExplicitlyClosedRef.current === true && document.activeElement === input;
+    if (!shouldTemporarilyDisableInput) return;
+    input.setAttribute("readonly", "readonly");
+    if (readonlyResetTimeoutRef.current) {
+      clearTimeout(readonlyResetTimeoutRef.current);
+    }
+    readonlyResetTimeoutRef.current = setTimeout(() => {
+      input.removeAttribute("readonly");
+      readonlyResetTimeoutRef.current = null;
+    }, 10);
+  }, []);
+
   // Handle tray close
   const handleClose = useCallback(() => {
     setTrayInputValue("");
     setVirtualKeyboardHeight(0);
+    virtualKeyboardExplicitlyClosedRef.current = false;
     virtualKeyboardHeightAdjustSubscription.current?.();
     virtualKeyboardHeightAdjustSubscription.current = null;
+    if (readonlyResetTimeoutRef.current) {
+      clearTimeout(readonlyResetTimeoutRef.current);
+      readonlyResetTimeoutRef.current = null;
+    }
+    trayInputRef.current?.removeAttribute("readonly");
 
     // Restore original overflow
     const scrollingElement = /** @type {HTMLElement} */ (
@@ -86,6 +112,7 @@ const TraySearchList = ({
         virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
           heightCallback(keyboardHeight, isVisible) {
             setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+            virtualKeyboardExplicitlyClosedRef.current = !isVisible;
           },
         });
       }
@@ -102,6 +129,12 @@ const TraySearchList = ({
         virtualKeyboardHeightAdjustSubscription.current();
         virtualKeyboardHeightAdjustSubscription.current = null;
       }
+      if (readonlyResetTimeoutRef.current) {
+        clearTimeout(readonlyResetTimeoutRef.current);
+        readonlyResetTimeoutRef.current = null;
+      }
+      trayInputRef.current?.removeAttribute("readonly");
+      virtualKeyboardExplicitlyClosedRef.current = false;
     };
   }, []);
 
@@ -167,7 +200,12 @@ const TraySearchList = ({
             autoComplete="off"
           />
         </div>
-        {children}
+        <div
+          onMouseDownCapture={preventKeyboardReopenOnOptionTap}
+          onTouchStartCapture={preventKeyboardReopenOnOptionTap}
+        >
+          {children}
+        </div>
         {virtualKeyboardHeight > 0 && (
           <div
             className="PreactCombobox-virtualKeyboardSpacer"

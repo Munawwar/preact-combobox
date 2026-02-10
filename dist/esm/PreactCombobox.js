@@ -878,6 +878,11 @@ var TraySearchList = ({
     /** @type {function | null} */
     null
   );
+  const virtualKeyboardExplicitlyClosedRef = useRef3(false);
+  const readonlyResetTimeoutRef = useRef3(
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    null
+  );
   const handleTrayInputChange = useCallback3(
     /**
      * @param {import('preact/compat').ChangeEvent<HTMLInputElement>} e
@@ -889,11 +894,31 @@ var TraySearchList = ({
     },
     [onInputChange]
   );
+  const preventKeyboardReopenOnOptionTap = useCallback3(() => {
+    const input = trayInputRef.current;
+    if (!input) return;
+    const shouldTemporarilyDisableInput = virtualKeyboardExplicitlyClosedRef.current === true && document.activeElement === input;
+    if (!shouldTemporarilyDisableInput) return;
+    input.setAttribute("readonly", "readonly");
+    if (readonlyResetTimeoutRef.current) {
+      clearTimeout(readonlyResetTimeoutRef.current);
+    }
+    readonlyResetTimeoutRef.current = setTimeout(() => {
+      input.removeAttribute("readonly");
+      readonlyResetTimeoutRef.current = null;
+    }, 10);
+  }, []);
   const handleClose = useCallback3(() => {
     setTrayInputValue("");
     setVirtualKeyboardHeight(0);
+    virtualKeyboardExplicitlyClosedRef.current = false;
     virtualKeyboardHeightAdjustSubscription.current?.();
     virtualKeyboardHeightAdjustSubscription.current = null;
+    if (readonlyResetTimeoutRef.current) {
+      clearTimeout(readonlyResetTimeoutRef.current);
+      readonlyResetTimeoutRef.current = null;
+    }
+    trayInputRef.current?.removeAttribute("readonly");
     const scrollingElement = (
       /** @type {HTMLElement} */
       document.scrollingElement || document.documentElement
@@ -913,6 +938,7 @@ var TraySearchList = ({
         virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
           heightCallback(keyboardHeight, isVisible) {
             setVirtualKeyboardHeight(isVisible ? keyboardHeight : 0);
+            virtualKeyboardExplicitlyClosedRef.current = !isVisible;
           }
         });
       }
@@ -925,6 +951,12 @@ var TraySearchList = ({
         virtualKeyboardHeightAdjustSubscription.current();
         virtualKeyboardHeightAdjustSubscription.current = null;
       }
+      if (readonlyResetTimeoutRef.current) {
+        clearTimeout(readonlyResetTimeoutRef.current);
+        readonlyResetTimeoutRef.current = null;
+      }
+      trayInputRef.current?.removeAttribute("readonly");
+      virtualKeyboardExplicitlyClosedRef.current = false;
     };
   }, []);
   if (!isOpen) {
@@ -988,7 +1020,14 @@ var TraySearchList = ({
               }
             )
           ] }),
-          children,
+          /* @__PURE__ */ jsx3(
+            "div",
+            {
+              onMouseDownCapture: preventKeyboardReopenOnOptionTap,
+              onTouchStartCapture: preventKeyboardReopenOnOptionTap,
+              children
+            }
+          ),
           virtualKeyboardHeight > 0 && /* @__PURE__ */ jsx3(
             "div",
             {
