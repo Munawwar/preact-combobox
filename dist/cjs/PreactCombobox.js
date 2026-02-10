@@ -3418,7 +3418,7 @@ var PreactCombobox = ({
         }
       } else if (e3.key === "Escape") {
         closeDropdown(true);
-      } else if (e3.key === "Home" && e3.ctrlKey && getIsDropdownOpen()) {
+      } else if (e3.key === "Home" && (e3.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e3.preventDefault();
         if (filteredOptions.length > 0) {
           const firstNonDisabledOption = filteredOptions.find((option) => !option.disabled);
@@ -3428,7 +3428,7 @@ var PreactCombobox = ({
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
         }
-      } else if (e3.key === "End" && e3.ctrlKey && getIsDropdownOpen()) {
+      } else if (e3.key === "End" && (e3.ctrlKey || !inputValue) && getIsDropdownOpen()) {
         e3.preventDefault();
         if (filteredOptions.length > 0) {
           const lastNonDisabledOption = filteredOptions.findLast((option) => !option.disabled);
@@ -3437,6 +3437,52 @@ var PreactCombobox = ({
           }
         } else if (addNewOptionVisible) {
           activateDescendant(inputTrimmed);
+        }
+      } else if (e3.key === "PageDown") {
+        e3.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        if (!filteredOptions.length) return;
+        const listEl = dropdownPopperRef.current;
+        const firstOption = listEl?.querySelector(".PreactCombobox-option");
+        const pageSize = listEl && firstOption ? Math.max(
+          1,
+          Math.floor(listEl.clientHeight / firstOption.getBoundingClientRect().height)
+        ) : 10;
+        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o3) => o3.value === currentActiveDescendant) : -1;
+        let targetIndex = Math.min(currentIndex + pageSize, filteredOptions.length - 1);
+        while (targetIndex >= 0 && /** @type {OptionMatch} */
+        filteredOptions[targetIndex].disabled) {
+          targetIndex--;
+        }
+        if (targetIndex >= 0) {
+          activateDescendant(
+            /** @type {OptionMatch} */
+            filteredOptions[targetIndex].value
+          );
+        }
+      } else if (e3.key === "PageUp") {
+        e3.preventDefault();
+        setIsDropdownOpen(true);
+        dropdownClosedExplicitlyRef.current = false;
+        if (!filteredOptions.length) return;
+        const listEl = dropdownPopperRef.current;
+        const firstOption = listEl?.querySelector(".PreactCombobox-option");
+        const pageSize = listEl && firstOption ? Math.max(
+          1,
+          Math.floor(listEl.clientHeight / firstOption.getBoundingClientRect().height)
+        ) : 10;
+        const currentIndex = currentActiveDescendant ? filteredOptions.findIndex((o3) => o3.value === currentActiveDescendant) : filteredOptions.length;
+        let targetIndex = Math.max(currentIndex - pageSize, 0);
+        while (targetIndex < filteredOptions.length && /** @type {OptionMatch} */
+        filteredOptions[targetIndex].disabled) {
+          targetIndex++;
+        }
+        if (targetIndex < filteredOptions.length) {
+          activateDescendant(
+            /** @type {OptionMatch} */
+            filteredOptions[targetIndex].value
+          );
         }
       } else if (inputValue === "" && (e3.ctrlKey || e3.metaKey) && e3.key === "z") {
         e3.preventDefault();
