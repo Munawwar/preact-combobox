@@ -658,6 +658,7 @@ var OptionsListbox = D3(
     loadingRenderer,
     translations,
     theme,
+    maxPresentedOptions,
     isOpen,
     shouldUseTray,
     setDropdownRef
@@ -940,7 +941,8 @@ var OptionsListbox = D3(
                 option.value
               );
             }),
-            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound })
+            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound }),
+            filteredOptions.length === maxPresentedOptions && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.typeToLoadMore })
           ] })
         }
       )

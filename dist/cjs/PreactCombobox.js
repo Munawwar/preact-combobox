@@ -2406,6 +2406,7 @@ var OptionsListbox = D3(
     loadingRenderer,
     translations,
     theme,
+    maxPresentedOptions,
     isOpen,
     shouldUseTray,
     setDropdownRef
@@ -2688,7 +2689,8 @@ var OptionsListbox = D3(
                 option.value
               );
             }),
-            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound })
+            filteredOptions.length === 0 && !isLoading && (!allowFreeText || !searchText || arrayValues.includes(searchText)) && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.noOptionsFound }),
+            filteredOptions.length === maxPresentedOptions && /* @__PURE__ */ u3("li", { className: "PreactCombobox-option", children: translations.typeToLoadMore })
           ] })
         }
       )
@@ -2968,7 +2970,9 @@ function useAsyncOptions({
       const currentSelectedValues = selectedValues;
       const mergedOptions = currentSelectedValues.filter((v3) => !resolvedOptionsLookup[v3]).map((v3) => ({ label: v3, value: v3 })).concat(arrayOptions);
       const options = searchText ? mergedOptions : sortValuesToTop(mergedOptions, currentSelectedValues);
-      setFilteredOptions(getMatchScore(searchText, options, language, true));
+      setFilteredOptions(
+        getMatchScore(searchText, options, language, true).slice(0, maxNumberOfPresentedOptions)
+      );
     }
   }, [
     isOpen,
@@ -3405,7 +3409,7 @@ var PreactCombobox = ({
   trayLabel: trayLabelProp,
   translations = defaultEnglishTranslations,
   // private option for now
-  maxNumberOfPresentedOptions = 100
+  maxPresentedOptions = 100
 }) => {
   const mergedTranslations = useDeepMemo(
     translations === defaultEnglishTranslations ? translations : { ...defaultEnglishTranslations, ...translations }
@@ -3529,7 +3533,7 @@ var PreactCombobox = ({
     searchText: activeInputValue,
     isOpen: isListOpen,
     language,
-    maxNumberOfPresentedOptions
+    maxNumberOfPresentedOptions: maxPresentedOptions
   });
   const allOptionsLookup = resolvedOptionsLookup;
   const invalidValues = T2(() => {
@@ -3948,7 +3952,7 @@ var PreactCombobox = ({
   }, [disabled, shouldUseTray, openTray, focusInput, setIsDropdownOpen]);
   const selectChildren = T2(
     () => formSubmitCompatible ? arrayValues.map((val) => /* @__PURE__ */ u3("option", { value: val, disabled: allOptionsLookup[val]?.disabled, children: allOptionsLookup[val]?.label || val }, val)).concat(
-      typeof allowedOptions !== "function" ? allowedOptions.filter((o3) => !arrayValuesLookup.has(o3.value)).slice(0, maxNumberOfPresentedOptions - arrayValues.length).map((o3) => /* @__PURE__ */ u3("option", { value: o3.value, disabled: o3.disabled, children: o3.label }, o3.value)) : []
+      typeof allowedOptions !== "function" ? allowedOptions.filter((o3) => !arrayValuesLookup.has(o3.value)).slice(0, maxPresentedOptions - arrayValues.length).map((o3) => /* @__PURE__ */ u3("option", { value: o3.value, disabled: o3.disabled, children: o3.label }, o3.value)) : []
     ) : null,
     [
       arrayValues,
@@ -3956,7 +3960,7 @@ var PreactCombobox = ({
       formSubmitCompatible,
       allowedOptions,
       arrayValuesLookup,
-      maxNumberOfPresentedOptions
+      maxPresentedOptions
     ]
   );
   y2(() => {
@@ -4014,6 +4018,7 @@ var PreactCombobox = ({
       loadingRenderer,
       translations: mergedTranslations,
       theme,
+      maxPresentedOptions,
       isOpen: isListOpen,
       shouldUseTray,
       setDropdownRef

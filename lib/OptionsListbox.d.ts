@@ -175,6 +175,7 @@ export type OptionsListboxRef = {
  * @property {(text: string) => VNode|string} loadingRenderer - Loading renderer
  * @property {Translations} translations - Translation strings
  * @property {string} theme - Theme for styling
+ * @property {number} maxPresentedOptions - Maximum number of options presented
  * @property {boolean} isOpen - Whether the list should be visible
  * @property {boolean} shouldUseTray - Whether this is used in tray mode
  * @property {(ref: HTMLUListElement | null) => void} [setDropdownRef] - Callback to set dropdown ref for popper
