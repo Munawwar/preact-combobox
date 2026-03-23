@@ -88,6 +88,10 @@ export type OptionsListboxProps = {
      */
     theme: string;
     /**
+     * - Maximum number of options presented
+     */
+    maxPresentedOptions: number;
+    /**
      * - Whether the list should be visible
      */
     isOpen: boolean;

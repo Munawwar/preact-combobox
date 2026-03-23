@@ -32,6 +32,7 @@ import { toHTMLId } from "./utils.jsx";
  * @property {(text: string) => VNode|string} loadingRenderer - Loading renderer
  * @property {Translations} translations - Translation strings
  * @property {string} theme - Theme for styling
+ * @property {number} maxPresentedOptions - Maximum number of options presented
  * @property {boolean} isOpen - Whether the list should be visible
  * @property {boolean} shouldUseTray - Whether this is used in tray mode
  * @property {(ref: HTMLUListElement | null) => void} [setDropdownRef] - Callback to set dropdown ref for popper
@@ -80,6 +81,7 @@ const OptionsListbox = forwardRef(
       loadingRenderer,
       translations,
       theme,
+      maxPresentedOptions,
       isOpen,
       shouldUseTray,
       setDropdownRef,
@@ -407,6 +409,9 @@ const OptionsListbox = forwardRef(
               (!allowFreeText || !searchText || arrayValues.includes(searchText)) && (
                 <li className="PreactCombobox-option">{translations.noOptionsFound}</li>
               )}
+            {filteredOptions.length === maxPresentedOptions && (
+              <li className="PreactCombobox-option">{translations.typeToLoadMore}</li>
+            )}
           </>
         )}
       </ul>

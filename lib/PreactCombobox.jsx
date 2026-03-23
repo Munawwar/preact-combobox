@@ -1213,6 +1213,7 @@ const PreactCombobox = ({
       loadingRenderer={loadingRenderer}
       translations={mergedTranslations}
       theme={theme}
+      maxPresentedOptions={maxPresentedOptions}
       isOpen={isListOpen}
       shouldUseTray={shouldUseTray}
       setDropdownRef={setDropdownRef}
