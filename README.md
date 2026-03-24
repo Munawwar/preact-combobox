@@ -372,6 +372,10 @@ function CustomRenderingExample() {
 }
 ```
 
+## Advanced: Using OptionsListbox Directly
+
+If you need to build a custom UX (e.g., a menu dropdown with an embedded search field), you can use the extracted `OptionsListbox` component and helper utilities directly. See [OptionsListbox.md](./OptionsListbox.md) for props, ref methods, and available helper exports.
+
 ## About Accessibility
 
 Some attempt has been made to make the component accessible in the following dimensions:

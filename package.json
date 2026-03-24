@@ -1,6 +1,6 @@
 {
   "name": "preact-combobox",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Preact Multi-select Combo Box component",
   "main": "dist/cjs/PreactCombobox.js",
   "module": "dist/esm/PreactCombobox.js",
@@ -11,6 +11,10 @@
       "default": "./dist/esm/PreactCombobox.js"
     }
   },
+  "files": [
+    "dist/",
+    "OptionsListbox.md"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -19,8 +23,8 @@
     "lint": "npx @biomejs/biome check --write",
     "tsc": "tsc",
     "example": "browser-sync start --port 3050 --server --files 'example' --files 'dist' --startPath '/example/example.html'",
-    "watch": "esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core --watch",
-    "build": "rm -fr dist && rm -fr lib/*.d.ts && esbuild ./lib/*.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core && esbuild ./lib/*.jsx --outdir=dist/cjs --format=cjs --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:react && tsc && cp lib/PreactCombobox.d.ts dist/esm/  && cp lib/PreactCombobox.d.ts dist/cjs/",
+    "watch": "esbuild ./lib/PreactCombobox.jsx --outdir=dist/esm --format=esm --bundle --jsx-factory=h --jsx-fragment=Fragment --jsx=automatic --sourcemap --external:preact --external:@popperjs/core --watch",
+    "build": "bash build.sh",
     "prepare": "husky",
     "pretest": "npm run build"
   },
