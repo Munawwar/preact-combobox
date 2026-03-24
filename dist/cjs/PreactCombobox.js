@@ -20,8 +20,13 @@ var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: tru
 // lib/PreactCombobox.jsx
 var PreactCombobox_exports = {};
 __export(PreactCombobox_exports, {
+  OptionsListbox: () => OptionsListbox_default,
   default: () => PreactCombobox_default,
-  defaultOptionRenderer: () => defaultOptionRenderer
+  defaultOptionRenderer: () => defaultOptionRenderer,
+  getMatchScore: () => getMatchScore,
+  matchSlicesToNodes: () => matchSlicesToNodes,
+  sortValuesToTop: () => sortValuesToTop,
+  useAsyncOptions: () => useAsyncOptions
 });
 module.exports = __toCommonJS(PreactCombobox_exports);
 

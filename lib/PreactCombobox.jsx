@@ -12,8 +12,15 @@ import {
 import OptionsListbox from "./OptionsListbox.jsx";
 import TraySearchList from "./TraySearchList.jsx";
 import { subscribeToVirtualKeyboard, useAsyncOptions, useDeepMemo, useLive } from "./hooks.js";
-import { matchSlicesToNodes, toHTMLId } from "./utils.jsx";
+import { getMatchScore, matchSlicesToNodes, sortValuesToTop, toHTMLId } from "./utils.jsx";
+export { OptionsListbox, useAsyncOptions, getMatchScore, matchSlicesToNodes, sortValuesToTop };
 import "./PreactCombobox.css";
+
+// --- re-exported types ---
+/** @typedef {import("./OptionsListbox.jsx").OptionsListboxProps} OptionsListboxProps */
+/** @typedef {import("./OptionsListbox.jsx").OptionsListboxRef} OptionsListboxRef */
+/** @typedef {import("./hooks.js").UseAsyncOptionsParams} UseAsyncOptionsParams */
+/** @typedef {import("./hooks.js").UseAsyncOptionsResult} UseAsyncOptionsResult */
 
 // --- types ---
 /**

@@ -2041,7 +2041,12 @@ var PreactCombobox = ({
 };
 var PreactCombobox_default = PreactCombobox;
 export {
+  OptionsListbox_default as OptionsListbox,
   PreactCombobox_default as default,
-  defaultOptionRenderer
+  defaultOptionRenderer,
+  getMatchScore,
+  matchSlicesToNodes,
+  sortValuesToTop,
+  useAsyncOptions
 };
 //# sourceMappingURL=PreactCombobox.js.map

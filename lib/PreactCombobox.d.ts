@@ -10,6 +10,10 @@ export function defaultOptionRenderer(params: {
     optionIconRenderer?: ((option: Option, isInput?: boolean) => VNode | null) | undefined;
 }): VNode;
 export default PreactCombobox;
+export type OptionsListboxProps = import("./OptionsListbox.jsx").OptionsListboxProps;
+export type OptionsListboxRef = import("./OptionsListbox.jsx").OptionsListboxRef;
+export type UseAsyncOptionsParams = import("./hooks.js").UseAsyncOptionsParams;
+export type UseAsyncOptionsResult = import("./hooks.js").UseAsyncOptionsResult;
 export type Option = {
     /**
      * - The display text for the option
@@ -312,8 +316,14 @@ export type PreactComboboxProps = {
      */
     maxPresentedOptions?: number | undefined;
 };
+import OptionsListbox from "./OptionsListbox.jsx";
+import { useAsyncOptions } from "./hooks.js";
+import { getMatchScore } from "./utils.jsx";
+import { matchSlicesToNodes } from "./utils.jsx";
+import { sortValuesToTop } from "./utils.jsx";
 /**
  * PreactCombobox component
  * @param {PreactComboboxProps} props - Component props
  */
 declare function PreactCombobox({ id: idProp, multiple, allowedOptions, allowFreeText, onChange, value, language, placeholder, disabled, required, name, portal, className, rootElementProps, inputProps: { tooltipContent, ...inputProps }, formSubmitCompatible, isServer, selectElementProps, showValue, showClearButton, optionRenderer, optionIconRenderer, warningIcon, tickIcon, chevronIcon, loadingRenderer, theme, tray, trayBreakpoint, trayLabel: trayLabelProp, translations, maxPresentedOptions, }: PreactComboboxProps): import("preact").JSX.Element;
+export { OptionsListbox, useAsyncOptions, getMatchScore, matchSlicesToNodes, sortValuesToTop };
