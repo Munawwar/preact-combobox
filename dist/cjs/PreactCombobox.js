@@ -2652,6 +2652,7 @@ var OptionsListbox = D3(
                   onMouseDown: (e3) => {
                     e3.preventDefault();
                     e3.stopPropagation();
+                    if (isDisabled) return;
                     onOptionSelect(option.value, { toggleSelected: true });
                     if (!multiple && onClose) {
                       onClose();

@@ -540,6 +540,7 @@ var OptionsListbox = forwardRef(
                   onMouseDown: (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+                    if (isDisabled) return;
                     onOptionSelect(option.value, { toggleSelected: true });
                     if (!multiple && onClose) {
                       onClose();
