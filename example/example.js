@@ -388,6 +388,7 @@ function App() {
   const [valuesManyOptions, setValuesManyOptions] = useState(["zurich"]);
   const [valuesBasicExample, setValuesBasicExample] = useState(["United Arab Emirates"]);
   const [invalidValuesExample, setInvalidValuesExample] = useState(["India"]);
+  const [singleSelectTrayExample, setSingleSelectTrayExample] = useState("usa");
   const [singleSelectExample, setSingleSelectExample] = useState("usa");
   const [carrierValues, setCarrierValues] = useState([
     "550e8400-e29b-41d4-a716-446655440001", // DHL
@@ -461,42 +462,56 @@ function App() {
         />
         <br/>
 
-        <label for="example-4">Single-select, No free text allowed</label>
-        <p>Mobile tray is disabled for this example but still provides reasonable UX on mobile devices</p>
+        <label for="example-4">Single-select, with mobile tray</label>
         <${PreactCombobox}
           id="example-4"
+          multiple=${false}
+          allowedOptions=${allowedOptions}
+          allowFreeText=${true}
+          value=${singleSelectTrayExample}
+          onChange=${setSingleSelectTrayExample}
+          name="example-4"
+          required=${true}
+          theme=${appTheme}
+        />
+        <br/>
+
+        <label for="example-5">Single-select, No free text, no mobile tray</label>
+        <p>Mobile tray is disabled for this example but still provides reasonable UX on mobile devices</p>
+        <${PreactCombobox}
+          id="example-5"
           multiple=${false}
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
           value=${singleSelectExample}
           onChange=${setSingleSelectExample}
-          name="example-4"
+          name="example-5"
           required=${true}
           theme=${appTheme}
           tray=${false}
         />
         <br/>
 
-        <label for="example-5">Remote data fetching</label>
-        <p id="example-5-explanation">Selected values are UUIDs that get resolved to carrier names</p>
+        <label for="example-6">Remote data fetching</label>
+        <p id="example-6-explanation">Selected values are UUIDs that get resolved to carrier names</p>
         <${PreactCombobox}
-          id="example-5"
+          id="example-6"
           allowedOptions=${fetchCarrierOptions}
           allowFreeText=${false}
           value=${carrierValues}
           onChange=${setCarrierValues}
           placeholder="Search for carriers..."
           inputProps=${{
-            "aria-describedby": "example-5-explanation",
+            "aria-describedby": "example-6-explanation",
           }}
           showValue=${false}
           theme=${appTheme}
         />
         <br/>
 
-        <label for="example-6">Explicity use Dark Theme</label>
+        <label for="example-7">Explicity use Dark Theme</label>
         <${PreactCombobox}
-          id="example-6"
+          id="example-7"
           allowedOptions=${allowedOptions}
           allowFreeText=${false}
           value=${valuesDarkThemeExample}
@@ -505,11 +520,11 @@ function App() {
         />
         <br/>
 
-        <label for="example-7">RTL Example with Arabic Translations</label>
+        <label for="example-8">RTL Example with Arabic Translations</label>
         <p>This example demonstrates explicit RTL direction with Arabic language translations</p>
         <div class="rtl-container" dir="rtl">
           <${PreactCombobox}
-            id="example-7"
+            id="example-8"
             allowedOptions=${arabicOptions}
             allowFreeText=${true}
             value=${valuesRTLExample}
@@ -524,10 +539,10 @@ function App() {
         </div>
         <br/>
 
-        <label for="example-8">Progressive Enhancement Example</label>
+        <label for="example-9">Progressive Enhancement Example</label>
         <p>This example shows how the component renders with isServer and formSubmitCompatible both set to true</p>
         <${PreactCombobox}
-          id="example-8"
+          id="example-9"
           multiple=${false}
           allowedOptions=${example1Options}
           value=${valueServerSideExample}
