@@ -920,6 +920,7 @@ var TraySearchList = ({
     null
   );
   const virtualKeyboardExplicitlyClosedRef = useRef3(false);
+  const isMountRef = useRef3(true);
   const readonlyResetTimeoutRef = useRef3(
     /** @type {ReturnType<typeof setTimeout> | null} */
     null
@@ -949,25 +950,11 @@ var TraySearchList = ({
       readonlyResetTimeoutRef.current = null;
     }, 10);
   }, []);
-  const handleClose = useCallback3(() => {
-    setTrayInputValue("");
-    setVirtualKeyboardHeight(0);
-    virtualKeyboardExplicitlyClosedRef.current = false;
-    virtualKeyboardHeightAdjustSubscription.current?.();
-    virtualKeyboardHeightAdjustSubscription.current = null;
-    if (readonlyResetTimeoutRef.current) {
-      clearTimeout(readonlyResetTimeoutRef.current);
-      readonlyResetTimeoutRef.current = null;
-    }
-    trayInputRef.current?.removeAttribute("readonly");
-    const scrollingElement = (
-      /** @type {HTMLElement} */
-      document.scrollingElement || document.documentElement
-    );
-    scrollingElement.style.overflow = originalOverflowRef.current;
-    onClose();
-  }, [onClose]);
   useEffect3(() => {
+    if (isMountRef.current) {
+      isMountRef.current = false;
+      if (!isOpen) return;
+    }
     if (isOpen) {
       const scrollingElement = (
         /** @type {HTMLElement} */
@@ -984,22 +971,21 @@ var TraySearchList = ({
         });
       }
       trayInputRef.current?.focus();
-    }
-  }, [isOpen]);
-  useEffect3(() => {
-    return () => {
-      if (virtualKeyboardHeightAdjustSubscription.current) {
-        virtualKeyboardHeightAdjustSubscription.current();
+      return () => {
+        scrollingElement.style.overflow = originalOverflowRef.current;
+        virtualKeyboardHeightAdjustSubscription.current?.();
         virtualKeyboardHeightAdjustSubscription.current = null;
-      }
-      if (readonlyResetTimeoutRef.current) {
-        clearTimeout(readonlyResetTimeoutRef.current);
-        readonlyResetTimeoutRef.current = null;
-      }
-      trayInputRef.current?.removeAttribute("readonly");
-      virtualKeyboardExplicitlyClosedRef.current = false;
-    };
-  }, []);
+        virtualKeyboardExplicitlyClosedRef.current = false;
+        if (readonlyResetTimeoutRef.current) {
+          clearTimeout(readonlyResetTimeoutRef.current);
+          readonlyResetTimeoutRef.current = null;
+        }
+        trayInputRef.current?.removeAttribute("readonly");
+      };
+    }
+    setTrayInputValue("");
+    setVirtualKeyboardHeight(0);
+  }, [isOpen]);
   if (!isOpen) {
     return null;
   }
@@ -1014,12 +1000,12 @@ var TraySearchList = ({
         style: { display: isOpen ? null : "none" },
         onClick: (e) => {
           if (e.target === trayModalRef.current) {
-            handleClose();
+            onClose();
           }
         },
         onKeyDown: (e) => {
           if (e.key === "Escape") {
-            handleClose();
+            onClose();
           }
         },
         role: "dialog",
@@ -1048,7 +1034,7 @@ var TraySearchList = ({
                 onChange: handleTrayInputChange,
                 onKeyDown: (e) => {
                   if (e.key === "Escape") {
-                    handleClose();
+                    onClose();
                   }
                 },
                 className: `PreactCombobox-trayInput ${!trayLabel ? "PreactCombobox-trayInput--noLabel" : ""}`,

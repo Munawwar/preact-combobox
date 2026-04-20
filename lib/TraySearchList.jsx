@@ -40,6 +40,7 @@ const TraySearchList = ({
   const originalOverflowRef = useRef("");
   const virtualKeyboardHeightAdjustSubscription = useRef(/** @type {function | null} */ (null));
   const virtualKeyboardExplicitlyClosedRef = useRef(false);
+  const isMountRef = useRef(true);
   const readonlyResetTimeoutRef = useRef(
     /** @type {ReturnType<typeof setTimeout> | null} */ (null),
   );
@@ -73,41 +74,19 @@ const TraySearchList = ({
     }, 10);
   }, []);
 
-  // Handle tray close
-  const handleClose = useCallback(() => {
-    setTrayInputValue("");
-    setVirtualKeyboardHeight(0);
-    virtualKeyboardExplicitlyClosedRef.current = false;
-    virtualKeyboardHeightAdjustSubscription.current?.();
-    virtualKeyboardHeightAdjustSubscription.current = null;
-    if (readonlyResetTimeoutRef.current) {
-      clearTimeout(readonlyResetTimeoutRef.current);
-      readonlyResetTimeoutRef.current = null;
-    }
-    trayInputRef.current?.removeAttribute("readonly");
-
-    // Restore original overflow
-    const scrollingElement = /** @type {HTMLElement} */ (
-      document.scrollingElement || document.documentElement
-    );
-    scrollingElement.style.overflow = originalOverflowRef.current;
-
-    onClose();
-  }, [onClose]);
-
   // Setup virtual keyboard subscription and overflow handling when tray opens
+  // Also clear states on close
   useEffect(() => {
+    if (isMountRef.current) {
+      isMountRef.current = false;
+      if (!isOpen) return;
+    }
     if (isOpen) {
-      // Get the scrolling element (body or html)
       const scrollingElement = /** @type {HTMLElement} */ (
         document.scrollingElement || document.documentElement
       );
-
-      // Save original overflow and apply hidden
       originalOverflowRef.current = scrollingElement.style.overflow;
       scrollingElement.style.overflow = "hidden";
-
-      // Subscribe to virtual keyboard for tray
       if (!virtualKeyboardHeightAdjustSubscription.current) {
         virtualKeyboardHeightAdjustSubscription.current = subscribeToVirtualKeyboard({
           heightCallback(keyboardHeight, isVisible) {
@@ -116,27 +95,23 @@ const TraySearchList = ({
           },
         });
       }
-
-      // Focus the input when tray opens
       trayInputRef.current?.focus();
-    }
-  }, [isOpen]);
-
-  // Clean up when component unmounts or tray closes
-  useEffect(() => {
-    return () => {
-      if (virtualKeyboardHeightAdjustSubscription.current) {
-        virtualKeyboardHeightAdjustSubscription.current();
+      return () => {
+        scrollingElement.style.overflow = originalOverflowRef.current;
+        virtualKeyboardHeightAdjustSubscription.current?.();
         virtualKeyboardHeightAdjustSubscription.current = null;
-      }
-      if (readonlyResetTimeoutRef.current) {
-        clearTimeout(readonlyResetTimeoutRef.current);
-        readonlyResetTimeoutRef.current = null;
-      }
-      trayInputRef.current?.removeAttribute("readonly");
-      virtualKeyboardExplicitlyClosedRef.current = false;
-    };
-  }, []);
+        virtualKeyboardExplicitlyClosedRef.current = false;
+        if (readonlyResetTimeoutRef.current) {
+          clearTimeout(readonlyResetTimeoutRef.current);
+          readonlyResetTimeoutRef.current = null;
+        }
+        trayInputRef.current?.removeAttribute("readonly");
+      };
+    }
+    // else on close, clear states
+    setTrayInputValue("");
+    setVirtualKeyboardHeight(0);
+  }, [isOpen]);
 
   // Children contains the SearchableList component
 
@@ -154,12 +129,12 @@ const TraySearchList = ({
       onClick={(e) => {
         // Close modal when clicking backdrop
         if (e.target === trayModalRef.current) {
-          handleClose();
+          onClose();
         }
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
-          handleClose();
+          onClose();
         }
       }}
       // biome-ignore lint/a11y/useSemanticElements: Custom modal implementation instead of dialog element
@@ -188,7 +163,7 @@ const TraySearchList = ({
             onChange={handleTrayInputChange}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                handleClose();
+                onClose();
               }
             }}
             className={`PreactCombobox-trayInput ${!trayLabel ? "PreactCombobox-trayInput--noLabel" : ""}`}
